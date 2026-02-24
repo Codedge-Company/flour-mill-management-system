@@ -1,0 +1,33 @@
+
+<div class="page-header">
+  <div class="page-header-left">
+
+    @if (breadcrumbs.length > 0) {
+      <nav class="breadcrumb" aria-label="breadcrumb">
+        @for (crumb of breadcrumbs; track crumb.label; let last = $last) {
+          @if (!last) {
+            <a [routerLink]="crumb.route" class="breadcrumb-link">{{ crumb.label }}</a>
+            <span class="breadcrumb-sep">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none"
+                   viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </span>
+          } @else {
+            <span class="breadcrumb-current">{{ crumb.label }}</span>
+          }
+        }
+      </nav>
+    }
+
+    <h2 class="page-title">{{ title }}</h2>
+    @if (subtitle) {
+      <p class="page-subtitle">{{ subtitle }}</p>
+    }
+  </div>
+
+  <!-- Action slot -->
+  <div class="page-header-actions">
+    <ng-content />
+  </div>
+</div>

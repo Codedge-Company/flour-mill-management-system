@@ -1,0 +1,128 @@
+<!-- src/app/features/dashboard/dashboard.component.html -->
+<div class="dashboard">
+
+    <!-- Header -->
+    <app-page-header title="Dashboard" subtitle="Overview of sales, profit and inventory status">
+        <button class="btn btn-outline btn-sm" (click)="refresh()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor" stroke-width="2">
+                <polyline points="23 4 23 10 17 10" />
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+            </svg>
+            Refresh
+        </button>
+    </app-page-header>
+
+    <!-- Date Range Selector -->
+    <div class="range-bar card">
+        <span class="range-label">Period:</span>
+        <div class="preset-tabs">
+            @for (p of presets; track p.key) {
+            <button class="preset-tab" [class.active]="activePreset() === p.key" (click)="applyPreset(p.key)">
+                {{ p.label }}
+            </button>
+            }
+        </div>
+
+        @if (showCustom()) {
+        <div class="custom-range">
+            <input type="date" class="form-control" style="width:150px" [ngModel]="customFrom()"
+                (ngModelChange)="customFrom.set($event)" />
+            <span class="text-secondary">to</span>
+            <input type="date" class="form-control" style="width:150px" [ngModel]="customTo()"
+                (ngModelChange)="customTo.set($event)" />
+            <button class="btn btn-primary btn-sm" [disabled]="!customFrom() || !customTo()"
+                (click)="applyCustomRange()">
+                Apply
+            </button>
+        </div>
+        }
+    </div>
+
+    <!-- Error -->
+    @if (error()) {
+    <div class="alert-error-bar">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+        {{ error() }}
+        <button class="btn btn-sm btn-outline" (click)="refresh()">Retry</button>
+    </div>
+    }
+
+    <!-- Stat Cards -->
+    <div class="stat-grid">
+        <app-stat-card label="Total Revenue" [value]="summary()?.totalRevenue ?? 0" variant="primary"
+            [loading]="loading()" [icon]="icons.revenue" />
+
+        <app-stat-card label="Total Cost" [value]="summary()?.totalCost ?? 0" variant="warning" [loading]="loading()" />
+        <app-stat-card label="Total Profit" [value]="summary()?.totalProfit ?? 0" variant="success"
+            [loading]="loading()" />
+        <app-stat-card label="Total Sales" [value]="summary()?.totalSales ?? 0" variant="info" [isCurrency]="false"
+            [loading]="loading()" subLabel="transactions" />
+    </div>
+
+    <!-- Charts Row -->
+    <div class="charts-row">
+
+        <!-- Revenue Chart -->
+        <div class="card chart-card chart-main">
+            <div class="card-header">
+                <h3 class="card-title">Revenue / Cost / Profit</h3>
+            </div>
+            @if (loading()) {
+            <div class="chart-skeleton"></div>
+            } @else if (data()?.dailyMetrics?.length) {
+            <app-revenue-chart [metrics]="data()!.dailyMetrics" />
+            } @else {
+            <div class="empty-state">
+                <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor" stroke-width="1.2">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                </svg>
+                <p>No data for this period</p>
+            </div>
+            }
+        </div>
+
+        <!-- Low Stock Panel -->
+        <div class="card chart-card chart-side">
+            <div class="card-header">
+                <h3 class="card-title">
+                    Low Stock Alerts
+                    @if (lowStockItems().length > 0) {
+                    <span class="badge badge-danger">{{ lowStockItems().length }}</span>
+                    }
+                </h3>
+            </div>
+            <app-low-stock-alert-panel [items]="lowStockItems()" [loading]="inventoryLoading()" />
+        </div>
+
+    </div>
+
+    <!-- Customer Performance Chart -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Customer Performance</h3>
+        </div>
+        @if (loading()) {
+        <div class="chart-skeleton"></div>
+        } @else if (data()?.customerPerformance?.length) {
+        <app-customer-performance-chart [data]="data()!.customerPerformance" />
+        } @else {
+        <div class="empty-state">
+            <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor" stroke-width="1.2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+            <p>No customer data for this period</p>
+        </div>
+        }
+    </div>
+
+</div>

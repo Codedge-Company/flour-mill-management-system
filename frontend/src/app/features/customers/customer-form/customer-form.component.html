@@ -1,0 +1,138 @@
+<!-- src/app/features/customers/customer-form/customer-form.component.html -->
+<div class="customer-form-page">
+
+  <app-page-header
+    [title]="isEdit ? 'Edit Customer' : 'New Customer'"
+    [subtitle]="isEdit ? 'Update customer information' : 'Add a new customer to the system'"
+    [breadcrumbs]="breadcrumbs"
+  />
+
+  @if (fetchLoad()) {
+    <div class="form-skeleton card">
+      @for (n of [1,2,3,4]; track n) {
+        <div class="sk-field">
+          <div class="sk-label"></div>
+          <div class="sk-input"></div>
+        </div>
+      }
+    </div>
+  } @else {
+    <div class="form-card card">
+
+      @if (error()) {
+        <div class="form-error-banner">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
+               viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8"  x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          {{ error() }}
+        </div>
+      }
+
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+
+        <div class="form-section">
+          <h4 class="form-section-title">Basic Information</h4>
+
+          <!-- Name -->
+          <div class="form-group">
+            <label class="form-label" for="name">
+              Full Name / Business Name <span>*</span>
+            </label>
+            <input
+              id="name"
+              type="text"
+              class="form-control"
+              [class.error]="f['name'].invalid && f['name'].touched"
+              formControlName="name"
+              placeholder="e.g. Nimal Traders"
+              autocomplete="off"
+            />
+            @if (f['name'].invalid && f['name'].touched) {
+              <span class="form-error">
+                Name is required (2–150 characters)
+              </span>
+            }
+          </div>
+
+          <!-- Phone -->
+          <div class="form-group">
+            <label class="form-label" for="phone">Phone Number</label>
+            <input
+              id="phone"
+              type="tel"
+              class="form-control"
+              [class.error]="f['phone'].invalid && f['phone'].touched"
+              formControlName="phone"
+              placeholder="e.g. 077 123 4567"
+              autocomplete="off"
+            />
+            @if (f['phone'].invalid && f['phone'].touched) {
+              <span class="form-error">Max 30 characters</span>
+            }
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h4 class="form-section-title">Additional Details</h4>
+
+          <!-- Address -->
+          <div class="form-group">
+            <label class="form-label" for="address">Address</label>
+            <textarea
+              id="address"
+              class="form-control"
+              [class.error]="f['address'].invalid && f['address'].touched"
+              formControlName="address"
+              placeholder="Enter delivery or business address"
+              rows="2"
+            ></textarea>
+            @if (f['address'].invalid && f['address'].touched) {
+              <span class="form-error">Max 255 characters</span>
+            }
+          </div>
+
+          <!-- Notes -->
+          <div class="form-group">
+            <label class="form-label" for="notes">Notes</label>
+            <textarea
+              id="notes"
+              class="form-control"
+              [class.error]="f['notes'].invalid && f['notes'].touched"
+              formControlName="notes"
+              placeholder="Any additional notes about this customer..."
+              rows="2"
+            ></textarea>
+            @if (f['notes'].invalid && f['notes'].touched) {
+              <span class="form-error">Max 255 characters</span>
+            }
+          </div>
+        </div>
+
+        <!-- Form actions -->
+        <div class="form-actions">
+          <button
+            type="button"
+            class="btn btn-outline"
+            (click)="onCancel()"
+            [disabled]="loading()"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="btn btn-primary"
+            [disabled]="loading() || form.invalid"
+          >
+            @if (loading()) { <span class="btn-spinner"></span> }
+            {{ isEdit ? 'Save Changes' : 'Create Customer' }}
+          </button>
+        </div>
+
+      </form>
+    </div>
+  }
+
+</div>

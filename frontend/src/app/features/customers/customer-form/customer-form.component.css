@@ -1,0 +1,82 @@
+/* src/app/features/customers/customer-form/customer-form.component.css */
+.customer-form-page { display: flex; flex-direction: column; gap: 20px; }
+
+.form-card { max-width: 640px; }
+
+.form-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  background: var(--danger-light);
+  border: 1px solid #fca5a5;
+  border-radius: var(--radius-md);
+  color: var(--danger);
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-bottom: 20px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.form-section:last-of-type {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.form-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  margin-top: 20px;
+}
+
+/* Skeleton */
+.form-skeleton {
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.sk-field { display: flex; flex-direction: column; gap: 6px; }
+.sk-label {
+  width: 30%;
+  height: 12px;
+  background: linear-gradient(90deg, var(--border) 25%, var(--surface-alt) 50%, var(--border) 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.4s infinite;
+}
+.sk-input {
+  height: 36px;
+  background: linear-gradient(90deg, var(--border) 25%, var(--surface-alt) 50%, var(--border) 75%);
+  background-size: 200% 100%;
+  border-radius: var(--radius-md);
+  animation: shimmer 1.4s infinite;
+}
+
+.btn-spinner {
+  width: 13px;
+  height: 13px;
+  border: 2px solid rgba(255,255,255,.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  display: inline-block;
+}

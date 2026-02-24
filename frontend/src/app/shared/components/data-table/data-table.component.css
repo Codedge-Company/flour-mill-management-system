@@ -1,0 +1,23 @@
+/* src/app/shared/components/data-table/data-table.component.css */
+.th-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+th.sortable { cursor: pointer; user-select: none; }
+th.sortable:hover { color: var(--text-primary); }
+
+.sort-icon { display: flex; color: var(--text-muted); }
+.sort-icon.active { color: var(--primary); }
+
+tbody tr.clickable { cursor: pointer; }
+
+/* Skeleton rows */
+.skeleton-cell {
+  height: 14px;
+  background: linear-gradient(90deg, var(--border) 25%, var(--surface-alt) 50%, var(--border) 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.4s infinite;
+}

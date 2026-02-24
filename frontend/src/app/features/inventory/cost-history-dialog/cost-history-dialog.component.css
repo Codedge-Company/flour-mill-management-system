@@ -1,0 +1,32 @@
+/* src/app/features/inventory/cost-history-dialog/cost-history-dialog.component.css */
+tr.latest { background: var(--primary-light); }
+
+.change-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+.change-badge.up   { background: var(--danger-light);  color: var(--danger);  }
+.change-badge.down { background: var(--success-light); color: var(--success); }
+
+.history-loading { display: flex; flex-direction: column; gap: 8px; padding: 20px; }
+.history-skeleton {
+  height: 40px;
+  background: linear-gradient(90deg, var(--border) 25%, var(--surface-alt) 50%, var(--border) 75%);
+  background-size: 200% 100%;
+  border-radius: var(--radius-md);
+  animation: shimmer 1.4s infinite;
+}
+
+.dialog-error {
+  padding: 10px 14px;
+  background: var(--danger-light);
+  border: 1px solid #fca5a5;
+  border-radius: var(--radius-md);
+  color: var(--danger);
+  font-size: 13px;
+}

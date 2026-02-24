@@ -1,0 +1,22 @@
+/* src/app/shared/components/confirm-dialog/confirm-dialog.component.css */
+.confirm-message {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.btn-warning {
+  background: var(--warning);
+  color: #fff;
+}
+.btn-warning:hover:not(:disabled) { background: #b45309; }
+
+.btn-spinner-dark {
+  width: 13px;
+  height: 13px;
+  border: 2px solid rgba(255,255,255,.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  display: inline-block;
+}

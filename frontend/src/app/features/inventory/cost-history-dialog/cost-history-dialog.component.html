@@ -1,0 +1,87 @@
+<div class="modal-overlay" (click)="closed.emit()">
+  <div class="modal modal-lg" (click)="$event.stopPropagation()">
+
+    <div class="modal-header">
+      <h3>Cost History — {{ item.packName }}</h3>
+      <button class="btn-icon" (click)="closed.emit()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none"
+             viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6"  y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="modal-body" style="padding: 0;">
+
+      @if (loading()) {
+        <div class="history-loading">
+          @for (n of [1,2,3]; track n) {
+            <div class="history-skeleton"></div>
+          }
+        </div>
+      } @else if (error()) {
+        <div class="dialog-error" style="margin: 20px;">{{ error() }}</div>
+      } @else if (history().length === 0) {
+        <div class="empty-state" style="padding: 40px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" fill="none"
+               viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          <p>No cost history available</p>
+        </div>
+      } @else {
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Unit Cost</th>
+                <th>Change</th>
+                <th>Effective From</th>
+                <th>Updated By</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (h of history(); track h.costHistoryId; let i = $index) {
+                <tr [class.latest]="i === 0">
+                  <td>
+                    @if (i === 0) {
+                      <span class="badge badge-primary">Latest</span>
+                    } @else {
+                      <span class="text-muted text-sm">{{ history().length - i }}</span>
+                    }
+                  </td>
+                  <td>
+                    <strong>{{ h.unitCost | lkrCurrency }}</strong>
+                  </td>
+                  <td>
+                    @if (getCostChange(i); as diff) {
+                      <span class="change-badge" [class.up]="diff > 0" [class.down]="diff < 0">
+                        {{ diff > 0 ? '▲' : '▼' }}
+                        {{ diff > 0 ? '+' : '' }}{{ diff | lkrCurrency: false }}
+                      </span>
+                    } @else {
+                      <span class="text-muted text-sm">—</span>
+                    }
+                  </td>
+                  <td class="text-sm">{{ formatDate(h.effectiveFrom) }}</td>
+                  <td class="text-sm text-secondary">
+                    {{ h.updatedByUserName ?? '—' }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-outline" (click)="closed.emit()">Close</button>
+    </div>
+
+  </div>
+</div>

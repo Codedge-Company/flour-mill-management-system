@@ -1,0 +1,23 @@
+<!-- src/app/layout/main-layout/main-layout.component.html -->
+<div class="layout" [class.sidebar-collapsed]="sidebarCollapsed()">
+
+  <!-- Global loading spinner -->
+  @if (loadingService.isLoading$ | async) {
+    <div class="spinner-overlay">
+      <div class="spinner"></div>
+    </div>
+  }
+
+  <!-- Sidebar -->
+  <app-sidebar [collapsed]="sidebarCollapsed()" />
+
+  <!-- Right side -->
+  <div class="layout-right">
+    <app-topbar (toggleSidebar)="toggleSidebar()" />
+
+    <main class="layout-content">
+      <router-outlet />
+    </main>
+  </div>
+
+</div>

@@ -1,0 +1,212 @@
+/* src/app/features/customers/customer-list/customer-list.component.css */
+.customer-list-page { display: flex; flex-direction: column; gap: 20px; }
+
+/* Toast */
+.toast-success {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--success-light);
+  border: 1px solid #86efac;
+  border-radius: var(--radius-md);
+  color: var(--success);
+  font-size: 13px;
+  font-weight: 500;
+  animation: slideUp .2s ease;
+}
+
+/* Error */
+.alert-error-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--danger-light);
+  border: 1px solid #fca5a5;
+  border-radius: var(--radius-md);
+  color: var(--danger);
+  font-size: 13px;
+}
+.alert-error-bar .btn { margin-left: auto; }
+
+/* Search */
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+}
+.search-input-wrap {
+  position: relative;
+  flex: 1;
+  max-width: 420px;
+}
+.search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.search-input {
+  padding-left: 34px;
+  padding-right: 32px;
+}
+.search-clear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 2px;
+}
+.search-clear:hover { color: var(--text-primary); }
+.search-count { margin-left: auto; white-space: nowrap; }
+
+/* Grid */
+.customer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+/* Card */
+.customer-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition), transform var(--transition);
+}
+.customer-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+/* Card top */
+.customer-card-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.customer-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.customer-info { display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
+.customer-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.customer-code {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--primary);
+  background: var(--primary-light);
+  padding: 1px 7px;
+  border-radius: 99px;
+  display: inline-block;
+}
+
+/* Details */
+.customer-details { display: flex; flex-direction: column; gap: 6px; }
+.detail-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.detail-row svg { flex-shrink: 0; margin-top: 1px; }
+.address-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.notes-row { color: var(--text-muted); }
+.notes-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: italic;
+}
+
+/* Actions */
+.customer-actions {
+  display: flex;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.danger-btn { color: var(--danger) !important; }
+.danger-btn:hover { background: var(--danger-light) !important; }
+
+/* Skeleton */
+.skeleton-card {
+  display: flex;
+  gap: 12px;
+  padding: 18px;
+}
+.sk-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, var(--border) 25%, var(--surface-alt) 50%, var(--border) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  flex-shrink: 0;
+}
+.sk-lines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+}
+.sk-line {
+  height: 13px;
+  background: linear-gradient(90deg, var(--border) 25%, var(--surface-alt) 50%, var(--border) 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.4s infinite;
+}
+.sk-name  { width: 70%; }
+.sk-code  { width: 40%; height: 10px; }
+.sk-phone { width: 55%; height: 10px; }
+
+/* Empty */
+.empty-state.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 60px 24px;
+  color: var(--text-muted);
+}
+.empty-state.card p { font-size: 14px; }

@@ -1,0 +1,26 @@
+<!-- src/app/shared/components/stat-card/stat-card.component.html -->
+<div class="stat-card" [class]="'variant-' + variant">
+
+  @if (loading) {
+    <div class="stat-skeleton"></div>
+  } @else {
+    <div class="stat-top">
+      <span class="stat-label">{{ label }}</span>
+      @if (icon) {
+        <span class="stat-icon" [innerHTML]="icon"></span>
+      }
+    </div>
+
+    <div class="stat-value">
+      @if (isCurrency) {
+        {{ value | lkrCurrency }}
+      } @else {
+        {{ value | number }}
+      }
+    </div>
+
+    @if (subLabel) {
+      <div class="stat-sub">{{ subLabel }}</div>
+    }
+  }
+</div>
