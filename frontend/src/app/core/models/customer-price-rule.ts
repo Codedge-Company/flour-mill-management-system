@@ -1,8 +1,7 @@
-
 export interface CustomerPriceRule {
-  priceRuleId: number;
-  customerId: number;
-  packTypeId: number;
+  priceRuleId: string;
+  customerId: string;
+  packTypeId: string;
   packName: string;
   unitSellPrice: number;
   effectiveFrom: string;
@@ -10,7 +9,7 @@ export interface CustomerPriceRule {
 }
 
 export interface UpsertPriceRuleRequest {
-  customerId: number;
-  packTypeId: number;
+  customerId: string;
+  packTypeId: string;
   unitSellPrice: number;
 }

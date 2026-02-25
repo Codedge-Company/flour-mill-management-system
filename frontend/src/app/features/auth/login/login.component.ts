@@ -1,4 +1,4 @@
-// src/app/features/auth/login/login.component.ts
+// src/app/features/auth/login/login.component.ts (updated error handling without console)
 import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -39,23 +39,22 @@ export class LoginComponent {
 
   togglePassword(): void { this.showPass.update(v => !v); }
 
-  onSubmit(): void {
-    if (this.form.invalid || this.loading()) return;
+// src/app/features/auth/login/login.component.ts
+onSubmit(): void {
+  if (this.form.invalid || this.loading()) return;
 
-    this.error.set(null);
-    this.loading.set(true);
+  this.error.set(null);
+  this.loading.set(true);
 
-    this.authService.login(this.form.value).subscribe({
-      next: () => {
-        this.loading.set(false);
-        this.router.navigate(['/dashboard']);
-      },
-      error: (err) => {
-        this.loading.set(false);
-        this.error.set(
-          err?.error?.message ?? 'Invalid username or password. Please try again.'
-        );
-      }
-    });
-  }
+  this.authService.login(this.form.value).subscribe({
+    next: () => {
+      this.loading.set(false);
+      this.router.navigate(['/dashboard']);
+    },
+    error: (err) => {
+      this.loading.set(false);
+      this.error.set(err.message || 'An unexpected error occurred. Please try again.');
+    }
+  });
+}
 }

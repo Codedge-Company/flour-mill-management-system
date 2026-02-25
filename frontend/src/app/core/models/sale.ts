@@ -1,10 +1,9 @@
-
 export type PaymentMethod = 'CASH' | 'CARD' | 'BANK';
 export type SaleStatus = 'SAVED' | 'CANCELLED';
 
 export interface SaleItem {
-  saleItemId?: number;
-  packTypeId: number;
+  saleItemId?: string;
+  packTypeId: string;
   packName: string;
   qty: number;
   unitPriceSold: number;
@@ -15,9 +14,9 @@ export interface SaleItem {
 }
 
 export interface Sale {
-  saleId: number;
+  saleId: string;
   saleNo: string;
-  customerId: number;
+  customerId: string;
   customerName: string;
   customerCode: string;
   createdByUserName: string;
@@ -31,20 +30,21 @@ export interface Sale {
 }
 
 export interface CreateSaleRequest {
-  customerId: number;
+  customerId: string;
   paymentMethod: PaymentMethod;
   items: CreateSaleItemRequest[];
 }
 
 export interface CreateSaleItemRequest {
-  packTypeId: number;
+  packTypeId: string;
   qty: number;
   unitPriceSold: number;
 }
 
 // UI-only row used in new-sale form
 export interface SaleItemRow {
-  packTypeId: number | null;
+  id?: number; // Added optional id for unique tracking in @for
+  packTypeId: string | null;
   packName: string;
   qty: number;
   unitPriceSold: number;
@@ -56,7 +56,7 @@ export interface SaleItemRow {
 }
 
 export interface SaleFilters {
-  customerId?: number;
+  customerId?: string;
   status?: SaleStatus;
   dateFrom?: string;
   dateTo?: string;

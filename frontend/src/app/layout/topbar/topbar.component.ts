@@ -1,6 +1,7 @@
 // src/app/layout/topbar/topbar.component.ts
 import {
-  Component, Output, EventEmitter, OnInit, signal
+  Component, Output, EventEmitter, OnInit, signal,
+  HostListener
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -39,4 +40,11 @@ export class TopbarComponent implements OnInit {
   logout(): void {
     this.authService.logout();
   }
+  @HostListener('document:click', ['$event'])
+onDocumentClick(event: MouseEvent): void {
+  const target = event.target as HTMLElement;
+  if (!target.closest('.user-menu-wrapper')) {
+    this.showUserMenu.set(false);
+  }
+}
 }

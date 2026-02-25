@@ -10,4 +10,7 @@ const customerPriceRuleSchema = new mongoose.Schema({
 
 customerPriceRuleSchema.index({ customer_id: 1, pack_type_id: 1 });
 
-module.exports = mongoose.model('CustomerPriceRule', customerPriceRuleSchema);
+// Safe model export: Reuse if already compiled, otherwise create new
+const CustomerPriceRule = mongoose.models.CustomerPriceRule || mongoose.model('CustomerPriceRule', customerPriceRuleSchema);
+
+module.exports = CustomerPriceRule;

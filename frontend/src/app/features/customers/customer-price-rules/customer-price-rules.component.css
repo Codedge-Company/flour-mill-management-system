@@ -1,0 +1,121 @@
+/* src/app/features/customers/customer-price-rules/customer-price-rules.component.css */
+.price-rules-page { display: flex; flex-direction: column; gap: 20px; }
+
+.toast-success {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--success-light);
+  border: 1px solid #86efac;
+  border-radius: var(--radius-md);
+  color: var(--success);
+  font-size: 13px;
+  font-weight: 500;
+  animation: slideUp .2s ease;
+}
+
+.alert-error-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--danger-light);
+  border: 1px solid #fca5a5;
+  border-radius: var(--radius-md);
+  color: var(--danger);
+  font-size: 13px;
+}
+.alert-error-bar .btn { margin-left: auto; }
+
+/* Rule form */
+.rule-form-card { max-width: 700px; }
+.rule-form-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.rule-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.rule-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 16px;
+  margin-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.price-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  display: block;
+}
+
+/* Table */
+.num { text-align: right; }
+
+.pack-chip {
+  display: inline-block;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 99px;
+}
+
+.margin-val {
+  font-size: 13px;
+  font-weight: 600;
+}
+.margin-val.positive { color: var(--success); }
+.margin-val.negative { color: var(--danger); }
+
+.row-actions { display: flex; gap: 4px; }
+.danger-btn { color: var(--danger) !important; }
+.danger-btn:hover { background: var(--danger-light) !important; }
+
+/* Skeleton */
+.rule-skeleton {
+  height: 44px;
+  background: linear-gradient(90deg, var(--border) 25%, var(--surface-alt) 50%, var(--border) 75%);
+  background-size: 200% 100%;
+  border-radius: var(--radius-md);
+  margin-bottom: 10px;
+  animation: shimmer 1.4s infinite;
+}
+
+/* Empty */
+.empty-state.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 50px 24px;
+  color: var(--text-muted);
+}
+.empty-state.card p { font-size: 13px; text-align: center; }
+
+.btn-spinner {
+  width: 13px;
+  height: 13px;
+  border: 2px solid rgba(255,255,255,.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  display: inline-block;
+}
+
+@media (max-width: 600px) {
+  .rule-form-grid { grid-template-columns: 1fr; }
+}

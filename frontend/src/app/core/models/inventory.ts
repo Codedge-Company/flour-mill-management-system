@@ -1,29 +1,41 @@
-
-import { PackType } from './pack-type';
-
 export interface InventoryItem {
-  packTypeId: number;
-  packName: string;
-  weightKg: number;
-  stockQty: number;
+  packTypeId:    string;
+  packName:      string;
+  weightKg:      number;
+  stockQty:      number;
   lastUpdatedAt: string;
-  currentCost: number;
+  currentCost:   number;
   costUpdatedAt: string;
-  threshold: number;
-  isLowStock: boolean;
+  threshold:     number;
+  isLowStock:    boolean;
+}
+
+export interface PackType {
+  packTypeId: string;
+  packName:   string;
+  weightKg:   number;
+  isActive:   boolean;
+}
+
+export interface CreatePackTypeRequest {
+  packName:      string;
+  weightKg:      number;
+  initialStock:  number;
+  initialCost:   number;
+  thresholdQty:  number;
 }
 
 export interface UpdateStockRequest {
-  packTypeId: number;
-  addQty: number;
+  packTypeId: string;
+  addQty:     number;
 }
 
 export interface UpdateCostRequest {
-  packTypeId: number;
-  unitCost: number;
+  packTypeId: string;
+  unitCost:   number;
 }
 
 export interface UpdateThresholdRequest {
-  packTypeId: number;
+  packTypeId:   string;
   thresholdQty: number;
 }

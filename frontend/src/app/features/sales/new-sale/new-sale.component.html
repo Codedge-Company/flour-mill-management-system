@@ -1,1 +1,285 @@
-<p>new-sale works!</p>
+<!-- src/app/features/sales/new-sale/new-sale.component.html (updated track row.id, remove @let, use selectedCustomer) -->
+<div class="new-sale-page">
+
+    <app-page-header title="New Sale" subtitle="Select customer, add items and save the transaction"
+        [breadcrumbs]="breadcrumbs" />
+
+    @if (dataLoading()) {
+    <div class="card loading-card">
+        <div class="spinner" style="margin: 40px auto;"></div>
+    </div>
+    } @else {
+    <div class="sale-layout">
+
+        <!-- Left: main form -->
+        <div class="sale-main">
+
+            <!-- Header form -->
+            <div class="card section-card">
+                <h4 class="section-title">Sale Information</h4>
+                <form [formGroup]="headerForm">
+                    <div class="header-form-grid">
+
+                        <div class="form-group">
+                            <label class="form-label" for="customerId">
+                                Customer <span>*</span>
+                            </label>
+                            <select id="customerId" class="form-control" formControlName="customerId"
+                                (change)="onCustomerChange(headerForm.value.customerId)">
+                                <option [ngValue]="null" disabled>Select a customer...</option>
+                                @for (c of customers(); track c.customerId) {
+                                <option [ngValue]="c.customerId">
+                                    {{ c.name }} ({{ c.customerCode }})
+                                </option>
+                                }
+                            </select>
+                            @if (!headerForm.value.customerId &&
+                            headerForm.get('customerId')?.touched) {
+                            <span class="form-error">Customer is required</span>
+                            }
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Payment Method</label>
+                            <div class="payment-tabs">
+                                @for (pm of paymentMethods; track pm.value) {
+                                <button type="button" class="payment-tab"
+                                    [class.active]="headerForm.value.paymentMethod === pm.value"
+                                    (click)="headerForm.patchValue({ paymentMethod: pm.value })">
+                                    {{ pm.label }}
+                                </button>
+                                }
+                            </div>
+                        </div>
+
+                    </div>
+                </form>
+            </div>
+
+            <!-- Items -->
+            <div class="card section-card">
+                <div class="items-header">
+                    <h4 class="section-title">Sale Items</h4>
+                    <button class="btn btn-outline btn-sm" (click)="addRow()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                        Add Item
+                    </button>
+                </div>
+
+                <!-- Column headers -->
+                <div class="items-col-header">
+                    <span style="flex: 2;">Pack Size</span>
+                    <span style="flex:1; text-align:right;">Available</span>
+                    <span style="flex:1; text-align:right;">Qty</span>
+                    <span style="flex:1.5; text-align:right;">Unit Price (LKR)</span>
+                    <span style="flex:1; text-align:right;">Unit Cost</span>
+                    <span style="flex:1.5; text-align:right;">Line Total</span>
+                    <span style="width:32px;"></span>
+                </div>
+
+                <!-- Item rows -->
+                <div class="items-list">
+                    @for (row of rows(); track row.id; let i = $index) {
+                    <div class="item-row" [class.row-error]="stockErrors()[i]">
+
+                        <!-- Pack selector -->
+                        <div style="flex: 2;">
+                            <select class="form-control form-control-sm"
+                                [class.error]="!row.packTypeId && rows().length > 1" [ngModel]="row.packTypeId"
+                                (ngModelChange)="onPackChange(i, $event)">
+                                <option [ngValue]="null" disabled>Select pack...</option>
+                                @for (p of getAvailablePacks(i); track p.packTypeId) {
+                                <option [ngValue]="p.packTypeId">
+                                    {{ p.packName }}
+                                    @if (p.isLowStock) { ⚠️ }
+                                </option>
+                                }
+                            </select>
+                        </div>
+
+                        <!-- Available stock -->
+                        <div style="flex:1; text-align:right;">
+                            @if (row.packTypeId) {
+                            <span class="avail-stock" [class.low]="row.availableStock <= 10">
+                                {{ row.availableStock }}
+                            </span>
+                            } @else {
+                            <span class="text-muted">—</span>
+                            }
+                        </div>
+
+                        <!-- Qty -->
+                        <div style="flex:1; text-align:right;">
+                            <input type="number" class="form-control form-control-sm text-right"
+                                [class.error]="!!stockErrors()[i]" [ngModel]="row.qty"
+                                (ngModelChange)="onQtyChange(i, $event)" min="1" step="1" />
+                        </div>
+
+                        <!-- Unit price -->
+                        <div style="flex:1.5; text-align:right;">
+                            <input type="number" class="form-control form-control-sm text-right"
+                                [ngModel]="row.unitPriceSold" (ngModelChange)="onPriceChange(i, $event)" min="0"
+                                step="0.01" [disabled]="!row.packTypeId" />
+                        </div>
+
+                        <!-- Unit cost (read-only) -->
+                        <div style="flex:1; text-align:right;">
+                            <span class="cost-chip">
+                                {{ row.unitCostAtSale | lkrCurrency: false }}
+                            </span>
+                        </div>
+
+                        <!-- Line total -->
+                        <div style="flex:1.5; text-align:right;">
+                            <span class="line-total" [class.zero]="row.lineRevenue === 0">
+                                {{ row.lineRevenue | lkrCurrency }}
+                            </span>
+                            @if (row.lineProfit !== 0) {
+                            <span class="line-profit" [class.negative]="row.lineProfit < 0">
+                                {{ row.lineProfit > 0 ? '+' : '' }}{{ row.lineProfit | lkrCurrency: false }}
+                            </span>
+                            }
+                        </div>
+
+                        <!-- Remove -->
+                        <div style="width:32px; text-align:center;">
+                            @if (rows().length > 1) {
+                            <button class="btn-remove" (click)="removeRow(i)" title="Remove row">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <line x1="18" y1="6" x2="6" y2="18" />
+                                    <line x1="6" y1="6" x2="18" y2="18" />
+                                </svg>
+                            </button>
+                            }
+                        </div>
+
+                    </div>
+
+                    <!-- Stock error -->
+                    @if (stockErrors()[i]) {
+                    <div class="stock-err-msg">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="8" x2="12" y2="12" />
+                            <line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
+                        {{ stockErrors()[i] }}
+                    </div>
+                    }
+                    }
+                </div>
+
+                <!-- Add row shortcut -->
+                <button class="add-row-btn" (click)="addRow()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    Add another item
+                </button>
+
+            </div>
+
+            <!-- Error -->
+            @if (error()) {
+            <div class="alert-error-bar">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+                {{ error() }}
+            </div>
+            }
+
+        </div>
+
+        <!-- Right: summary panel -->
+        <div class="sale-sidebar">
+
+            <div class="card summary-card">
+                <h4 class="section-title">Sale Summary</h4>
+
+                <div class="summary-rows">
+                    <div class="summary-row">
+                        <span>Items</span>
+                        <span>{{ rows().length }}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>Total Revenue</span>
+                        <span class="primary">{{ totalRevenue() | lkrCurrency }}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>Total Cost</span>
+                        <span class="warning">{{ totalCost() | lkrCurrency }}</span>
+                    </div>
+                    <div class="summary-divider"></div>
+                    <div class="summary-row total-row">
+                        <span>Profit</span>
+                        <span [class.success]="totalProfit() >= 0" [class.danger]="totalProfit() < 0">
+                            {{ totalProfit() | lkrCurrency }}
+                        </span>
+                    </div>
+                    @if (totalRevenue() > 0) {
+                    <div class="summary-row">
+                        <span class="text-muted text-sm">Margin</span>
+                        <span class="text-sm" [class.text-success]="totalProfit() >= 0"
+                            [class.text-danger]="totalProfit() < 0">
+                            {{ ((totalProfit() / totalRevenue()) * 100).toFixed(1) }}%
+                        </span>
+                    </div>
+                    }
+                </div>
+
+                <!-- Customer info -->
+                @if (headerForm.value.customerId) {
+                <div class="customer-info">
+                    <span>Customer: {{ selectedCustomer()?.name }} ({{ selectedCustomer()?.customerCode }})</span>
+                    @if (selectedCustomer()?.creditLimit) {
+                    <span>Credit: {{ selectedCustomer()?.creditLimit | lkrCurrency }}</span>
+                    }
+                </div>
+                }
+                <!-- Save actions -->
+                <div class="summary-actions">
+                    <button class="btn btn-outline w-full" (click)="onCancel()" [disabled]="loading()">
+                        Cancel
+                    </button>
+                    <button class="btn btn-success w-full" [disabled]="!canSave()" (click)="onSave()">
+                        @if (loading()) {
+                        <span class="btn-spinner"></span>
+                        Saving...
+                        } @else {
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                        Save Sale
+                        }
+                    </button>
+                </div>
+
+                <!-- Validation hints -->
+                @if (!headerForm.value.customerId) {
+                <p class="hint-msg">⬆ Select a customer first</p>
+                } @else if (!hasValidRows()) {
+                <p class="hint-msg">⬆ Add at least one item</p>
+                } @else if (Object.keys(stockErrors()).length > 0) {
+                <p class="hint-msg danger">⚠ Fix stock errors to save</p>
+                }
+
+            </div>
+
+        </div>
+    </div>
+    }
+
+</div>

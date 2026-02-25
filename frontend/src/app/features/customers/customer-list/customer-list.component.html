@@ -118,7 +118,7 @@
             </div>
             <div class="customer-info">
               <h4 class="customer-name">{{ c.name }}</h4>
-              <span class="customer-code">{{ c.customerCode }}</span>
+              <span class="customer-code">{{ c.customerId }}</span>
             </div>
           </div>
 
@@ -172,7 +172,7 @@
           <!-- Actions -->
           <div class="customer-actions">
             <a
-              [routerLink]="['/customers', c.customerId, 'prices']"
+              [routerLink]="['/customers', c.customerId,'prices']"
               class="btn btn-outline btn-sm"
               title="Manage price rules"
             >

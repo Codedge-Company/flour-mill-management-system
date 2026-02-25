@@ -1,17 +1,13 @@
-// src/app/shared/shared.module.ts
-import { NgModule } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
-import { ReactiveFormsModule } from '@angular/forms';
-
-import { StatCardComponent }      from './components/stat-card/stat-card.component';
-import { PageHeaderComponent }    from './components/page-header/page-header.component';
 import { ConfirmDialogComponent } from './components/confirm-dialog/confirm-dialog.component';
-import { DataTableComponent }     from './components/data-table/data-table.component';
-import { LkrCurrencyPipe }        from './pipes/lkr-currency.pipe';
-import { StatusBadgePipe }        from './pipes/status-badge.pipe';
-import { TimeAgoPipe }            from './pipes/time-ago.pipe';
+import { DataTableComponent } from './components/data-table/data-table.component';
+import { PageHeaderComponent } from './components/page-header/page-header.component';
+import { StatCardComponent } from './components/stat-card/stat-card.component';
+import { CustomerByIdPipe } from './pipes/customer-by-id.pipe';
+import { LkrCurrencyPipe } from './pipes/lkr-currency.pipe';
+import { StatusBadgePipe } from './pipes/status-badge.pipe';
+import { TimeAgoPipe } from './pipes/time-ago.pipe';
 
+// add to DECLARATIONS array:
 const DECLARATIONS = [
   StatCardComponent,
   PageHeaderComponent,
@@ -19,11 +15,6 @@ const DECLARATIONS = [
   DataTableComponent,
   LkrCurrencyPipe,
   StatusBadgePipe,
-  TimeAgoPipe
+  TimeAgoPipe,
+  CustomerByIdPipe  
 ];
-
-@NgModule({
-  imports: [CommonModule, RouterModule, ReactiveFormsModule, ...DECLARATIONS],
-  exports: [CommonModule, RouterModule, ReactiveFormsModule, ...DECLARATIONS]
-})
-export class SharedModule {}

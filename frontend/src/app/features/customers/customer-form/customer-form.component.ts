@@ -18,7 +18,7 @@ export class CustomerFormComponent implements OnInit {
   loading    = signal(false);
   fetchLoad  = signal(false);
   error      = signal<string | null>(null);
-  customerId = signal<number | null>(null);
+  customerId = signal<string | null>(null);
 
   get isEdit(): boolean { return !!this.customerId(); }
 
@@ -48,12 +48,12 @@ export class CustomerFormComponent implements OnInit {
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
-      this.customerId.set(Number(id));
-      this.loadCustomer(Number(id));
+      this.customerId.set(id);
+      this.loadCustomer(id);
     }
   }
 
-  private loadCustomer(id: number): void {
+  private loadCustomer(id: string): void {
     this.fetchLoad.set(true);
     this.customerService.getById(id).subscribe({
       next: res => {

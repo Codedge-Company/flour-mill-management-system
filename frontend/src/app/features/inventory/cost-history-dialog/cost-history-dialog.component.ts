@@ -24,6 +24,7 @@ export class CostHistoryDialogComponent implements OnInit {
   constructor(private inventoryService: InventoryService) {}
 
   ngOnInit(): void {
+            console.log('Cost history loaded:', this.item);
     this.inventoryService.getCostHistory(this.item.packTypeId).subscribe({
       next: res => {
         this.history.set(res.data);

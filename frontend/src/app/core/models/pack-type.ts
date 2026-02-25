@@ -1,6 +1,6 @@
 
 export interface PackType {
-  packTypeId: number;
+  packTypeId: string;
   packName: string;
   weightKg: number;
   isActive: boolean;

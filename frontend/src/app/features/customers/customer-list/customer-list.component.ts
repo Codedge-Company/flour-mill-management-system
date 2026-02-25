@@ -43,8 +43,10 @@ export class CustomerListComponent implements OnInit {
     this.error.set(null);
 
     this.customerService.getAll(search).subscribe({
+      
       next: res => {
         this.customers.set(res.data);
+        console.log('Loaded customers:', res.data);
         this.loading.set(false);
       },
       error: () => {

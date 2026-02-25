@@ -110,21 +110,31 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-  private loadData(range: DateRange): void {
-    this.loading.set(true);
-    this.error.set(null);
 
-    this.dashboardService.getData(range).subscribe({
-      next: res => {
-        this.data.set(res.data);
-        this.loading.set(false);
-      },
-      error: () => {
-        this.error.set('Failed to load dashboard data. Please try again.');
-        this.loading.set(false);
-      }
-    });
-  }
+private loadData(range: DateRange): void {
+  console.log('Loading dashboard data for range:', range);
+  this.loading.set(true);
+  this.error.set(null);
+
+  this.dashboardService.getData(range).subscribe({
+    next: (res) => {
+      console.log('Dashboard response:', res);
+      console.log('Dashboard data:', res.data);
+      console.log('Summary:', res.data.summary);
+      console.log('Daily metrics:', res.data.dailyMetrics);
+      console.log('Customer perf:', res.data.customerPerformance);
+      
+      this.data.set(res.data);
+      this.loading.set(false);
+    },
+    error: (err) => {
+      console.error('Dashboard error:', err);
+      this.error.set('Failed to load dashboard data.');
+      this.loading.set(false);
+    }
+  });
+}
+
 
   private loadInventory(): void {
     this.inventoryService.getAll().subscribe({
