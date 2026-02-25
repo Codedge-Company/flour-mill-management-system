@@ -1,5 +1,5 @@
 // src/app/layout/sidebar/sidebar.component.ts
-import { Component, Input, computed } from '@angular/core';
+import { Component, Input } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
@@ -22,14 +22,15 @@ export class SidebarComponent {
   @Input() collapsed = false;
 
   readonly navItems: NavItem[] = [
-    { label: 'Dashboard',     route: '/dashboard',     icon: 'grid' },
-    { label: 'Sales',         route: '/sales',         icon: 'shopping-cart' },
-    { label: 'Customers',     route: '/customers',     icon: 'users' },
-    { label: 'Inventory',     route: '/inventory',     icon: 'package',   adminOnly: true },
+    { label: 'Dashboard', route: '/dashboard', icon: 'grid' },
+    { label: 'Sales', route: '/sales', icon: 'shopping-cart' },
+    { label: 'Customers', route: '/customers', icon: 'users' },
+    { label: 'Inventory', route: '/inventory', icon: 'package', adminOnly: true },
     { label: 'Notifications', route: '/notifications', icon: 'bell' },
+    { label: 'User Management', route: '/user-management', icon: 'user-cog', adminOnly: true },
   ];
 
-  constructor(readonly authService: AuthService) {}
+  constructor(readonly authService: AuthService) { }
 
   get visibleItems(): NavItem[] {
     return this.navItems.filter(
@@ -66,6 +67,14 @@ export class SidebarComponent {
                  viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                  <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+               </svg>`,
+      'user-cog': `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none"
+                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                 <circle cx="12" cy="7" r="4"/>
+                 <circle cx="19" cy="19" r="2"/>
+                 <path d="M19 15v1.5M19 22.5V21M15.7 16.7l1.1 1.1M22.2 22.2l-1.1-1.1
+                          M15 19h1.5M22.5 19H21M15.7 21.3l1.1-1.1M22.2 16.8l-1.1 1.1"/>
                </svg>`,
     };
     return icons[name] ?? '';

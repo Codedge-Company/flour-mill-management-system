@@ -1,6 +1,7 @@
 // src/app/app.routes.ts
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
+import { adminGuard } from './core/guards/admin.guard';
 import { MainLayoutComponent } from './layout/main-layout/main-layout.component';
 
 export const routes: Routes = [
@@ -38,6 +39,12 @@ export const routes: Routes = [
         path: 'notifications',
         loadChildren: () =>
           import('./features/notifications/notifications.routes').then(m => m.notificationsRoutes)
+      },
+      {
+        path: 'user-management',
+        canActivate: [adminGuard],
+        loadChildren: () =>
+          import('./features/user-management/user-management.routes').then(m => m.userManagementRoutes)
       },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]

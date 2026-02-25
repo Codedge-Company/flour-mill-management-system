@@ -1,0 +1,278 @@
+<!-- src/app/features/user-management/user-management.component.html -->
+<div class="um-page">
+
+    <!-- Page Header -->
+    <div class="um-header">
+        <div class="um-header-left">
+            <div class="um-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+            </div>
+            <div>
+                <h1 class="um-title">User Management</h1>
+                <p class="um-subtitle">Manage system accounts and permissions</p>
+            </div>
+        </div>
+
+        @if (formMode()) {
+        <button class="btn-ghost" (click)="closeForm()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor" stroke-width="2.5">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+            Cancel
+        </button>
+        } @else {
+        <button class="btn-primary" (click)="openCreateForm()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor" stroke-width="2.5">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Add User
+        </button>
+        }
+    </div>
+
+    <!-- Toast Messages -->
+    @if (successMessage()) {
+    <div class="toast toast-success">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor" stroke-width="2.5">
+            <path d="M20 6L9 17l-5-5" />
+        </svg>
+        {{ successMessage() }}
+    </div>
+    }
+
+    @if (error()) {
+    <div class="toast toast-error">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor" stroke-width="2.5">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+        {{ error() }}
+    </div>
+    }
+
+    <!-- Create / Edit Form -->
+    @if (formMode()) {
+    <div class="um-form-card">
+
+        <!-- Form header with mode indicator -->
+        <div class="form-header">
+            <div class="form-header-left">
+                <div class="form-mode-badge" [class.badge-edit]="isEditMode">
+                    @if (isEditMode) {
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor" stroke-width="2.5">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
+                    Editing
+                    } @else {
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor" stroke-width="2.5">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    New User
+                    }
+                </div>
+                <h2 class="form-title">{{ formTitle }}</h2>
+            </div>
+        </div>
+
+        <form [formGroup]="createForm" (ngSubmit)="onSubmit()" class="um-form" novalidate>
+
+            <div class="form-row">
+                <div class="form-group" [class.has-error]="isFieldInvalid('full_name')">
+                    <label class="form-label">Full Name</label>
+                    <input formControlName="full_name" class="form-input" type="text" placeholder="e.g. Priya Sharma" />
+                    @if (isFieldInvalid('full_name')) {
+                    <span class="form-error">Full name is required (min 2 chars)</span>
+                    }
+                </div>
+
+                <div class="form-group" [class.has-error]="isFieldInvalid('username')">
+                    <label class="form-label">Username</label>
+                    <input formControlName="username" class="form-input" type="text" placeholder="e.g. priya.sharma" />
+                    @if (isFieldInvalid('username')) {
+                    <span class="form-error">Username is required (min 3 chars)</span>
+                    }
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group" [class.has-error]="isFieldInvalid('password')">
+                    <label class="form-label">
+                        Password
+                        @if (isEditMode) {
+                        <span class="label-hint">(leave blank to keep current)</span>
+                        }
+                    </label>
+                    <input formControlName="password" class="form-input" type="password"
+                        [placeholder]="isEditMode ? 'Leave blank to keep unchanged' : 'Min. 6 characters'" />
+                    @if (isFieldInvalid('password')) {
+                    <span class="form-error">
+                        {{ isEditMode ? 'Password must be at least 6 characters' : 'Password is required (min 6 chars)'
+                        }}
+                    </span>
+                    }
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Role</label>
+                    <select formControlName="role" class="form-input form-select">
+                        <option value="SALES">Sales</option>
+                        <option value="ADMIN">Admin</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn-ghost" (click)="closeForm()">Cancel</button>
+                <button type="submit" class="btn-primary" [class.btn-edit]="isEditMode" [disabled]="formLoading()">
+                    @if (formLoading()) {
+                    <span class="spinner"></span>
+                    {{ isEditMode ? 'Saving...' : 'Creating...' }}
+                    } @else {
+                    @if (isEditMode) {
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor" stroke-width="2.5">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                        <polyline points="17 21 17 13 7 13 7 21" />
+                        <polyline points="7 3 7 8 15 8" />
+                    </svg>
+                    Save Changes
+                    } @else {
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor" stroke-width="2.5">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    Create User
+                    }
+                    }
+                </button>
+            </div>
+
+        </form>
+    </div>
+    }
+
+    <!-- Stats Bar -->
+    <div class="stats-bar">
+        <div class="stat-chip">
+            <span class="stat-value">{{ users().length }}</span>
+            <span class="stat-label">Total Users</span>
+        </div>
+        <div class="stat-chip">
+            <span class="stat-value">{{ users() | roleCount: 'ADMIN' }}</span>
+            <span class="stat-label">Admins</span>
+        </div>
+        <div class="stat-chip">
+            <span class="stat-value">{{ users() | roleCount: 'SALES' }}</span>
+            <span class="stat-label">Sales Staff</span>
+        </div>
+    </div>
+
+    <!-- Users Table -->
+    <div class="um-table-card">
+        @if (loading()) {
+        <div class="loading-state">
+            <span class="spinner spinner-lg"></span>
+            <p>Loading users...</p>
+        </div>
+        } @else if (users().length === 0) {
+        <div class="empty-state">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor" stroke-width="1.5">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+            <p>No users found. Add the first one!</p>
+            <button class="btn-primary" (click)="openCreateForm()">Add User</button>
+        </div>
+        } @else {
+        <table class="um-table">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Username</th>
+                    <th>Role</th>
+                    <th>Joined</th>
+                    <th class="col-actions">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (user of users(); track user.id) {
+                <tr [class.row-deleting]="deletingId() === user.id" [class.row-editing]="editingUser()?.id === user.id">
+                    <td>
+                        <div class="user-cell">
+                            <div class="user-avatar" [attr.data-role]="user.role">
+                                {{ getInitials(user.full_name) }}
+                            </div>
+                            <span class="user-fullname">{{ user.full_name }}</span>
+                        </div>
+                    </td>
+                    <td class="text-muted">&#64;{{ user.username }}</td>
+                    <td>
+                        <span class="role-badge" [class.role-admin]="user.role === 'ADMIN'"
+                            [class.role-sales]="user.role === 'SALES'">
+                            {{ user.role }}
+                        </span>
+                    </td>
+                    <td class="text-muted">{{ formatDate(user.createdAt) }}</td>
+                    <td class="col-actions">
+                        @if (confirmDeleteId() === user.id) {
+                        <div class="confirm-delete">
+                            <span class="confirm-text">Delete?</span>
+                            <button class="btn-confirm-yes" (click)="confirmDelete(user.id)">Yes</button>
+                            <button class="btn-confirm-no" (click)="cancelDelete()">No</button>
+                        </div>
+                        } @else {
+                        <div class="action-btns">
+                            <button class="btn-edit-row" (click)="openEditForm(user)" [disabled]="!!deletingId()"
+                                title="Edit user">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                </svg>
+                                Edit
+                            </button>
+                            <button class="btn-delete" (click)="requestDelete(user.id)"
+                                [disabled]="deletingId() === user.id" title="Delete user">
+                                @if (deletingId() === user.id) {
+                                <span class="spinner spinner-sm"></span>
+                                } @else {
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <polyline points="3 6 5 6 21 6" />
+                                    <path d="M19 6l-1 14H6L5 6" />
+                                    <path d="M10 11v6M14 11v6" />
+                                    <path d="M9 6V4h6v2" />
+                                </svg>
+                                Delete
+                                }
+                            </button>
+                        </div>
+                        }
+                    </td>
+                </tr>
+                }
+            </tbody>
+        </table>
+        }
+    </div>
+
+</div>
