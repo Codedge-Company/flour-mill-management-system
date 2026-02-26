@@ -38,7 +38,10 @@ export class UpdateStockDialogComponent {
     if (this.form.invalid || this.loading()) return;
     this.error.set(null);
     this.loading.set(true);
-
+    console.log('Submitting stock update:', {
+      packTypeId: this.item.packTypeId,
+      addQty: this.form.value.addQty
+    });
     this.inventoryService.addStock({
       packTypeId: this.item.packTypeId,
       addQty: this.form.value.addQty
