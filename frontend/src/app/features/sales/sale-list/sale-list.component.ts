@@ -3,6 +3,7 @@ import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { forkJoin } from 'rxjs';
 import { SaleService } from '../../../core/services/sale.service';
 import { CustomerService } from '../../../core/services/customer.service';
 import { Sale, SaleFilters, SaleStatus } from '../../../core/models/sale';
@@ -11,6 +12,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header/page
 import { LkrCurrencyPipe } from '../../../shared/pipes/lkr-currency.pipe';
 import { StatusBadgePipe } from '../../../shared/pipes/status-badge.pipe';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { InvoicePdfService } from '../../../core/services/invoice-pdf.service';
 
 @Component({
   selector: 'app-sale-list',
@@ -28,36 +30,40 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
   styleUrl: './sale-list.component.css'
 })
 export class SaleListComponent implements OnInit {
-  sales          = signal<Sale[]>([]);
-  customers      = signal<Customer[]>([]);
-  loading        = signal(true);
-  error          = signal<string | null>(null);
+  sales = signal<Sale[]>([]);
+  customers = signal<Customer[]>([]);
+  loading = signal(true);
+  error = signal<string | null>(null);
   successMessage = signal<string | null>(null);
 
   // Filters
   filterCustomerId = signal<string | null>(null);
-  filterStatus     = signal<SaleStatus | ''>('');
-  filterDateFrom   = signal('');
-  filterDateTo     = signal('');
+  filterStatus = signal<SaleStatus | ''>('');
+  filterDateFrom = signal('');
+  filterDateTo = signal('');
 
   // Pagination
-  currentPage  = signal(0);
-  totalPages   = signal(0);
+  currentPage = signal(0);
+  totalPages = signal(0);
   totalElements = signal(0);
-  pageSize     = 20;
+  pageSize = 20;
 
   // Cancel dialog
-  cancelTarget  = signal<Sale | null>(null);
+  cancelTarget = signal<Sale | null>(null);
   cancelLoading = signal(false);
 
   // Summary
   filteredRevenue = signal(0);
-  filteredProfit  = signal(0);
+  filteredProfit = signal(0);
+
+  // Download state – tracks which saleId is currently generating a PDF
+  downloadingId = signal<string | null>(null);
 
   constructor(
     private saleService: SaleService,
-    private customerService: CustomerService
-  ) {}
+    private customerService: CustomerService,
+    private invoicePdf: InvoicePdfService
+  ) { }
 
   ngOnInit(): void {
     this.loadCustomers();
@@ -70,35 +76,33 @@ export class SaleListComponent implements OnInit {
     });
   }
 
-load(page = 0): void {
-  this.loading.set(true);
-  this.error.set(null);
+  load(page = 0): void {
+    this.loading.set(true);
+    this.error.set(null);
 
-  const filters: SaleFilters = {};
-  if (this.filterCustomerId()) filters.customerId = this.filterCustomerId()!;
-  if (this.filterStatus() && this.filterStatus() !== '') filters.status = this.filterStatus() as SaleStatus;
-  if (this.filterDateFrom()) filters.dateFrom = this.filterDateFrom();
-  if (this.filterDateTo()) filters.dateTo = this.filterDateTo();
+    const filters: SaleFilters = {};
+    if (this.filterCustomerId()) filters.customerId = this.filterCustomerId()!;
+    if (this.filterStatus() && this.filterStatus() !== '') filters.status = this.filterStatus() as SaleStatus;
+    if (this.filterDateFrom()) filters.dateFrom = this.filterDateFrom();
+    if (this.filterDateTo()) filters.dateTo = this.filterDateTo();
 
-  this.saleService.getSales(filters, page, this.pageSize).subscribe({
-    next: (res) => {
-      console.log('Loaded sales:', res); // Debug
-      const paged = res.data;
-      this.sales.set(paged.content);
-      this.currentPage.set(paged.page || 0);
-      this.totalPages.set(paged.totalPages || 0);
-      this.totalElements.set(paged.totalElements || 0);
-      this.computeSummary(paged.content);
-      this.loading.set(false);
-    },
-    error: (err) => {
-      console.error('Load error:', err);
-      this.error.set('Failed to load sales.');
-      this.loading.set(false);
-    }
-  });
-}
-
+    this.saleService.getSales(filters, page, this.pageSize).subscribe({
+      next: (res) => {
+        const paged = res.data;
+        this.sales.set(paged.content);
+        this.currentPage.set(paged.page || 0);
+        this.totalPages.set(paged.totalPages || 0);
+        this.totalElements.set(paged.totalElements || 0);
+        this.computeSummary(paged.content);
+        this.loading.set(false);
+      },
+      error: (err) => {
+        console.error('Load error:', err);
+        this.error.set('Failed to load sales.');
+        this.loading.set(false);
+      }
+    });
+  }
 
   applyFilters(): void { this.load(0); }
 
@@ -126,7 +130,7 @@ load(page = 0): void {
 
   get pages(): number[] {
     const total = this.totalPages();
-    const cur   = this.currentPage();
+    const cur = this.currentPage();
     const range: number[] = [];
     const delta = 2;
     for (let i = Math.max(0, cur - delta); i <= Math.min(total - 1, cur + delta); i++) {
@@ -136,7 +140,7 @@ load(page = 0): void {
   }
 
   confirmCancel(sale: Sale): void { this.cancelTarget.set(sale); }
-  cancelDialog(): void            { this.cancelTarget.set(null); }
+  cancelDialog(): void { this.cancelTarget.set(null); }
 
   onCancelSale(): void {
     const sale = this.cancelTarget();
@@ -158,6 +162,40 @@ load(page = 0): void {
     });
   }
 
+  // ── Invoice download ───────────────────────────────────────────────────────
+  // The sale object from the list API does NOT include customer address.
+  // We must fetch the full customer record separately to get the address,
+  // then combine with sale data to generate the PDF.
+  downloadInvoice(sale: Sale): void {
+    if (this.downloadingId()) return;
+    this.downloadingId.set(sale.saleId);
+
+    // Fetch both sale detail (for full items) AND customer (for address)
+    // in parallel using forkJoin
+    forkJoin({
+      saleDetail: this.saleService.getById(sale.saleId),
+      customer: this.customerService.getById(sale.customerId)
+    }).subscribe({
+      next: ({ saleDetail, customer }) => {
+        try {
+          this.invoicePdf.generate(saleDetail.data, customer.data);
+          this.downloadingId.set(null);
+          this.showSuccess(`Invoice ${sale.saleNo} downloaded.`);
+        } catch (err) {
+          console.error('PDF generation error:', err);
+          this.downloadingId.set(null);
+          this.error.set('Failed to generate invoice PDF.');
+        }
+      },
+      error: (err) => {
+        console.error('Invoice data fetch error:', err);
+        this.downloadingId.set(null);
+        this.error.set('Failed to load invoice data.');
+      }
+    });
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
   private computeSummary(sales: Sale[]): void {
     const saved = sales.filter(s => s.status === 'SAVED');
     this.filteredRevenue.set(saved.reduce((a, s) => a + s.totalRevenue, 0));

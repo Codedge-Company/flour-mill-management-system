@@ -71,6 +71,30 @@
 .danger-btn { color: var(--danger) !important; }
 .danger-btn:hover { background: var(--danger-light) !important; }
 
+/* ── Invoice download button ──────────────────────────────────────────────── */
+.invoice-btn {
+  color: var(--primary);
+}
+.invoice-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--primary) 10%, transparent) !important;
+}
+.invoice-btn:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+.invoice-btn.downloading {
+  color: var(--text-muted);
+}
+
+/* Spinner animation */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.spin {
+  animation: spin 0.8s linear infinite;
+  display: block;
+}
+
 /* Skeleton */
 .sk-cell {
   height: 13px;

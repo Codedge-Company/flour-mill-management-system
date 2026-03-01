@@ -32,12 +32,24 @@ export class CustomerService {
     );
   }
 
-  getById(id: string): Observable<ApiResponse<Customer>> { // Changed to string
-    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/${id}`).pipe(
-      map(res => ({
-        ...res,
-        data: this.mapToCustomer(res.data)
-      }))
+  getById(customerId: string): Observable<ApiResponse<Customer>> {
+    return this.http.get<any>(`${this.apiUrl}/${customerId}`).pipe(
+      map((response) => {
+        const raw = response.data || response;
+        return {
+          success: true,
+          data: {
+            customerId: raw._id,
+            customerCode: raw.customer_code,
+            name: raw.name,
+            phone: raw.phone ?? null,
+            address: raw.address ?? null,
+            notes: raw.notes ?? null,
+            createdAt: raw.created_at,
+            creditLimit: raw.credit_limit ?? null,
+          } as Customer
+        };
+      })
     );
   }
 
