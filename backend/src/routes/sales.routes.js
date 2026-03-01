@@ -9,7 +9,7 @@ router.use(authenticate);
 router.get('/', salesController.getAllSales);
 router.get('/:id', salesController.getSaleById);
 router.post('/', salesController.createSale);
-router.put('/:id/cancel', authorizeRole('ADMIN'), salesController.cancelSale);
+router.patch('/:id/cancel', authorizeRole('ADMIN'), salesController.cancelSale);
 router.delete('/:id', authorizeRole('ADMIN'), salesController.deleteSale);
 
 module.exports = router;

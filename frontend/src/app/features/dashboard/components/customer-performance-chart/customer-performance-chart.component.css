@@ -1,0 +1,208 @@
+/* customer-performance-chart.component.css — Light/White Theme */
+:host {
+  --blue:    #2563eb;
+  --amber:   #d97706;
+  --emerald: #059669;
+  --violet:  #7c3aed;
+  --rose:    #e11d48;
+  --border:  #e2e8f0;
+  --bg-2:    #f8fafc;
+  --bg-3:    #f1f5f9;
+  --text:    #0f172a;
+  --sub:     #475569;
+  --muted:   #94a3b8;
+  display: block;
+}
+
+.cp-root {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ─── Podium ──────────────────────────────────────────────────────────────── */
+.podium-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.podium-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+  text-align: center;
+  transition: box-shadow .2s, transform .2s;
+}
+
+.podium-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,.08);
+  transform: translateY(-2px);
+}
+
+.podium-gold   { border-color: #fde68a !important; background: #fffbeb !important; }
+.podium-silver { border-color: #cbd5e1 !important; background: #f8fafc !important; }
+.podium-bronze { border-color: #e5c8b0 !important; background: #fdf7f3 !important; }
+
+.podium-rank {
+  font-size: 15px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: var(--muted);
+}
+.podium-gold .podium-rank { color: var(--amber); }
+
+.podium-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #dbeafe;
+  border: 2px solid #bfdbfe;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--blue);
+}
+
+.podium-gold .podium-avatar {
+  background: #fef3c7;
+  border-color: #fde68a;
+  color: var(--amber);
+}
+
+.podium-name  { font-size: 12px; font-weight: 700; color: var(--text); }
+
+.podium-rev {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--blue);
+}
+.podium-gold .podium-rev { color: var(--amber); }
+
+.podium-sales { font-size: 11px; color: var(--muted); }
+
+/* ─── Chart ───────────────────────────────────────────────────────────────── */
+.chart-wrap { width: 100%; overflow: hidden; }
+
+/* ─── PrimeNG Table light ─────────────────────────────────────────────────── */
+::ng-deep .cp-table.p-datatable {
+  background: transparent !important;
+  color: var(--text) !important;
+}
+
+::ng-deep .cp-table .p-datatable-thead > tr > th {
+  background: var(--bg-3) !important;
+  color: var(--muted) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: .7px !important;
+  border-color: var(--border) !important;
+  padding: 10px 12px !important;
+  white-space: nowrap;
+}
+
+::ng-deep .cp-table .p-datatable-tbody > tr > td {
+  border-color: var(--border) !important;
+  padding: 11px 12px !important;
+  background: transparent !important;
+  font-size: 13px !important;
+  color: var(--text) !important;
+}
+
+::ng-deep .cp-table .p-datatable-tbody > tr:hover > td {
+  background: var(--bg-3) !important;
+}
+
+::ng-deep .cp-table .p-highlight {
+  background: var(--bg-3) !important;
+  color: var(--blue) !important;
+}
+
+.num-col { text-align: right !important; }
+.bar-col { width: 140px !important; }
+
+/* Rank badge */
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--bg-3);
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--sub);
+}
+
+.rank-1 { background: #fef3c7; color: var(--amber); }
+.rank-2 { background: #f1f5f9; color: var(--sub); }
+.rank-3 { background: #fdf7f3; color: #b45309; }
+
+.cust-cell { display: flex; align-items: center; gap: 10px; }
+
+.cust-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: #dbeafe;
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.av-gold   { background: #fef3c7 !important; color: var(--amber) !important; }
+.av-silver { background: #f1f5f9 !important; color: var(--sub)   !important; }
+
+.cust-name { font-weight: 600; color: var(--text); font-size: 13px; }
+
+
+/* Share bar */
+.share-track {
+  height: 5px;
+  background: #e2e8f0;
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.share-fill {
+  height: 100%;
+  background: var(--blue);
+  border-radius: 99px;
+  transition: width .5s ease;
+  min-width: 2px;
+}
+
+.share-pct {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+/* ═══ RESPONSIVE ════════════════════════════════════════════════════════════ */
+
+@media (max-width: 640px) {
+  .podium-row { grid-template-columns: 1fr; }
+  .podium-card { flex-direction: row; text-align: left; padding: 12px; }
+  .bar-col { display: none !important; }
+}
+
+@media (max-width: 480px) {
+  .podium-rev { font-size: 13px; }
+  .num-col:last-of-type { display: none; }
+}

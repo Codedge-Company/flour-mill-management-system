@@ -1,1 +1,56 @@
-<p>low-stock-alert-panel works!</p>
+<!-- low-stock-alert-panel.component.html -->
+<div class="ls-root">
+
+  @if (loading) {
+    <div class="skel-list">
+      @for (n of [1,2,3]; track n) {
+        <div class="skel-item"></div>
+      }
+    </div>
+  } @else if (items.length === 0) {
+    <div class="all-good">
+      <div class="good-icon">
+        <i class="pi pi-check-circle"></i>
+      </div>
+      <div class="good-text">
+        <span class="good-title">All Stocked</span>
+        <span class="good-sub">No items below threshold</span>
+      </div>
+    </div>
+  } @else {
+    <div class="alert-list">
+      @for (item of items; track item.packTypeId) {
+        <div class="alert-item" [class.alert-critical]="item.stockQty === 0">
+          <div class="alert-top">
+            <div class="alert-left">
+              <div class="pack-icon" [class.pack-icon--critical]="item.stockQty === 0">
+                <i class="pi pi-box"></i>
+              </div>
+              <div class="pack-info">
+                <span class="pack-name">{{ item.packName }}</span>
+                <span class="pack-threshold">Threshold: {{ item.threshold }}</span>
+              </div>
+            </div>
+            <div class="stock-badge" [class.stock-zero]="item.stockQty === 0">
+              {{ item.stockQty === 0 ? 'OUT' : item.stockQty + ' left' }}
+            </div>
+          </div>
+          <div class="stock-track">
+            <div
+              class="stock-fill"
+              [style.width.%]="getBarPct(item)"
+              [class.fill-critical]="item.stockQty === 0"
+              [class.fill-low]="item.stockQty > 0 && item.stockQty <= item.threshold * 0.5">
+            </div>
+          </div>
+          <div class="progress-label">
+            <span>0</span>
+            <span class="fill-pct">{{ getBarPct(item).toFixed(0) }}% of safe level</span>
+            <span>{{ item.threshold * 2 }}</span>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+</div>

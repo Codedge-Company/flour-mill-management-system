@@ -1,14 +1,10 @@
-<!-- src/app/layout/sidebar/sidebar.component.html -->
-<aside class="sidebar" [class.collapsed]="collapsed">
+<!-- sidebar.component.html -->
+<aside class="sidebar" [class.collapsed]="collapsed" [class.mobile-open]="mobileOpen">
 
-  <!-- Brand -->
+  <!-- Brand header -->
   <div class="sidebar-brand">
     <div class="brand-logo">
-      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22"
-           fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-        <polyline points="9 22 9 12 15 12 15 22"/>
-      </svg>
+      <i class="pi pi-chart-bar brand-icon"></i>
     </div>
     @if (!collapsed) {
       <div class="brand-text">
@@ -16,7 +12,16 @@
         <span class="brand-sub">Flour Mill</span>
       </div>
     }
+    <!-- Mobile close button -->
+    <button class="mobile-close-btn" (click)="closeMenu.emit()">
+      <i class="pi pi-times"></i>
+    </button>
   </div>
+
+  <!-- Nav section label -->
+  @if (!collapsed) {
+    <div class="nav-section-label">Main Menu</div>
+  }
 
   <!-- Navigation -->
   <nav class="sidebar-nav">
@@ -25,29 +30,40 @@
         [routerLink]="item.route"
         routerLinkActive="active"
         class="nav-item"
-        [title]="collapsed ? item.label : ''"
-      >
-        <span class="nav-icon" [innerHTML]="getIcon(item.icon)"></span>
+        [pTooltip]="collapsed ? item.label : ''"
+        tooltipPosition="right">
+        <span class="nav-icon">
+          <i [class]="'pi ' + item.icon"></i>
+        </span>
         @if (!collapsed) {
           <span class="nav-label">{{ item.label }}</span>
+        }
+        @if (!collapsed && item.badge) {
+          <span class="nav-badge">{{ item.badge }}</span>
         }
       </a>
     }
   </nav>
 
-  <!-- User info at bottom -->
-  @if (!collapsed) {
-    <div class="sidebar-footer">
-      <div class="user-info">
-        <div class="user-avatar">
-          {{ authService.currentUser()?.fullName?.charAt(0)?.toUpperCase() }}
-        </div>
-        <div class="user-details">
+  <!-- Spacer -->
+  <div class="sidebar-spacer"></div>
+
+  <!-- User footer -->
+  <div class="sidebar-footer">
+    <div class="user-row" [class.user-row--collapsed]="collapsed">
+      <div class="user-avatar">
+        {{ authService.currentUser()?.fullName?.charAt(0)?.toUpperCase() ?? '?' }}
+      </div>
+      @if (!collapsed) {
+        <div class="user-meta">
           <span class="user-name">{{ authService.currentUser()?.fullName }}</span>
           <span class="user-role">{{ authService.currentUser()?.role }}</span>
         </div>
-      </div>
+        <button class="logout-btn" (click)="authService.logout()" title="Logout">
+          <i class="pi pi-sign-out"></i>
+        </button>
+      }
     </div>
-  }
+  </div>
 
 </aside>

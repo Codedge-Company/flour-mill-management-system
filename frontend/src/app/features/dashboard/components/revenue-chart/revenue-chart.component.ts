@@ -1,181 +1,302 @@
-// src/app/features/dashboard/components/revenue-chart/revenue-chart.component.ts
+// revenue-chart.component.ts
 import {
-  Component, Input, OnChanges, ViewChild,
-  ElementRef, AfterViewInit, SimpleChanges
+  Component, Input, OnChanges, SimpleChanges,
+  ChangeDetectionStrategy, ChangeDetectorRef
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { DailyMetric } from '../../../../core/models/dashboard';
+import { ChartModule }  from 'primeng/chart';
+import { TableModule }  from 'primeng/table';
+import { DailyMetric }  from '../../../../core/models/dashboard';
+
+interface MonthRow {
+  month:   string;
+  revenue: number;
+  cost:    number;
+  profit:  number;
+  margin:  number;
+  isBest:  boolean;
+}
+
+interface PieLeg {
+  label: string;
+  color: string;
+  value: number;
+  pct:   string;
+}
+
+interface SpotlightData {
+  revenue: number;
+  cost:    number;
+  profit:  number;
+}
+
+const MONTHS = [
+  'Jan','Feb','Mar','Apr','May','Jun',
+  'Jul','Aug','Sep','Oct','Nov','Dec'
+];
 
 @Component({
   selector: 'app-revenue-chart',
   standalone: true,
-  imports: [CommonModule],
-  template: `
-    <div class="chart-wrap">
-      <canvas #chartCanvas></canvas>
-      <div class="chart-legend">
-        <span class="legend-item revenue">Revenue</span>
-        <span class="legend-item cost">Cost</span>
-        <span class="legend-item profit">Profit</span>
-      </div>
-    </div>
-  `,
-  styles: [`
-    .chart-wrap {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-    canvas {
-      width: 100% !important;
-      height: 250px;
-      display: block;
-    }
-    .chart-legend {
-      display: flex;
-      gap: 16px;
-      justify-content: center;
-    }
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      font-weight: 500;
-      color: var(--text-secondary);
-    }
-    .legend-item::before {
-      content: '';
-      width: 12px;
-      height: 3px;
-      border-radius: 2px;
-      display: inline-block;
-    }
-    .legend-item.revenue::before { background: #2563eb; }
-    .legend-item.cost::before    { background: #d97706; }
-    .legend-item.profit::before  { background: #16a34a; }
-  `]
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [CommonModule, ChartModule, TableModule],
+  templateUrl: './revenue-chart.component.html',
+  styleUrls:   ['./revenue-chart.component.css'],
 })
-export class RevenueChartComponent implements OnChanges, AfterViewInit {
+export class RevenueChartComponent implements OnChanges {
   @Input() metrics: DailyMetric[] = [];
-  @ViewChild('chartCanvas') canvasRef!: ElementRef<HTMLCanvasElement>;
+  /** 'both' | 'bars' | 'trend' — passed from parent SelectButton */
+  @Input() view: string = 'both';
 
-  private ctx!: CanvasRenderingContext2D;
-  private ready = false;
+  // ── State ──────────────────────────────────────────────────────────────────
+  selectedMonth = -1;     // -1 = "All"
+  spotlightData: SpotlightData | null = null;
+  spotlightMargin = 0;
 
-  ngAfterViewInit(): void {
-    this.ctx   = this.canvasRef.nativeElement.getContext('2d')!;
-    this.ready = true;
-    this.draw();
-  }
+  readonly monthLabels = MONTHS;
+
+  // ── Chart data ─────────────────────────────────────────────────────────────
+  barLineData:    any = {};
+  barLineOptions: any = {};
+  pieData:        any = {};
+  pieOptions:     any = {};
+
+  // ── Table data ─────────────────────────────────────────────────────────────
+  tableRows:   MonthRow[] = [];
+  pieLegend:   PieLeg[]   = [];
+  peakRevenue  = 1;
+  totalMargin  = 0;
+
+  constructor(private cdr: ChangeDetectorRef) {}
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (this.ready && changes['metrics']) this.draw();
+    if (changes['metrics'] || changes['view']) {
+      this.buildAll();
+    }
   }
 
-  private draw(): void {
-    if (!this.ctx || !this.metrics.length) return;
+  // ── Month tab interaction ──────────────────────────────────────────────────
+  selectMonth(idx: number): void {
+    this.selectedMonth = idx;
+    if (idx === -1) {
+      this.spotlightData = null;
+    } else {
+      const d = this.monthlyData[idx];
+      this.spotlightData = { revenue: d.revenue, cost: d.cost, profit: d.profit };
+      this.spotlightMargin = d.revenue
+        ? +((d.profit / d.revenue) * 100).toFixed(1) : 0;
+    }
+    this.buildBarLine();
+    this.cdr.markForCheck();
+  }
 
-    const canvas = this.canvasRef.nativeElement;
-    const dpr    = window.devicePixelRatio || 1;
-    const W      = canvas.offsetWidth;
-    const H      = 250;
+  // ── Aggregated monthly data (always 12 buckets) ────────────────────────────
+  private monthlyData: { revenue: number; cost: number; profit: number }[] = [];
 
-    canvas.width  = W * dpr;
-    canvas.height = H * dpr;
-    this.ctx.scale(dpr, dpr);
+  private buildAll(): void {
+    this.monthlyData = this.aggregateByMonth(this.metrics);
+    this.peakRevenue = Math.max(...this.monthlyData.map(m => m.revenue), 1);
 
-    const pad    = { top: 20, right: 20, bottom: 40, left: 70 };
-    const chartW = W - pad.left - pad.right;
-    const chartH = H - pad.top - pad.bottom;
+    const totRev    = this.monthlyData.reduce((s, m) => s + m.revenue, 0);
+    const totCost   = this.monthlyData.reduce((s, m) => s + m.cost,    0);
+    const totProfit = this.monthlyData.reduce((s, m) => s + m.profit,  0);
+    this.totalMargin = totRev ? +((totProfit / totRev) * 100).toFixed(1) : 0;
 
-    // Clear
-    this.ctx.clearRect(0, 0, W, H);
+    this.buildBarLine();
+    this.buildPie(totRev, totCost, totProfit);
+    this.buildTable();
+  }
 
-    const allValues = this.metrics.flatMap(m => [m.revenue, m.cost, m.profit]);
-    const maxVal    = Math.max(...allValues) * 1.1 || 1;
-    const minVal    = Math.min(0, Math.min(...allValues));
+  // ── Monthly aggregation from daily metrics ─────────────────────────────────
+  private aggregateByMonth(
+    metrics: DailyMetric[]
+  ): { revenue: number; cost: number; profit: number }[] {
+    const buckets: { revenue: number; cost: number; profit: number }[] =
+      Array.from({ length: 12 }, () => ({ revenue: 0, cost: 0, profit: 0 }));
 
-    const xStep = chartW / Math.max(this.metrics.length - 1, 1);
-    const yScale = (v: number) =>
-      pad.top + chartH - ((v - minVal) / (maxVal - minVal)) * chartH;
-    const xScale = (i: number) =>
-      pad.left + (this.metrics.length === 1 ? chartW / 2 : i * xStep);
+    metrics.forEach(m => {
+      const d = new Date(m.date);
+      const idx = d.getMonth(); // 0-11
+      if (idx >= 0 && idx < 12) {
+        buckets[idx].revenue += m.revenue;
+        buckets[idx].cost    += m.cost;
+        buckets[idx].profit  += m.profit ?? (m.revenue - m.cost);
+      }
+    });
 
-    // Grid lines
-    const gridCount = 5;
-    this.ctx.strokeStyle = '#e5e7eb';
-    this.ctx.lineWidth   = 1;
-    this.ctx.fillStyle   = '#6b7280';
-    this.ctx.font        = '11px Inter, sans-serif';
-    this.ctx.textAlign   = 'right';
+    return buckets;
+  }
 
-    for (let g = 0; g <= gridCount; g++) {
-      const v = minVal + ((maxVal - minVal) * g) / gridCount;
-      const y = yScale(v);
-      this.ctx.beginPath();
-      this.ctx.moveTo(pad.left, y);
-      this.ctx.lineTo(pad.left + chartW, y);
-      this.ctx.stroke();
-      this.ctx.fillText(this.formatK(v), pad.left - 6, y + 4);
+  // ── Bar + Line chart ───────────────────────────────────────────────────────
+  private buildBarLine(): void {
+    const src = this.selectedMonth === -1
+      ? this.monthlyData
+      : [this.monthlyData[this.selectedMonth]];
+
+    const labels   = this.selectedMonth === -1 ? MONTHS : [MONTHS[this.selectedMonth]];
+    const revenues = src.map(m => m.revenue);
+    const costs    = src.map(m => m.cost);
+    const profits  = src.map(m => m.profit);
+
+    const showBars  = this.view !== 'trend';
+    const showLine  = this.view !== 'bars';
+
+    const datasets: any[] = [];
+
+    if (showBars) {
+      datasets.push(
+        {
+          type: 'bar',
+          label: 'Revenue',
+          data: revenues,
+          backgroundColor: 'rgba(59,130,246,0.7)',
+          borderColor:     '#3b82f6',
+          borderWidth: 1.5,
+          borderRadius: 6,
+          borderSkipped: false,
+          order: 2,
+        },
+        {
+          type: 'bar',
+          label: 'Cost',
+          data: costs,
+          backgroundColor: 'rgba(245,158,11,0.7)',
+          borderColor:     '#f59e0b',
+          borderWidth: 1.5,
+          borderRadius: 6,
+          borderSkipped: false,
+          order: 2,
+        }
+      );
     }
 
-    // X labels
-    this.ctx.textAlign  = 'center';
-    this.ctx.fillStyle  = '#6b7280';
+    if (showLine) {
+      datasets.push({
+        type: 'line',
+        label: 'Profit',
+        data: profits,
+        borderColor:     '#10b981',
+        backgroundColor: 'rgba(16,185,129,0.08)',
+        borderWidth: 2.5,
+        pointRadius: 5,
+        pointBackgroundColor: '#10b981',
+        pointBorderColor: '#111120',
+        pointBorderWidth: 2,
+        tension: 0.35,
+        fill: true,
+        order: 1,
+      });
+    }
 
-    const maxLabels = Math.min(this.metrics.length, 7);
-    const step      = Math.ceil(this.metrics.length / maxLabels);
-    this.metrics.forEach((m, i) => {
-      if (i % step !== 0 && i !== this.metrics.length - 1) return;
-      const x = xScale(i);
-      const d = new Date(m.date);
-      const label = `${d.getDate()}/${d.getMonth() + 1}`;
-      this.ctx.fillText(label, x, H - pad.bottom + 16);
-    });
+    this.barLineData = { labels, datasets };
 
-    // Draw lines
-    this.drawLine(xScale, yScale, 'revenue', '#2563eb');
-    this.drawLine(xScale, yScale, 'cost',    '#d97706');
-    this.drawLine(xScale, yScale, 'profit',  '#16a34a');
+    this.barLineOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0b0b13',
+          titleColor: '#94a3b8',
+          bodyColor:  '#f1f5f9',
+          borderColor: 'rgba(255,255,255,.1)',
+          borderWidth: 1,
+          padding: 14,
+          callbacks: {
+            label: (ctx: any) => ` ${ctx.dataset.label}: ${this.formatCurrency(ctx.parsed.y)}`,
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: { display: false, drawBorder: false },
+          ticks: { color: '#475569', font: { size: 11, family: 'Syne, sans-serif', weight: '600' } },
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: 'rgba(255,255,255,.05)', drawBorder: false },
+          ticks: {
+            color: '#475569',
+            font:  { size: 11, family: 'Geist Mono, monospace' },
+            callback: (v: number) => this.shortFmt(v),
+          },
+        },
+      },
+    };
   }
 
-  private drawLine(
-    xScale: (i: number) => number,
-    yScale: (v: number) => number,
-    key: 'revenue' | 'cost' | 'profit',
-    color: string
-  ): void {
-    const ctx = this.ctx;
-    ctx.beginPath();
-    ctx.strokeStyle = color;
-    ctx.lineWidth   = 2.5;
-    ctx.lineJoin    = 'round';
+  // ── Doughnut / Pie chart ───────────────────────────────────────────────────
+  private buildPie(totRev: number, totCost: number, totProfit: number): void {
+    const total = totRev + totCost + totProfit || 1;
+    const pct   = (v: number) => ((v / total) * 100).toFixed(1);
 
-    this.metrics.forEach((m, i) => {
-      const x = xScale(i);
-      const y = yScale(m[key]);
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    });
-    ctx.stroke();
+    this.pieLegend = [
+      { label: 'Revenue', color: '#3b82f6', value: totRev,    pct: pct(totRev)    },
+      { label: 'Cost',    color: '#f59e0b', value: totCost,   pct: pct(totCost)   },
+      { label: 'Profit',  color: '#10b981', value: totProfit, pct: pct(totProfit) },
+    ];
 
-    // Dots
-    this.metrics.forEach((m, i) => {
-      const x = xScale(i);
-      const y = yScale(m[key]);
-      ctx.beginPath();
-      ctx.arc(x, y, 3.5, 0, Math.PI * 2);
-      ctx.fillStyle = color;
-      ctx.fill();
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth   = 1.5;
-      ctx.stroke();
-    });
+    this.pieData = {
+      labels: ['Revenue', 'Cost', 'Profit'],
+      datasets: [{
+        data: [totRev, totCost, totProfit],
+        backgroundColor: [
+          'rgba(59,130,246,0.85)',
+          'rgba(245,158,11,0.85)',
+          'rgba(16,185,129,0.85)',
+        ],
+        hoverBackgroundColor: ['#3b82f6', '#f59e0b', '#10b981'],
+        borderColor: '#111120',
+        borderWidth: 3,
+        hoverOffset: 8,
+      }],
+    };
+
+    this.pieOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '70%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0b0b13',
+          titleColor: '#94a3b8',
+          bodyColor:  '#f1f5f9',
+          borderColor: 'rgba(255,255,255,.1)',
+          borderWidth: 1,
+          padding: 12,
+          callbacks: {
+            label: (ctx: any) => ` ${ctx.label}: ${this.formatCurrency(ctx.parsed)}`,
+          },
+        },
+      },
+    };
   }
 
-  private formatK(v: number): string {
-    if (Math.abs(v) >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
+  // ── Table rows ─────────────────────────────────────────────────────────────
+  private buildTable(): void {
+    const maxProfit = Math.max(...this.monthlyData.map(m => m.profit));
+    this.tableRows = this.monthlyData.map((m, i) => ({
+      month:   MONTHS[i],
+      revenue: m.revenue,
+      cost:    m.cost,
+      profit:  m.profit,
+      margin:  m.revenue ? (m.profit / m.revenue) * 100 : 0,
+      isBest:  m.profit === maxProfit && maxProfit > 0,
+    }));
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  formatCurrency(v: number): string {
+    if (Math.abs(v) >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M`;
     if (Math.abs(v) >= 1_000)     return `${(v / 1_000).toFixed(1)}K`;
     return v.toFixed(0);
+  }
+
+  private shortFmt(v: number): string {
+    if (Math.abs(v) >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
+    if (Math.abs(v) >= 1_000)     return `${(v / 1_000).toFixed(0)}K`;
+    return String(v);
   }
 }

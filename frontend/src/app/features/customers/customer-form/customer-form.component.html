@@ -1,131 +1,183 @@
-<!-- src/app/features/customers/customer-form/customer-form.component.html -->
+<!-- customer-form.component.html -->
 <div class="customer-form-page">
 
-  <app-page-header
-    [title]="isEdit ? 'Edit Customer' : 'New Customer'"
-    [subtitle]="isEdit ? 'Update customer information' : 'Add a new customer to the system'"
-    [breadcrumbs]="breadcrumbs"
-  />
+  <!-- ── Page Header ─────────────────────────────────────────────── -->
+  <div class="page-header">
+    <div class="page-header-left">
+      <div class="page-header-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none"
+             viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          @if (isEdit) {
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          } @else {
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <line x1="19" y1="8" x2="19" y2="14"/>
+            <line x1="22" y1="11" x2="16" y2="11"/>
+          }
+        </svg>
+      </div>
+      <div>
+        <h1 class="page-title">{{ isEdit ? 'Edit Customer' : 'New Customer' }}</h1>
+        <p class="page-subtitle">{{ isEdit ? 'Update customer information' : 'Add a new customer to the system' }}</p>
+      </div>
+    </div>
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      @for (crumb of breadcrumbs; track crumb.label) {
+        @if (!$last) {
+          <a [routerLink]="crumb.route" class="breadcrumb-link">{{ crumb.label }}</a>
+          <span class="breadcrumb-sep">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none"
+                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </span>
+        } @else {
+          <span class="breadcrumb-current">{{ crumb.label }}</span>
+        }
+      }
+    </nav>
+  </div>
 
+  <!-- ── Skeleton ────────────────────────────────────────────────── -->
   @if (fetchLoad()) {
-    <div class="form-skeleton card">
+    <div class="form-card">
       @for (n of [1,2,3,4]; track n) {
         <div class="sk-field">
-          <div class="sk-label"></div>
-          <div class="sk-input"></div>
+          <div class="sk-line sk-label"></div>
+          <div class="sk-line sk-input"></div>
         </div>
       }
     </div>
-  } @else {
-    <div class="form-card card">
 
+  } @else {
+    <div class="form-card">
+
+      <!-- Error banner -->
       @if (error()) {
-        <div class="form-error-banner">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
-               viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="8"  x2="12" y2="12"/>
-            <line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
+        <div class="error-banner">
+          <div class="error-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
+                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+          </div>
           {{ error() }}
         </div>
       }
 
       <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
 
+        <!-- ── Basic Information ──────────────────────────────────── -->
         <div class="form-section">
-          <h4 class="form-section-title">Basic Information</h4>
-
-          <!-- Name -->
-          <div class="form-group">
-            <label class="form-label" for="name">
-              Full Name / Business Name <span>*</span>
-            </label>
-            <input
-              id="name"
-              type="text"
-              class="form-control"
-              [class.error]="f['name'].invalid && f['name'].touched"
-              formControlName="name"
-              placeholder="e.g. Nimal Traders"
-              autocomplete="off"
-            />
-            @if (f['name'].invalid && f['name'].touched) {
-              <span class="form-error">
-                Name is required (2–150 characters)
-              </span>
-            }
+          <div class="section-header">
+            <span class="section-badge">01</span>
+            <h4 class="section-title">Basic Information</h4>
           </div>
 
-          <!-- Phone -->
-          <div class="form-group">
-            <label class="form-label" for="phone">Phone Number</label>
-            <input
-              id="phone"
-              type="tel"
-              class="form-control"
-              [class.error]="f['phone'].invalid && f['phone'].touched"
-              formControlName="phone"
-              placeholder="e.g. 077 123 4567"
-              autocomplete="off"
-            />
-            @if (f['phone'].invalid && f['phone'].touched) {
-              <span class="form-error">Max 30 characters</span>
-            }
+          <div class="field-grid">
+            <!-- Name -->
+            <div class="form-group full-width">
+              <label class="form-label" for="name">
+                Full Name / Business Name
+                <span class="required-star">*</span>
+              </label>
+              <input
+                id="name"
+                type="text"
+                class="form-control"
+                [class.is-error]="f['name'].invalid && f['name'].touched"
+                formControlName="name"
+                placeholder="e.g. Nimal Traders"
+                autocomplete="off"
+              />
+              @if (f['name'].invalid && f['name'].touched) {
+                <span class="field-error">Name is required (2–150 characters)</span>
+              }
+            </div>
+
+            <!-- Phone -->
+            <div class="form-group">
+              <label class="form-label" for="phone">Phone Number</label>
+              <div class="input-with-icon">
+                <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15"
+                     fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07
+                           19.5 19.5 0 0 1-6.91-6.91 19.79 19.79 0 0 1-3.07-8.67
+                           A2 2 0 0 1 3.6 1.18h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81
+                           2 2 0 0 1-.45 2.11L7.91 8.97a16 16 0 0 0 6.12 6.12l.96-.96
+                           a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                </svg>
+                <input
+                  id="phone"
+                  type="tel"
+                  class="form-control has-icon"
+                  [class.is-error]="f['phone'].invalid && f['phone'].touched"
+                  formControlName="phone"
+                  placeholder="e.g. 077 123 4567"
+                  autocomplete="off"
+                />
+              </div>
+              @if (f['phone'].invalid && f['phone'].touched) {
+                <span class="field-error">Max 30 characters</span>
+              }
+            </div>
           </div>
         </div>
 
+        <!-- ── Additional Details ─────────────────────────────────── -->
         <div class="form-section">
-          <h4 class="form-section-title">Additional Details</h4>
-
-          <!-- Address -->
-          <div class="form-group">
-            <label class="form-label" for="address">Address</label>
-            <textarea
-              id="address"
-              class="form-control"
-              [class.error]="f['address'].invalid && f['address'].touched"
-              formControlName="address"
-              placeholder="Enter delivery or business address"
-              rows="2"
-            ></textarea>
-            @if (f['address'].invalid && f['address'].touched) {
-              <span class="form-error">Max 255 characters</span>
-            }
+          <div class="section-header">
+            <span class="section-badge">02</span>
+            <h4 class="section-title">Additional Details</h4>
           </div>
 
-          <!-- Notes -->
-          <div class="form-group">
-            <label class="form-label" for="notes">Notes</label>
-            <textarea
-              id="notes"
-              class="form-control"
-              [class.error]="f['notes'].invalid && f['notes'].touched"
-              formControlName="notes"
-              placeholder="Any additional notes about this customer..."
-              rows="2"
-            ></textarea>
-            @if (f['notes'].invalid && f['notes'].touched) {
-              <span class="form-error">Max 255 characters</span>
-            }
+          <div class="field-grid">
+            <!-- Address -->
+            <div class="form-group full-width">
+              <label class="form-label" for="address">Address</label>
+              <textarea
+                id="address"
+                class="form-control"
+                [class.is-error]="f['address'].invalid && f['address'].touched"
+                formControlName="address"
+                placeholder="Enter delivery or business address"
+                rows="2"
+              ></textarea>
+              @if (f['address'].invalid && f['address'].touched) {
+                <span class="field-error">Max 255 characters</span>
+              }
+            </div>
+
+            <!-- Notes -->
+            <div class="form-group full-width">
+              <label class="form-label" for="notes">Notes</label>
+              <textarea
+                id="notes"
+                class="form-control"
+                [class.is-error]="f['notes'].invalid && f['notes'].touched"
+                formControlName="notes"
+                placeholder="Any additional notes about this customer…"
+                rows="2"
+              ></textarea>
+              @if (f['notes'].invalid && f['notes'].touched) {
+                <span class="field-error">Max 255 characters</span>
+              }
+            </div>
           </div>
         </div>
 
-        <!-- Form actions -->
+        <!-- ── Form Actions ───────────────────────────────────────── -->
         <div class="form-actions">
-          <button
-            type="button"
-            class="btn btn-outline"
-            (click)="onCancel()"
-            [disabled]="loading()"
-          >
+          <button type="button" class="btn btn-outline"
+                  (click)="onCancel()" [disabled]="loading()">
             Cancel
           </button>
-          <button
-            type="submit"
-            class="btn btn-primary"
-            [disabled]="loading() || form.invalid"
-          >
+          <button type="submit" class="btn btn-primary"
+                  [disabled]="loading() || form.invalid">
             @if (loading()) { <span class="btn-spinner"></span> }
             {{ isEdit ? 'Save Changes' : 'Create Customer' }}
           </button>
@@ -134,5 +186,4 @@
       </form>
     </div>
   }
-
 </div>

@@ -1,19 +1,27 @@
-<!-- src/app/layout/main-layout/main-layout.component.html -->
-<div class="layout" [class.sidebar-collapsed]="sidebarCollapsed()">
+<!-- main-layout.component.html -->
+<div class="layout" [class.sidebar-collapsed]="sidebarCollapsed()" [class.mobile-open]="mobileOpen()">
 
-  <!-- Global loading spinner -->
+  <!-- Global loading bar -->
   @if (loadingService.isLoading$ | async) {
-    <div class="spinner-overlay">
-      <div class="spinner"></div>
+    <div class="loading-bar">
+      <div class="loading-bar-fill"></div>
     </div>
   }
 
-  <!-- Sidebar -->
-  <app-sidebar [collapsed]="sidebarCollapsed()" />
+  <!-- Mobile backdrop -->
+  <div class="mobile-backdrop" (click)="closeMobile()"></div>
 
-  <!-- Right side -->
+  <!-- Sidebar -->
+  <app-sidebar
+    [collapsed]="sidebarCollapsed()"
+    [mobileOpen]="mobileOpen()"
+    (closeMenu)="closeMobile()" />
+
+  <!-- Main right area -->
   <div class="layout-right">
-    <app-topbar (toggleSidebar)="toggleSidebar()" />
+    <app-topbar
+      (toggleSidebar)="toggleSidebar()"
+      (openMobile)="openMobile()" />
 
     <main class="layout-content">
       <router-outlet />

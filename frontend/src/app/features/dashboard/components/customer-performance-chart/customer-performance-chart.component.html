@@ -1,1 +1,77 @@
-<p>customer-performance-chart works!</p>
+<!-- customer-performance-chart.component.html -->
+<div class="cp-root">
+
+  <!-- Top 3 podium cards -->
+  <div class="podium-row" *ngIf="top3.length">
+    <div *ngFor="let c of top3; let i = index"
+      class="podium-card"
+      [class.podium-gold]="i === 0"
+      [class.podium-silver]="i === 1"
+      [class.podium-bronze]="i === 2">
+      <div class="podium-rank">
+        <i class="pi pi-trophy" *ngIf="i === 0"></i>
+        <span *ngIf="i > 0">#{{ i + 1 }}</span>
+      </div>
+      <div class="podium-avatar">{{ c.customerName.charAt(0).toUpperCase() }}</div>
+      <span class="podium-name">{{ c.customerName }}</span>
+      <span class="podium-rev">{{ formatCurrency(c.revenue) }}</span>
+      <span class="podium-sales">{{ c.salesCount }} sales</span>
+    </div>
+  </div>
+
+  <!-- Bar chart -->
+  <div class="chart-wrap">
+    <p-chart
+      type="bar"
+      [data]="chartData"
+      [options]="chartOptions"
+      [height]="'220px'">
+    </p-chart>
+  </div>
+
+  <!-- Customer table -->
+  <p-table
+    [value]="sorted"
+    styleClass="cp-table"
+    [tableStyle]="{'min-width':'500px'}"
+    sortField="revenue"
+    [sortOrder]="-1">
+    <ng-template pTemplate="header">
+      <tr>
+        <th>Rank</th>
+        <th pSortableColumn="customerName">Customer <p-sortIcon field="customerName"/></th>
+        <th pSortableColumn="revenue"  class="num-col">Revenue <p-sortIcon field="revenue"/></th>
+        <th pSortableColumn="salesCount" class="num-col">Sales <p-sortIcon field="salesCount"/></th>
+        <th class="num-col">Avg / Sale</th>
+        <th class="bar-col">Revenue Share</th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-row let-i="rowIndex">
+      <tr>
+        <td>
+          <span class="rank-badge" [class.rank-1]="i===0" [class.rank-2]="i===1" [class.rank-3]="i===2">
+            {{ i + 1 }}
+          </span>
+        </td>
+        <td>
+          <div class="cust-cell">
+            <div class="cust-avatar" [class.av-gold]="i===0" [class.av-silver]="i===1">
+              {{ row.customerName.charAt(0).toUpperCase() }}
+            </div>
+            <span class="cust-name">{{ row.customerName }}</span>
+          </div>
+        </td>
+        <td class="num-col val-blue">{{ formatCurrency(row.revenue) }}</td>
+        <td class="num-col val-sub">{{ row.salesCount }}</td>
+        <td class="num-col val-sub">{{ formatCurrency(row.salesCount ? row.revenue / row.salesCount : 0) }}</td>
+        <td class="bar-col">
+          <div class="share-track">
+            <div class="share-fill" [style.width.%]="(row.revenue / totalRevenue) * 100"></div>
+          </div>
+          <span class="share-pct">{{ ((row.revenue / totalRevenue) * 100).toFixed(1) }}%</span>
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+
+</div>

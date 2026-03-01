@@ -1,7 +1,8 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, signal, computed, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { RouterLink, RouterLinkActive } from '@angular/router';
 import { NotificationService } from '../../../core/services/notification.service';
+import { AudioService } from '../../../core/services/audio.service';  // Add if created
 import { Notification } from '../../../core/models/notification';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
@@ -11,16 +12,20 @@ type FilterTab = 'all' | 'unread';
 @Component({
   selector: 'app-notification-list',
   standalone: true,
-  imports: [CommonModule, RouterLink, PageHeaderComponent, TimeAgoPipe],
+  imports: [CommonModule, RouterLink, RouterLinkActive, PageHeaderComponent, TimeAgoPipe],
   templateUrl: './notification-list.component.html',
   styleUrl: './notification-list.component.css'
 })
 export class NotificationListComponent implements OnInit {
-  notifications  = signal<Notification[]>([]);
-  loading        = signal(true);
-  markingAll     = signal(false);
-  error          = signal<string | null>(null);
-  activeTab      = signal<FilterTab>('all');
+  notifications = signal<Notification[]>([]);
+  loading = signal(true);
+  markingAll = signal(false);
+  error = signal<string | null>(null);
+  activeTab = signal<FilterTab>('all');
+
+  // Audio detection
+  private audioService = inject(AudioService, { optional: true });
+  private lastUnreadCount = 0;
 
   displayed = computed(() =>
     this.activeTab() === 'unread'
@@ -32,16 +37,45 @@ export class NotificationListComponent implements OnInit {
     this.notifications().filter(n => !n.isRead).length
   );
 
-  constructor(private notificationService: NotificationService) {}
+  constructor(private notificationService: NotificationService) { }
 
-  ngOnInit(): void { this.load(); }
-
+ ngOnInit(): void {
+    this.load();
+    
+    // Listen for new notifications (Socket.IO)
+    effect(() => {
+      const newNotifs = this.notificationService.newNotifications();
+      if (newNotifs.length > 0) {
+        // Merge new with existing or play sound
+        this.playNewNotificationSound();
+      }
+    });
+  }
+  private playNewNotificationSound(): void {
+    if (this.audioService) {
+      const newNotifs = this.notificationService.newNotifications();
+      const alertType = newNotifs.some(n => n.type === 'LOW_STOCK' || n.type === 'OUT_OF_STOCK')
+        ? 'LOW_STOCK' : 'STOCK_UPDATE';
+      this.audioService.play(alertType);
+    }
+  }
   load(): void {
     this.loading.set(true);
     this.error.set(null);
 
     this.notificationService.getAll().subscribe({
       next: res => {
+        const currentUnread = res.data.filter(n => !n.isRead).length;
+
+        // Play sound if new unread notifications
+        if (this.audioService && currentUnread > this.lastUnreadCount && currentUnread > 0) {
+          const unreadNotifs = res.data.filter(n => !n.isRead);
+          const alertType = unreadNotifs.some(n => n.type === 'LOW_STOCK' || n.type === 'OUT_OF_STOCK')
+            ? 'LOW_STOCK' : 'STOCK_UPDATE';
+          this.audioService.play(alertType);
+        }
+
+        this.lastUnreadCount = currentUnread;
         this.notifications.set(res.data);
         this.loading.set(false);
       },
@@ -89,21 +123,29 @@ export class NotificationListComponent implements OnInit {
 
   getTypeIcon(type: string): string {
     const icons: Record<string, string> = {
-      LOW_STOCK: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0
-                 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-        <line x1="12" y1="9"  x2="12" y2="13"/>
-        <line x1="12" y1="17" x2="12.01" y2="17"/>
-      </svg>`
+      LOW_STOCK: '⚠️',
+      OUT_OF_STOCK: '🚨',
+      REORDER_NEEDED: '🔄',
+      STOCK_UPDATE: '📊'
     };
-    return icons[type] ?? '';
+    return icons[type] ?? 'ℹ️';
   }
 
   getTypeClass(type: string): string {
     const map: Record<string, string> = {
-      LOW_STOCK: 'type-warning'
+      LOW_STOCK: 'type-warning',
+      OUT_OF_STOCK: 'type-error',
+      REORDER_NEEDED: 'type-info',
+      STOCK_UPDATE: 'type-success'
     };
     return map[type] ?? 'type-info';
   }
+
+  trackByNotificationId(index: number, notif: Notification): string {
+    return notif.notificationId;
+  }
+  getFormattedType(type: string): string {
+    return type.replace(/_/g, ' ');
+  }
+
 }

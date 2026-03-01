@@ -3,13 +3,14 @@ import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
+import { RouterLink } from '@angular/router';  
 import { CustomerService } from '../../../core/services/customer.service';
 import { PageHeaderComponent, Breadcrumb } from '../../../shared/components/page-header/page-header.component';
 
 @Component({
   selector: 'app-customer-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, PageHeaderComponent],
+  imports: [CommonModule, ReactiveFormsModule, PageHeaderComponent,RouterLink],
   templateUrl: './customer-form.component.html',
   styleUrl: './customer-form.component.css'
 })

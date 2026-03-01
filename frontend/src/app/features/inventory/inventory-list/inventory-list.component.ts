@@ -2,7 +2,6 @@ import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { InventoryService } from '../../../core/services/inventory.service';
 import { InventoryItem } from '../../../core/models/inventory';
-import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { LkrCurrencyPipe } from '../../../shared/pipes/lkr-currency.pipe';
 import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
 import { UpdateStockDialogComponent } from '../update-stock-dialog/update-stock-dialog.component';
@@ -17,7 +16,6 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
   standalone: true,
   imports: [
     CommonModule,
-    PageHeaderComponent,
     LkrCurrencyPipe,
     TimeAgoPipe,
     UpdateStockDialogComponent,
@@ -25,34 +23,38 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
     CostHistoryDialogComponent,
     ThresholdDialogComponent,
     CreatePackTypeDialogComponent,
-    ConfirmDialogComponent
+    ConfirmDialogComponent,
   ],
   templateUrl: './inventory-list.component.html',
-  styleUrl:    './inventory-list.component.css'
+  styleUrl: './inventory-list.component.css',
 })
 export class InventoryListComponent implements OnInit {
-  items   = signal<InventoryItem[]>([]);
-  loading = signal(true);
-  error   = signal<string | null>(null);
+  items          = signal<InventoryItem[]>([]);
+  loading        = signal(true);
+  error          = signal<string | null>(null);
   successMessage = signal<string | null>(null);
 
-  // Dialog state
-  selectedItem        = signal<InventoryItem | null>(null);
-  showAddStock        = signal(false);
-  showUpdateCost      = signal(false);
-  showCostHistory     = signal(false);
-  showThreshold       = signal(false);
-  showCreatePackType  = signal(false);
-  deleteTarget        = signal<InventoryItem | null>(null);
-  deleteLoading       = signal(false);
+  // ── Dialog state ────────────────────────────────────────────────
+  selectedItem       = signal<InventoryItem | null>(null);
+  showAddStock       = signal(false);
+  showUpdateCost     = signal(false);
+  showCostHistory    = signal(false);
+  showThreshold      = signal(false);
+  showCreatePackType = signal(false);
+  deleteTarget       = signal<InventoryItem | null>(null);
+  deleteLoading      = signal(false);
 
   constructor(private inventoryService: InventoryService) {}
 
-  ngOnInit(): void { this.load(); }
+  ngOnInit(): void {
+    this.load();
+  }
 
+  // ── Data loading ─────────────────────────────────────────────────
   load(): void {
     this.loading.set(true);
     this.error.set(null);
+
     this.inventoryService.getAll().subscribe({
       next: res => {
         this.items.set(res.data);
@@ -61,29 +63,40 @@ export class InventoryListComponent implements OnInit {
       error: () => {
         this.error.set('Failed to load inventory. Please try again.');
         this.loading.set(false);
-      }
+      },
     });
   }
 
-  // ── Open dialogs ─────────────────────────────────────────────
-  openCreatePackType(): void    { this.showCreatePackType.set(true); }
+  // ── Open dialogs ─────────────────────────────────────────────────
+  openCreatePackType(): void {
+    this.showCreatePackType.set(true);
+  }
+
   openAddStock(item: InventoryItem): void {
-    this.selectedItem.set(item); this.showAddStock.set(true);
+    this.selectedItem.set(item);
+    this.showAddStock.set(true);
   }
+
   openUpdateCost(item: InventoryItem): void {
-    this.selectedItem.set(item); this.showUpdateCost.set(true);
+    this.selectedItem.set(item);
+    this.showUpdateCost.set(true);
   }
+
   openCostHistory(item: InventoryItem): void {
-    this.selectedItem.set(item); this.showCostHistory.set(true);
+    this.selectedItem.set(item);
+    this.showCostHistory.set(true);
   }
+
   openThreshold(item: InventoryItem): void {
-    this.selectedItem.set(item); this.showThreshold.set(true);
+    this.selectedItem.set(item);
+    this.showThreshold.set(true);
   }
+
   confirmDelete(item: InventoryItem): void {
     this.deleteTarget.set(item);
   }
 
-  // ── Close all ────────────────────────────────────────────────
+  // ── Close all ────────────────────────────────────────────────────
   closeAll(): void {
     this.showAddStock.set(false);
     this.showUpdateCost.set(false);
@@ -94,7 +107,7 @@ export class InventoryListComponent implements OnInit {
     this.selectedItem.set(null);
   }
 
-  // ── Success handlers ─────────────────────────────────────────
+  // ── Success handlers ──────────────────────────────────────────────
   onPackTypeCreated(): void {
     this.closeAll();
     this.showSuccess('Pack type created successfully.');
@@ -109,6 +122,7 @@ export class InventoryListComponent implements OnInit {
   onDelete(): void {
     const target = this.deleteTarget();
     if (!target) return;
+
     this.deleteLoading.set(true);
 
     this.inventoryService.deletePackType(target.packTypeId).subscribe({
@@ -122,11 +136,11 @@ export class InventoryListComponent implements OnInit {
         this.deleteLoading.set(false);
         this.deleteTarget.set(null);
         this.error.set(err?.error?.message ?? 'Failed to delete pack type.');
-      }
+      },
     });
   }
 
-  // ── Helpers ──────────────────────────────────────────────────
+  // ── Helpers ───────────────────────────────────────────────────────
   getStockStatus(item: InventoryItem): 'ok' | 'low' | 'out' {
     if (item.stockQty === 0) return 'out';
     if (item.isLowStock)     return 'low';
@@ -137,10 +151,26 @@ export class InventoryListComponent implements OnInit {
     return this.items().filter(i => i.isLowStock).length;
   }
 
+  get outOfStockCount(): number {
+    return this.items().filter(i => i.stockQty === 0).length;
+  }
+
+  /**
+   * Width of the progress fill bar as a percentage (0–100).
+   * Scale: max = 3× threshold OR current stock, whichever is greater.
+   */
   getBarPercent(item: InventoryItem): number {
     if (item.stockQty === 0) return 0;
     const max = Math.max(item.threshold * 3, item.stockQty);
     return Math.min(100, (item.stockQty / max) * 100);
+  }
+
+  /**
+   * Left position of the threshold marker as a percentage.
+   */
+  getThresholdPercent(item: InventoryItem): number {
+    const max = Math.max(item.threshold * 3, item.stockQty);
+    return Math.min(100, (item.threshold / max) * 100);
   }
 
   private showSuccess(msg: string): void {

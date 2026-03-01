@@ -1,0 +1,335 @@
+/* revenue-chart.component.css — Light/White Theme */
+
+:host {
+  --blue:    #2563eb;
+  --amber:   #d97706;
+  --emerald: #059669;
+  --violet:  #7c3aed;
+  --rose:    #e11d48;
+  --blue-muted:    #dbeafe;
+  --amber-muted:   #fef3c7;
+  --emerald-muted: #d1fae5;
+  --violet-muted:  #ede9fe;
+  --border:  #e2e8f0;
+  --bg-2:    #f8fafc;
+  --bg-3:    #f1f5f9;
+  --text:    #0f172a;
+  --sub:     #475569;
+  --muted:   #94a3b8;
+  display: block;
+}
+
+.rc-root {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* ─── Month tabs ──────────────────────────────────────────────────────────── */
+.month-tabs-row {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.month-tab {
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  cursor: pointer;
+  transition: all .15s;
+}
+
+.month-tab:hover { color: var(--sub); background: var(--bg-3); border-color: var(--border); }
+
+.month-tab--active {
+  background: var(--blue) !important;
+  color: #fff !important;
+  border-color: var(--blue) !important;
+}
+
+.month-tab--all { margin-left: auto; }
+
+.month-tab--all.month-tab--active {
+  background: var(--amber) !important;
+  color: #fff !important;
+  border-color: var(--amber) !important;
+}
+
+/* ─── Spotlight row ───────────────────────────────────────────────────────── */
+.spotlight-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.spot-card {
+  border-radius: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  animation: spot-in .22s ease;
+}
+
+@keyframes spot-in {
+  from { opacity:0; transform:scale(.97); }
+  to   { opacity:1; transform:scale(1); }
+}
+
+.spot-card--blue    { background: var(--blue-muted);    border-color: #bfdbfe; }
+.spot-card--amber   { background: var(--amber-muted);   border-color: #fde68a; }
+.spot-card--emerald { background: var(--emerald-muted); border-color: #a7f3d0; }
+.spot-card--violet  { background: var(--violet-muted);  border-color: #ddd6fe; }
+
+.spot-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .7px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.spot-val {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* ─── Chart area ──────────────────────────────────────────────────────────── */
+.chart-area { width: 100%; }
+
+/* ─── Pie row ─────────────────────────────────────────────────────────────── */
+.pie-row {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 24px;
+  align-items: center;
+  padding: 16px;
+  background: var(--bg-2);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.pie-wrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.donut-center {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+
+.donut-pct {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.donut-sub {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .7px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.pie-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pie-leg-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.pie-leg-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pie-leg-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.pie-leg-name { font-size: 13px; color: var(--sub); font-weight: 600; }
+
+.pie-leg-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pie-leg-pct  { font-size: 11px; color: var(--muted); min-width: 36px; text-align: right; }
+.pie-leg-val  { font-size: 13px; font-weight: 600; color: var(--text); min-width: 72px; text-align: right; }
+
+/* ─── PrimeNG Table light ─────────────────────────────────────────────────── */
+.month-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+::ng-deep .rc-table.p-datatable {
+  background: transparent !important;
+  color: var(--text) !important;
+}
+
+::ng-deep .rc-table .p-datatable-thead > tr > th {
+  background: var(--bg-3) !important;
+  color: var(--muted) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: .7px !important;
+  border-color: var(--border) !important;
+  padding: 10px 12px !important;
+  white-space: nowrap;
+}
+
+::ng-deep .rc-table .p-datatable-tbody > tr > td {
+  border-color: var(--border) !important;
+  padding: 10px 12px !important;
+  background: transparent !important;
+  font-size: 13px !important;
+  color: var(--text) !important;
+}
+
+::ng-deep .rc-table .p-datatable-tbody > tr:hover > td {
+  background: var(--bg-3) !important;
+}
+
+::ng-deep .rc-table .p-datatable-tbody > tr.row-best > td {
+  background: #fffbeb !important;
+}
+
+::ng-deep .rc-table .p-highlight {
+  background: var(--bg-3) !important;
+  color: var(--amber) !important;
+}
+
+.num-col { text-align: right !important; }
+.bar-col { width: 130px !important; min-width: 130px; }
+
+
+/* Month cell */
+.month-cell { display: flex; align-items: center; gap: 8px; }
+
+.month-name { font-weight: 700; color: var(--text); }
+
+.best-tag {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: #fef3c7;
+  color: var(--amber);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+.best-tag i { font-size: 9px; }
+
+/* Margin chip */
+.margin-chip {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.chip-good { background: var(--emerald-muted); color: var(--emerald); }
+.chip-ok   { background: var(--amber-muted);   color: var(--amber); }
+.chip-low  { background: #ffe4e6;              color: var(--rose); }
+
+/* Mini bars */
+.mini-track {
+  height: 5px;
+  background: #e2e8f0;
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: 3px;
+}
+.mini-track:last-child { margin-bottom: 0; }
+
+.mini-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width .5s cubic-bezier(.4,0,.2,1);
+  min-width: 2px;
+}
+
+.mini-fill--rev    { background: var(--blue); }
+.mini-fill--cost   { background: var(--amber); }
+.mini-fill--profit { background: var(--emerald); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  .spotlight-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .pie-row {
+    grid-template-columns: 1fr;
+  }
+
+  .pie-legend {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .pie-leg-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    min-width: 100px;
+  }
+
+  .pie-leg-val { min-width: auto; }
+}
+
+@media (max-width: 480px) {
+  .month-tabs-row {
+    gap: 3px;
+  }
+
+  .month-tab {
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+
+  .spotlight-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .spot-val { font-size: 14px; }
+
+  .bar-col { display: none !important; }
+}

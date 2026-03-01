@@ -8,15 +8,19 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
+    "@socket.io/admin-ui": "^0.5.1",
     "bcryptjs": "^2.4.3",
-    "cors": "^2.8.5",
+    "cors": "^2.8.6",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "express-validator": "^7.0.1",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.1.1"
+    "mongoose": "^8.1.1",
+    "socket.io": "^4.8.3"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/socket.io": "^3.0.2",
     "nodemon": "^3.0.2"
   }
 }

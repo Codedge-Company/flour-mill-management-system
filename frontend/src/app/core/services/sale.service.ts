@@ -95,7 +95,7 @@ export class SaleService {
       items: request.items.map(item => ({
         pack_type_id: item.packTypeId,
         qty: item.qty,
-        unit_price_sold: item.unitPriceSold  // Frontend override takes priority
+        unit_price_sold: item.unitPriceSold  
       }))
     };
 

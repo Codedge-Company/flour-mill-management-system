@@ -1,141 +1,122 @@
-// src/app/features/dashboard/components/customer-performance-chart/customer-performance-chart.component.ts
-import { Component, Input, OnChanges, ViewChild, ElementRef, AfterViewInit, SimpleChanges } from '@angular/core';
-import { CommonModule } from '@angular/common';
+// customer-performance-chart.component.ts
+import {
+  Component, Input, OnChanges, SimpleChanges,
+  ChangeDetectionStrategy
+} from '@angular/core';
+import { CommonModule }    from '@angular/common';
+import { ChartModule }     from 'primeng/chart';
+import { TableModule }     from 'primeng/table';
 import { CustomerPerformance } from '../../../../core/models/dashboard';
-import { LkrCurrencyPipe } from '../../../../shared/pipes/lkr-currency.pipe';
+
+// Accent palette cycling for bars
+const COLORS = [
+  'rgba(59,130,246,0.8)',
+  'rgba(16,185,129,0.8)',
+  'rgba(245,158,11,0.8)',
+  'rgba(139,92,246,0.8)',
+  'rgba(244,63,94,0.8)',
+  'rgba(14,165,233,0.8)',
+  'rgba(234,179,8,0.8)',
+];
 
 @Component({
   selector: 'app-customer-performance-chart',
   standalone: true,
-  imports: [CommonModule, LkrCurrencyPipe],
-  template: `
-    <div class="perf-wrap">
-      <canvas #chartCanvas></canvas>
-      <div class="perf-table">
-        <table>
-          <thead>
-            <tr>
-              <th>Customer</th>
-              <th class="num">Revenue</th>
-              <th class="num">Sales</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (row of data; track row.customerId || $index) {
-              <tr>
-                <td>{{ row.customerName }}</td>
-                <td class="num">{{ row.revenue | lkrCurrency }}</td>
-                <td class="num">{{ row.salesCount }}</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    </div>
-  `,
-  styles: [`
-    .perf-wrap { display: flex; flex-direction: column; gap: 20px; }
-    canvas { width: 100% !important; height: 220px; display: block; }
-    .perf-table { overflow-x: auto; }
-    .num { text-align: right; }
-  `]
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [CommonModule, ChartModule, TableModule],
+  templateUrl: './customer-performance-chart.component.html',
+  styleUrls:   ['./customer-performance-chart.component.css'],
 })
-export class CustomerPerformanceChartComponent implements OnChanges, AfterViewInit {
+export class CustomerPerformanceChartComponent implements OnChanges {
   @Input() data: CustomerPerformance[] = [];
-  @ViewChild('chartCanvas') canvasRef!: ElementRef<HTMLCanvasElement>;
 
-  private ctx!: CanvasRenderingContext2D;
-  private ready = false;
+  // ── Derived state ──────────────────────────────────────────────────────────
+  sorted:       CustomerPerformance[] = [];
+  top3:         CustomerPerformance[] = [];
+  totalRevenue  = 1;
+  chartData:    any = {};
+  chartOptions: any = {};
 
-  ngAfterViewInit(): void {
-    this.ctx = this.canvasRef.nativeElement.getContext('2d')!;
-    this.ready = true;
-    this.draw();
+  ngOnChanges(c: SimpleChanges): void {
+    if (c['data']) this.build();
   }
 
-  ngOnChanges(changes: SimpleChanges): void {
-    if (this.ready && changes['data']) this.draw();
+  // ── Builder ────────────────────────────────────────────────────────────────
+  private build(): void {
+    this.sorted       = [...this.data].sort((a, b) => b.revenue - a.revenue);
+    this.top3         = this.sorted.slice(0, 3);
+    this.totalRevenue = this.sorted.reduce((s, c) => s + c.revenue, 0) || 1;
+
+    this.buildChart();
   }
 
-  private draw(): void {
-    if (!this.ctx || !this.data.length) return;
+  private buildChart(): void {
+    const top = this.sorted.slice(0, 10); // max 10 in chart for readability
 
-    const canvas = this.canvasRef.nativeElement;
-    const dpr = window.devicePixelRatio || 1;
-    const W = canvas.offsetWidth;
-    const H = 220;
+    this.chartData = {
+      labels: top.map(c => this.truncate(c.customerName, 12)),
+      datasets: [
+        {
+          label: 'Revenue',
+          data: top.map(c => c.revenue),
+          backgroundColor: top.map((_, i) => COLORS[i % COLORS.length]),
+          borderRadius: 6,
+          borderSkipped: false,
+          borderWidth: 0,
+        },
+      ],
+    };
 
-    canvas.width = W * dpr;
-    canvas.height = H * dpr;
-    this.ctx.scale(dpr, dpr);
-
-    const pad = { top: 20, right: 20, bottom: 50, left: 70 };
-    const chartW = W - pad.left - pad.right;
-    const chartH = H - pad.top - pad.bottom;
-
-    this.ctx.clearRect(0, 0, W, H);
-
-    // ✅ Use correct property names
-    const sorted = [...this.data].sort((a, b) => b.revenue - a.revenue);
-    const maxVal = Math.max(...sorted.map(d => d.revenue)) * 1.1 || 1;
-
-    const barGroupW = chartW / sorted.length;
-    const barW = Math.min(barGroupW * 0.35, 32);
-    const gap = 4;
-
-    // Grid (unchanged)
-    const gridCount = 4;
-    this.ctx.strokeStyle = '#e5e7eb';
-    this.ctx.lineWidth = 1;
-    this.ctx.fillStyle = '#6b7280';
-    this.ctx.font = '11px Inter, sans-serif';
-    this.ctx.textAlign = 'right';
-
-    for (let g = 0; g <= gridCount; g++) {
-      const v = (maxVal * g) / gridCount;
-      const y = pad.top + chartH - (v / maxVal) * chartH;
-      this.ctx.beginPath();
-      this.ctx.moveTo(pad.left, y);
-      this.ctx.lineTo(pad.left + chartW, y);
-      this.ctx.stroke();
-      this.ctx.fillText(this.formatK(v), pad.left - 6, y + 4);
-    }
-
-    // ✅ Fixed property names
-    sorted.forEach((d, i) => {
-      const groupX = pad.left + i * barGroupW + barGroupW / 2;
-      const revH = (d.revenue / maxVal) * chartH;
-      // No profit data - just revenue bars
-      const revX = groupX - barW / 2;
-
-      // Revenue bar only
-      this.ctx.fillStyle = '#2563eb';
-      this.ctx.fillRect(revX, pad.top + chartH - revH, barW, revH);
-
-      // Customer label
-      this.ctx.fillStyle = '#6b7280';
-      this.ctx.textAlign = 'center';
-      this.ctx.font = '10px Inter, sans-serif';
-      const name = d.customerName.length > 10
-        ? d.customerName.substring(0, 10) + '…'
-        : d.customerName;
-      this.ctx.fillText(name, groupX, H - pad.bottom + 16);
-    });
-
-    // Legend (Revenue only)
-    const legendY = H - 10;
-    const lx = pad.left;
-    this.ctx.fillStyle = '#2563eb';
-    this.ctx.fillRect(lx, legendY - 8, 14, 8);
-    this.ctx.fillStyle = '#6b7280';
-    this.ctx.textAlign = 'left';
-    this.ctx.font = '11px Inter, sans-serif';
-    this.ctx.fillText('Revenue', lx + 18, legendY);
+    this.chartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: 'y',      // horizontal bars for readability
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0b0b13',
+          titleColor:  '#94a3b8',
+          bodyColor:   '#f1f5f9',
+          borderColor: 'rgba(255,255,255,.1)',
+          borderWidth: 1,
+          padding: 12,
+          callbacks: {
+            label: (ctx: any) => ` Revenue: ${this.formatCurrency(ctx.parsed.x)}`,
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,.05)', drawBorder: false },
+          ticks: {
+            color: '#475569',
+            font: { size: 11, family: 'Geist Mono, monospace' },
+            callback: (v: number) => this.shortFmt(v),
+          },
+          beginAtZero: true,
+        },
+        y: {
+          grid:  { display: false },
+          ticks: { color: '#94a3b8', font: { size: 12, family: 'Syne, sans-serif', weight: '600' } },
+        },
+      },
+    };
   }
 
-  private formatK(v: number): string {
-    if (Math.abs(v) >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
-    if (Math.abs(v) >= 1_000) return `${(v / 1_000).toFixed(1)}K`;
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  formatCurrency(v: number): string {
+    if (Math.abs(v) >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M`;
+    if (Math.abs(v) >= 1_000)     return `${(v / 1_000).toFixed(1)}K`;
     return v.toFixed(0);
+  }
+
+  private shortFmt(v: number): string {
+    if (Math.abs(v) >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
+    if (Math.abs(v) >= 1_000)     return `${(v / 1_000).toFixed(0)}K`;
+    return String(v);
+  }
+
+  private truncate(s: string, max: number): string {
+    return s.length > max ? s.slice(0, max) + '…' : s;
   }
 }

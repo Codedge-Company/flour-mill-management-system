@@ -1,128 +1,342 @@
-<!-- src/app/features/dashboard/dashboard.component.html -->
-<div class="dashboard">
+<!-- dashboard.component.html -->
+<div class="db-root">
 
-    <!-- Header -->
-    <app-page-header title="Dashboard" subtitle="Overview of sales, profit and inventory status">
-        <button class="btn btn-outline btn-sm" (click)="refresh()">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24"
-                stroke="currentColor" stroke-width="2">
-                <polyline points="23 4 23 10 17 10" />
-                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-            </svg>
-            Refresh
+  <!-- ═══ TOPBAR ═══════════════════════════════════════════════════════════ -->
+  <header class="db-topbar">
+    <div class="topbar-left">
+      <div class="topbar-divider"></div>
+      <div class="breadcrumb">
+        <span class="bc-root">Analytics</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+        <span class="bc-active">Dashboard</span>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <!-- Live indicator -->
+      <div class="live-pill">
+        <span class="live-dot"></span>
+        Live
+      </div>
+
+      <!-- Quick Date Filters -->
+      <div class="quick-filters">
+        <button class="filter-btn" [class.active]="activePreset() === 'today'" (click)="setDateFilter('today')">
+          Today
         </button>
-    </app-page-header>
+        <button class="filter-btn" [class.active]="activePreset() === 'yesterday'" (click)="setDateFilter('yesterday')">
+          Yesterday
+        </button>
+        <button class="filter-btn" [class.active]="activePreset() === '7days'" (click)="setDateFilter('7days')">
+          7 Days
+        </button>
+        <button class="filter-btn" [class.active]="activePreset() === '30days'" (click)="setDateFilter('30days')">
+          30 Days
+        </button>
+      </div>
 
-    <!-- Date Range Selector -->
-    <div class="range-bar card">
-        <span class="range-label">Period:</span>
-        <div class="preset-tabs">
-            @for (p of presets; track p.key) {
-            <button class="preset-tab" [class.active]="activePreset() === p.key" (click)="applyPreset(p.key)">
-                {{ p.label }}
-            </button>
-            }
+      <!-- Single Date Picker -->
+      <div class="single-date-picker">
+        <p-calendar [(ngModel)]="singleDate" [appendTo]="'body'" [showIcon]="true" dateFormat="dd MMM" [maxDate]="today"
+          placeholder="Pick date" styleClass="p-cal-compact" (onSelect)="applySingleDate()">
+        </p-calendar>
+      </div>
+
+      <!-- Custom Range Picker Toggle -->
+      <div class="range-picker-toggle" (click)="toggleCustomRange()">
+        <span>{{ customRangeLabel() }}</span>
+        <i class="pi pi-calendar-range"></i>
+      </div>
+
+      <!-- Custom Range Panel (Dropdown) -->
+      @if (showCustomRange()) {
+      <div class="custom-range-panel">
+        <div class="range-inputs">
+          <p-calendar [(ngModel)]="customFromDate" [appendTo]="'body'" dateFormat="yy-mm-dd" placeholder="From"
+            [maxDate]="customToDate || today" styleClass="p-cal-small">
+          </p-calendar>
+
+          <p-calendar [(ngModel)]="customToDate" [appendTo]="'body'" dateFormat="yy-mm-dd" placeholder="To"
+            [minDate]="customFromDate" [maxDate]="today" styleClass="p-cal-small">
+          </p-calendar>
+        </div>
+        <div class="range-actions">
+          <button class="btn-secondary" (click)="applyCustomRange()" [disabled]="!isCustomRangeValid()">
+            Apply
+          </button>
+          <button class="btn-text" (click)="clearCustomRange()">Clear</button>
+        </div>
+      </div>
+      }
+
+      <!-- Refresh -->
+      <p-button icon="pi pi-refresh" [rounded]="true" [text]="true" severity="secondary" (onClick)="refresh()"
+        styleClass="topbar-icon-btn" [loading]="loading()" pTooltip="Refresh data" tooltipPosition="bottom">
+      </p-button>
+    </div>
+  </header>
+
+  <!-- ═══ ERROR BANNER ══════════════════════════════════════════════════════ -->
+  @if (error()) {
+  <div class="error-banner">
+    <p-message severity="error" [text]="error()!" styleClass="w-full" />
+    <button class="err-retry-btn" (click)="refresh()">
+      <i class="pi pi-refresh"></i> Retry
+    </button>
+  </div>
+  }
+
+  <!-- ═══ MAIN CONTENT ══════════════════════════════════════════════════════ -->
+  <main class="db-content">
+
+    <!-- KPI STRIP ─────────────────────────────────────────────────────────── -->
+    <section class="kpi-strip">
+      <!-- Total Revenue -->
+      <div class="kpi-card" [class.kpi-loading]="loading()">
+        <div class="kpi-icon kpi-icon--blue">
+          <i class="pi pi-dollar"></i>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-label">Total Revenue</span>
+          @if (loading()) {
+          <div class="skel skel-val"></div>
+          } @else {
+          <span class="kpi-value">{{ summary()?.totalRevenue ?? 0 | lkrCurrency }}</span>
+          @if (hasSufficientData() && revenueDelta() !== 0) {
+          <span class="kpi-delta" [ngClass]="{ 'delta--up': revenueDelta() >= 0, 'delta--down': revenueDelta() < 0 }">
+            <i class="pi" [class.pi-arrow-up-right]="revenueDelta() >= 0"
+              [class.pi-arrow-down-left]="revenueDelta() < 0"></i>
+            {{ revenueDelta() | number:'1.1-1' }}%
+          </span>
+          }
+          }
+        </div>
+        <div class="kpi-sparkline">
+          <p-chart type="line" [data]="sparkRevenue" [options]="sparkOpts" height="42px"></p-chart>
+        </div>
+      </div>
+
+      <!-- Total Cost -->
+      <div class="kpi-card" [class.kpi-loading]="loading()">
+        <div class="kpi-icon kpi-icon--amber">
+          <i class="pi pi-credit-card"></i>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-label">Total Cost</span>
+          @if (loading()) {
+          <div class="skel skel-val"></div>
+          } @else {
+          <span class="kpi-value">{{ summary()?.totalCost ?? 0 | lkrCurrency }}</span>
+          @if (hasSufficientData() && costDelta() !== 0) {
+          <span class="kpi-delta" [ngClass]="{ 'delta--up': costDelta() >= 0, 'delta--down': costDelta() < 0 }">
+            <i class="pi" [class.pi-arrow-up-right]="costDelta() >= 0" [class.pi-arrow-down-left]="costDelta() < 0"></i>
+            {{ costDelta() | number:'1.1-1' }}%
+          </span>
+          }
+          }
+        </div>
+        <div class="kpi-sparkline">
+          <p-chart type="line" [data]="sparkCost" [options]="sparkOpts" height="42px"></p-chart>
+        </div>
+      </div>
+
+      <!-- Net Profit -->
+      <div class="kpi-card" [class.kpi-loading]="loading()">
+        <div class="kpi-icon kpi-icon--emerald">
+          <i class="pi pi-chart-line"></i>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-label">Net Profit</span>
+          @if (loading()) {
+          <div class="skel skel-val"></div>
+          } @else {
+          <span class="kpi-value">{{ summary()?.totalProfit ?? 0 | lkrCurrency }}</span>
+          @if (hasSufficientData() && profitDelta() !== 0) {
+          <span class="kpi-delta" [ngClass]="{ 'delta--up': profitDelta() >= 0, 'delta--down': profitDelta() < 0 }">
+            <i class="pi" [class.pi-arrow-up-right]="profitDelta() >= 0"
+              [class.pi-arrow-down-left]="profitDelta() < 0"></i>
+            {{ profitDelta() | number:'1.1-1' }}%
+          </span>
+          }
+          }
+        </div>
+        <div class="kpi-sparkline">
+          <p-chart type="line" [data]="sparkProfit" [options]="sparkOpts" height="42px"></p-chart>
+        </div>
+      </div>
+
+      <!-- Transactions -->
+      <div class="kpi-card" [class.kpi-loading]="loading()">
+        <div class="kpi-icon kpi-icon--violet">
+          <i class="pi pi-shopping-bag"></i>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-label">Transactions</span>
+          @if (loading()) {
+          <div class="skel skel-val"></div>
+          } @else {
+          <span class="kpi-value">{{ summary()?.totalSales ?? 0 | number }}</span>
+          @if (hasSufficientData() && salesDelta() !== 0) {
+          <span class="kpi-delta" [ngClass]="{ 'delta--up': salesDelta() >= 0, 'delta--down': salesDelta() < 0 }">
+            <i class="pi" [class.pi-arrow-up-right]="salesDelta() >= 0"
+              [class.pi-arrow-down-left]="salesDelta() < 0"></i>
+            {{ salesDelta() | number:'1.1-1' }}%
+          </span>
+          }
+          }
+        </div>
+        <div class="kpi-sparkline">
+          <p-chart type="bar" [data]="sparkSales" [options]="sparkBarOpts" height="42px"></p-chart>
+        </div>
+      </div>
+
+      <!-- Profit Margin -->
+      <div class="kpi-card kpi-card--margin" [class.kpi-loading]="loading()">
+        <div class="kpi-icon kpi-icon--rose">
+          <i class="pi pi-percentage"></i>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-label">Profit Margin</span>
+          @if (loading()) {
+          <div class="skel skel-val"></div>
+          } @else {
+          <span class="kpi-value">{{ profitMargin() }}%</span>
+          @if (hasSufficientData() && marginDelta() !== 0) {
+          <span class="kpi-delta" [ngClass]="{ 'delta--up': marginDelta() >= 0, 'delta--down': marginDelta() < 0 }">
+            <i class="pi" [class.pi-arrow-up-right]="marginDelta() >= 0"
+              [class.pi-arrow-down-left]="marginDelta() < 0"></i>
+            {{ marginDelta() | number:'1.1-1' }}pp
+          </span>
+          }
+          }
+        </div>
+        <div class="margin-ring">
+          <p-knob [ngModel]="profitMargin()" [readonly]="true" [size]="64" valueColor="#f59e0b" rangeColor="#2a2a38"
+            textColor="#f8fafc" [min]="0" [max]="100" strokeWidth="8">
+          </p-knob>
+        </div>
+      </div>
+    </section>
+
+    <!-- MAIN CHARTS GRID ───────────────────────────────────────────────────── -->
+    <section class="charts-grid">
+      <!-- Revenue Chart (full width) -->
+      <div class="panel panel--wide">
+        <div class="panel-head">
+          <div>
+            <h3 class="panel-title">Revenue · Cost · Profit</h3>
+            <p class="panel-sub">Monthly breakdown with trend overlay</p>
+          </div>
+          <div class="panel-actions">
+            <p-selectButton [options]="chartViewOpts" [(ngModel)]="chartView" optionLabel="label" optionValue="value"
+              styleClass="chart-toggle">
+            </p-selectButton>
+          </div>
         </div>
 
-        @if (showCustom()) {
-        <div class="custom-range">
-            <input type="date" class="form-control" style="width:150px" [ngModel]="customFrom()"
-                (ngModelChange)="customFrom.set($event)" />
-            <span class="text-secondary">to</span>
-            <input type="date" class="form-control" style="width:150px" [ngModel]="customTo()"
-                (ngModelChange)="customTo.set($event)" />
-            <button class="btn btn-primary btn-sm" [disabled]="!customFrom() || !customTo()"
-                (click)="applyCustomRange()">
-                Apply
-            </button>
+        @if (loading()) {
+        <div class="panel-skeleton"></div>
+        } @else if (data()?.dailyMetrics?.length) {
+        <app-revenue-chart [metrics]="data()!.dailyMetrics" [view]="chartView" />
+        } @else {
+        <div class="empty-panel">
+          <i class="pi pi-chart-bar empty-icon"></i>
+          <p>No revenue data for this period</p>
         </div>
         }
-    </div>
+      </div>
 
-    <!-- Error -->
-    @if (error()) {
-    <div class="alert-error-bar">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24"
-            stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
-        </svg>
-        {{ error() }}
-        <button class="btn btn-sm btn-outline" (click)="refresh()">Retry</button>
-    </div>
-    }
-
-    <!-- Stat Cards -->
-    <div class="stat-grid">
-        <app-stat-card label="Total Revenue" [value]="summary()?.totalRevenue ?? 0" variant="primary"
-            [loading]="loading()" [icon]="icons.revenue" />
-
-        <app-stat-card label="Total Cost" [value]="summary()?.totalCost ?? 0" variant="warning" [loading]="loading()" />
-        <app-stat-card label="Total Profit" [value]="summary()?.totalProfit ?? 0" variant="success"
-            [loading]="loading()" />
-        <app-stat-card label="Total Sales" [value]="summary()?.totalSales ?? 0" variant="info" [isCurrency]="false"
-            [loading]="loading()" subLabel="transactions" />
-    </div>
-
-    <!-- Charts Row -->
-    <div class="charts-row">
-
-        <!-- Revenue Chart -->
-        <div class="card chart-card chart-main">
-            <div class="card-header">
-                <h3 class="card-title">Revenue / Cost / Profit</h3>
-            </div>
-            @if (loading()) {
-            <div class="chart-skeleton"></div>
-            } @else if (data()?.dailyMetrics?.length) {
-            <app-revenue-chart [metrics]="data()!.dailyMetrics" />
-            } @else {
-            <div class="empty-state">
-                <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor" stroke-width="1.2">
-                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-                </svg>
-                <p>No data for this period</p>
-            </div>
-            }
+      <!-- Top Metrics Summary Table -->
+      <div class="panel panel--summary">
+        <div class="panel-head">
+          <div>
+            <h3 class="panel-title">Period Summary</h3>
+            <p class="panel-sub">Key stats at a glance</p>
+          </div>
         </div>
-
-        <!-- Low Stock Panel -->
-        <div class="card chart-card chart-side">
-            <div class="card-header">
-                <h3 class="card-title">
-                    Low Stock Alerts
-                    @if (lowStockItems().length > 0) {
-                    <span class="badge badge-danger">{{ lowStockItems().length }}</span>
-                    }
-                </h3>
-            </div>
-            <app-low-stock-alert-panel [items]="lowStockItems()" [loading]="inventoryLoading()" />
+        <div class="summary-rows">
+          <div class="sum-row">
+            <span class="sum-label">Avg Daily Revenue</span>
+            <span class="sum-val sum-val--blue">{{ avgDailyRevenue() | lkrCurrency }}</span>
+          </div>
+          <div class="sum-row">
+            <span class="sum-label">Avg Daily Cost</span>
+            <span class="sum-val sum-val--amber">{{ avgDailyCost() | lkrCurrency }}</span>
+          </div>
+          <div class="sum-row">
+            <span class="sum-label">Avg Daily Profit</span>
+            <span class="sum-val sum-val--emerald">{{ avgDailyProfit() | lkrCurrency }}</span>
+          </div>
+          <div class="sum-row">
+            <span class="sum-label">Best Day (Revenue)</span>
+            <span class="sum-val sum-val--blue">{{ bestDay()?.revenue ?? 0 | lkrCurrency }}</span>
+          </div>
+          <div class="sum-row">
+            <span class="sum-label">Best Day (Date)</span>
+            <span class="sum-val">{{ bestDay()?.date ? (bestDay()!.date | date:'MMM d, yyyy') : '—' }}</span>
+          </div>
+          <div class="sum-row">
+            <span class="sum-label">Total Days Tracked</span>
+            <span class="sum-val">{{ data()?.dailyMetrics?.length ?? 0 }} days</span>
+          </div>
+          <div class="sum-row">
+            <span class="sum-label">Low Stock Items</span>
+            <span class="sum-val" [class.sum-val--rose]="lowStockItems().length > 0">
+              {{ lowStockItems().length }}
+            </span>
+          </div>
+          <div class="sum-row">
+            <span class="sum-label">Top Customer</span>
+            <span class="sum-val sum-val--violet">{{ topCustomer() }}</span>
+          </div>
         </div>
+      </div>
+    </section>
 
-    </div>
-
-    <!-- Customer Performance Chart -->
-    <div class="card">
-        <div class="card-header">
-            <h3 class="card-title">Customer Performance</h3>
+    <!-- BOTTOM GRID ────────────────────────────────────────────────────────── -->
+    <section class="bottom-grid">
+      <!-- Customer Performance -->
+      <div class="panel panel--customer">
+        <div class="panel-head">
+          <div>
+            <h3 class="panel-title">Customer Performance</h3>
+            <p class="panel-sub">Revenue & sales count by customer</p>
+          </div>
         </div>
         @if (loading()) {
-        <div class="chart-skeleton"></div>
+        <div class="panel-skeleton"></div>
         } @else if (data()?.customerPerformance?.length) {
         <app-customer-performance-chart [data]="data()!.customerPerformance" />
         } @else {
-        <div class="empty-state">
-            <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" fill="none" viewBox="0 0 24 24"
-                stroke="currentColor" stroke-width="1.2">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
-            </svg>
-            <p>No customer data for this period</p>
+        <div class="empty-panel">
+          <i class="pi pi-users empty-icon"></i>
+          <p>No customer data for this period</p>
         </div>
         }
-    </div>
+      </div>
+
+      <!-- Low Stock Panel -->
+      <div class="panel panel--side">
+        <div class="panel-head">
+          <div>
+            <h3 class="panel-title">
+              Low Stock
+              @if (lowStockItems().length > 0) {
+              <p-badge [value]="lowStockItems().length" severity="danger" styleClass="ml-1"></p-badge>
+              }
+            </h3>
+            <p class="panel-sub">Items below threshold</p>
+          </div>
+          <a routerLink="/inventory" class="panel-link">
+            Manage <i class="pi pi-arrow-right"></i>
+          </a>
+        </div>
+        <app-low-stock-alert-panel [items]="lowStockItems()" [loading]="inventoryLoading()" />
+      </div>
+    </section>
+
+  </main>
 
 </div>

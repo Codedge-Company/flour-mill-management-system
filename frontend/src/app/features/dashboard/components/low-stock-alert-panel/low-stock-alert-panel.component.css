@@ -1,0 +1,174 @@
+/* low-stock-alert-panel.component.css — Light/White Theme */
+:host {
+  --rose:    #e11d48;
+  --amber:   #d97706;
+  --emerald: #059669;
+  --border:  #e2e8f0;
+  --bg-2:    #f8fafc;
+  --bg-3:    #f1f5f9;
+  --text:    #0f172a;
+  --sub:     #475569;
+  --muted:   #94a3b8;
+  display: block;
+}
+
+.ls-root { display: flex; flex-direction: column; gap: 10px; }
+
+/* ─── Skeletons ───────────────────────────────────────────────────────────── */
+.skel-list { display: flex; flex-direction: column; gap: 8px; }
+
+.skel-item {
+  height: 72px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #f1f5f9 25%, #e8edf3 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+}
+
+@keyframes shimmer { to { background-position: -200% 0; } }
+
+/* ─── All good ────────────────────────────────────────────────────────────── */
+.all-good {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 16px;
+  border-radius: 12px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+
+.good-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #d1fae5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: var(--emerald);
+  flex-shrink: 0;
+}
+
+.good-text { display: flex; flex-direction: column; gap: 2px; }
+
+.good-title { font-size: 14px; font-weight: 700; color: var(--emerald); }
+.good-sub   { font-size: 12px; color: var(--muted); }
+
+/* ─── Alert list ──────────────────────────────────────────────────────────── */
+.alert-list { display: flex; flex-direction: column; gap: 10px; }
+
+.alert-item {
+  background: #fff5f5;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: border-color .15s;
+}
+
+.alert-item:hover { border-color: #fca5a5; }
+
+.alert-critical {
+  background: #fef2f2 !important;
+  border-color: #f87171 !important;
+}
+
+.alert-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.alert-left { display: flex; align-items: center; gap: 10px; }
+
+.pack-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #ffe4e6;
+  color: var(--rose);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.pack-icon--critical {
+  background: #fee2e2 !important;
+  color: #dc2626 !important;
+  animation: pulse-icon 2s infinite;
+}
+
+@keyframes pulse-icon {
+  0%,100% { box-shadow: 0 0 0 0 rgba(220,38,38,.3); }
+  50%      { box-shadow: 0 0 0 6px rgba(220,38,38,0); }
+}
+
+.pack-info { display: flex; flex-direction: column; gap: 2px; }
+.pack-name      { font-size: 13px; font-weight: 700; color: var(--text); }
+.pack-threshold { font-size: 11px; color: var(--muted); }
+
+.stock-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 99px;
+  background: #ffe4e6;
+  color: var(--rose);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.stock-zero {
+  background: #fee2e2 !important;
+  color: #dc2626 !important;
+  animation: badge-flash 1.5s infinite;
+}
+
+@keyframes badge-flash {
+  0%,100% { opacity: 1; }
+  50%      { opacity: .5; }
+}
+
+/* ─── Progress bar ────────────────────────────────────────────────────────── */
+.stock-track {
+  height: 6px;
+  background: #fee2e2;
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.stock-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: var(--amber);
+  transition: width .5s cubic-bezier(.4,0,.2,1);
+  min-width: 2px;
+}
+
+.fill-critical { background: #dc2626 !important; width: 2px !important; }
+.fill-low      { background: var(--rose) !important; }
+
+.progress-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.fill-pct { color: var(--sub); text-align: center; }
+
+/* ═══ RESPONSIVE ════════════════════════════════════════════════════════════ */
+
+@media (max-width: 480px) {
+  .alert-item { padding: 10px 12px; }
+  .pack-name  { font-size: 12px; }
+  .progress-label { font-size: 9px; }
+}

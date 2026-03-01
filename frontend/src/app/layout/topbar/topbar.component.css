@@ -1,139 +1,448 @@
-/* src/app/layout/topbar/topbar.component.css */
+/* topbar.component.css */
+
+:host {
+  --h:          60px;
+  --blue:       #2563eb;
+  --blue-light: #dbeafe;
+  --rose:       #e11d48;
+  --bg:         #ffffff;
+  --border:     #e2e8f0;
+  --text:       #0f172a;
+  --text-sub:   #475569;
+  --text-muted: #94a3b8;
+  --hover:      #f1f5f9;
+  --radius:     10px;
+  --shadow-dd:  0 8px 24px rgba(15,23,42,.12), 0 2px 6px rgba(15,23,42,.06);
+  --transition: .18s cubic-bezier(.4,0,.2,1);
+
+  display: block;
+}
+
+/* ─── Topbar shell ───────────────────────────────────────────────────────── */
 .topbar {
-  height: var(--topbar-height);
-  background: var(--surface);
+  height: var(--h);
+  background: var(--bg);
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 16px 0 12px;
-  flex-shrink: 0;
+  gap: 8px;
+  padding: 0 20px;
   position: sticky;
   top: 0;
   z-index: 100;
+  box-shadow: 0 1px 4px rgba(15,23,42,.05);
 }
 
-.topbar-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  flex: 1;
-}
-
-.topbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: auto;
-}
-
-/* Bell */
-.bell-btn {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-md);
-  color: var(--text-secondary);
-  transition: background var(--transition), color var(--transition);
-}
-.bell-btn:hover {
-  background: var(--surface-alt);
-  color: var(--text-primary);
-}
-.bell-badge {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  min-width: 16px;
-  height: 16px;
-  background: var(--danger);
-  color: #fff;
-  font-size: 9px;
-  font-weight: 700;
-  border-radius: 99px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 3px;
-  border: 2px solid var(--surface);
-}
-
-/* User menu */
-.user-menu-wrapper {
-  position: relative;
-}
-
-.user-menu-trigger {
+/* ─── Brand (desktop) ────────────────────────────────────────────────────── */
+.topbar-brand {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 10px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text-primary);
-  font-size: 13px;
-  font-weight: 500;
-  transition: background var(--transition);
 }
-.user-menu-trigger:hover { background: var(--surface-alt); }
 
-.topbar-avatar {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: var(--primary-light);
-  color: var(--primary);
-  font-size: 12px;
-  font-weight: 700;
+.topbar-brand-name {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -.2px;
+  white-space: nowrap;
+}
+
+/* ─── Spacer ─────────────────────────────────────────────────────────────── */
+.topbar-spacer { flex: 1; }
+
+/* ─── Icon button base ───────────────────────────────────────────────────── */
+.icon-btn {
+  width: 38px;
+  height: 38px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius);
+  color: var(--text-sub);
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 16px;
+  transition: background var(--transition), color var(--transition);
+  flex-shrink: 0;
+  text-decoration: none;
+  position: relative;
 }
 
+.icon-btn:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+/* Hamburger */
+.hamburger { font-size: 18px; }
+
+/* ─── Right section ──────────────────────────────────────────────────────── */
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Bell wrapper (for dropdown positioning) */
+.bell-wrapper {
+  position: relative;
+}
+
+/* ─── Bell / notification ────────────────────────────────────────────────── */
+.bell-btn { position: relative; }
+
+.notif-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 99px;
+  background: var(--rose);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  border: 2px solid var(--bg);
+}
+
+/* ─── Notification panel (top-right dropdown) ───────────────────────────── */
+.notif-panel {
+  position: fixed;
+  top: 60px; /* below topbar */
+  right: 12px;
+  width: 320px;
+  max-height: 400px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(15,23,42,.15);
+  overflow: hidden;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+}
+
+.notif-panel-header {
+  padding: 0.75rem 1rem 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+
+.view-all-link {
+  font-size: 0.8rem;
+  color: var(--blue);
+  text-decoration: none;
+}
+
+.notif-panel-list {
+  padding: 0.5rem 0;
+  overflow-y: auto;
+}
+
+.notif-panel-item {
+  display: flex;
+  padding: 0.5rem 1rem;
+  gap: 0.5rem;
+  cursor: pointer;
+  align-items: flex-start;
+  border-bottom: 1px solid var(--border);
+  transition: background var(--transition);
+}
+
+.notif-panel-item:hover {
+  background: var(--hover);
+}
+
+.notif-panel-item.unread {
+  background: #f9fafb;
+}
+
+.notif-icon {
+  font-size: 20px;
+  padding-top: 2px;
+}
+
+.notif-panel-body {
+  flex: 1;
+}
+
+.notif-panel-message {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 0.15rem;
+}
+
+.notif-panel-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.badge {
+  padding: 0.1rem 0.4rem;
+  border-radius: 99px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.badge[type-warning] { background: #fef3c7; color: #92400e; }
+.badge[type-error]   { background: #fee2e2; color: #7f1d1d; }
+.badge[type-info]    { background: #dbeafe; color: #1d4ed8; }
+.badge[type-success] { background: #ecfdf5; color: #065f46; }
+
+.notif-pack,
+.notif-stock {
+  padding: 0.1rem 0.3rem;
+  border-radius: 4px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  font-size: 0.7rem;
+}
+
+/* ─── User menu wrapper ──────────────────────────────────────────────────── */
+.user-menu-wrapper {
+  position: relative;
+  margin-left: 4px;
+}
+
+.user-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 4px;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  background: var(--bg);
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition),
+              box-shadow var(--transition);
+}
+
+.user-trigger:hover {
+  background: var(--hover);
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(15,23,42,.06);
+}
+
+/* Avatar */
+.topbar-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--blue) 0%, #1d4ed8 100%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(37,99,235,.3);
+}
+
+.user-trigger-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.user-trigger-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+.user-trigger-role {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: capitalize;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.chevron {
+  font-size: 11px;
+  color: var(--text-muted);
+  transition: transform var(--transition);
+}
+
+.chevron.open { transform: rotate(180deg); }
+
+/* ─── Dropdown ───────────────────────────────────────────────────────────── */
 .user-dropdown {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  min-width: 200px;
-  background: var(--surface);
+  width: 220px;
+  background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  z-index: 200;
-  overflow: hidden;
-  animation: slideUp .15s ease;
+  border-radius: 14px;
+  box-shadow: var(--shadow-dd);
+  padding: 6px;
+  z-index: 500;
+  animation: dd-in .15s ease;
+  transform-origin: top right;
 }
 
+@keyframes dd-in {
+  from { opacity: 0; transform: scale(.95) translateY(-4px); }
+  to   { opacity: 1; transform: scale(1)  translateY(0); }
+}
+
+/* Dropdown header */
 .dropdown-header {
-  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px 12px;
+}
+
+.dropdown-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--blue) 0%, #1d4ed8 100%);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(37,99,235,.25);
+}
+
+.dropdown-user-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
+  overflow: hidden;
+  min-width: 0;
 }
 
+.dropdown-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dropdown-role {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+
+/* Divider */
 .dropdown-divider {
   height: 1px;
   background: var(--border);
+  margin: 4px 2px;
 }
 
+/* Dropdown items */
 .dropdown-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
-  padding: 10px 16px;
-  font-size: 13px;
-  font-weight: 500;
-  background: transparent;
+  padding: 9px 12px;
   border: none;
-  color: var(--text-primary);
-  transition: background var(--transition);
+  background: transparent;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-sub);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
   text-align: left;
 }
-.dropdown-item:hover { background: var(--surface-alt); }
-.dropdown-item.danger { color: var(--danger); }
-.dropdown-item.danger:hover { background: var(--danger-light); }
+
+.dropdown-item i { font-size: 14px; width: 18px; flex-shrink: 0; }
+
+.dropdown-item:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.dropdown-item--danger { color: var(--rose); }
+
+.dropdown-item--danger:hover {
+  background: #fff0f3;
+  color: var(--rose);
+}
+
+/* ─── Hide utilities ─────────────────────────────────────────────────────── */
+.hide-mobile { /* shown by default, hidden on mobile via media query */ }
+
+/* ═══ RESPONSIVE ════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  .topbar { padding: 0 14px; gap: 6px; }
+
+  .hide-mobile { display: none !important; }
+
+  .topbar-right {
+    gap: 6px;
+  }
+
+  .user-trigger {
+    padding: 4px;
+    border-radius: 50%;
+  }
+
+  .user-dropdown {
+    right: -8px;
+    width: 200px;
+  }
+
+  .notif-panel {
+    top: 50px;
+    right: 8px;
+    width: 280px;
+  }
+}
+
+@media (max-width: 480px) {
+  .topbar { padding: 0 12px; }
+  .notif-badge { font-size: 8px; min-width: 14px; height: 14px; }
+  .notif-panel { width: 260px; }
+}
+
+/* Socket status pulse (you already have this) */
+.socket-status {
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  width: 8px;
+  height: 8px;
+  background: #ff9800;
+  border-radius: 50%;
+  border: 2px solid var(--bg);
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0.3; }
+}

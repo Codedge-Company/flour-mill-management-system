@@ -1,139 +1,159 @@
-<!-- src/app/features/customers/customer-list/customer-list.component.html -->
+<!-- customer-list.component.html -->
 <div class="customer-list-page">
 
-  <app-page-header
-    title="Customers"
-    subtitle="Manage customers and their special price rules"
-  >
+  <!-- ── Page Header ─────────────────────────────────────────────── -->
+  <div class="page-header">
+    <div class="page-header-left">
+      <div class="page-header-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none"
+             viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+      </div>
+      <div>
+        <h1 class="page-title">Customers</h1>
+        <p class="page-subtitle">Manage customers and their special price rules</p>
+      </div>
+    </div>
     <a [routerLink]="['/customers/new']" class="btn btn-primary">
       <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none"
            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
         <line x1="12" y1="5" x2="12" y2="19"/>
-        <line x1="5"  y1="12" x2="19" y2="12"/>
+        <line x1="5" y1="12" x2="19" y2="12"/>
       </svg>
       New Customer
     </a>
-  </app-page-header>
+  </div>
 
-  <!-- Success toast -->
+  <!-- ── Alerts ──────────────────────────────────────────────────── -->
   @if (successMessage()) {
-    <div class="toast-success">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
-           viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-        <polyline points="22 4 12 14.01 9 11.01"/>
-      </svg>
+    <div class="alert alert-success">
+      <div class="alert-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
+             viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+          <polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+      </div>
       {{ successMessage() }}
     </div>
   }
 
-  <!-- Error -->
   @if (error()) {
-    <div class="alert-error-bar">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
-           viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="10"/>
-        <line x1="12" y1="8"  x2="12" y2="12"/>
-        <line x1="12" y1="16" x2="12.01" y2="16"/>
-      </svg>
-      {{ error() }}
+    <div class="alert alert-error">
+      <div class="alert-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
+             viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+      </div>
+      <span>{{ error() }}</span>
       <button class="btn btn-sm btn-outline" (click)="load()">Retry</button>
     </div>
   }
 
-  <!-- Search bar -->
-  <div class="search-bar card">
-    <div class="search-input-wrap">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
-           viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
-           class="search-icon">
+  <!-- ── Search / Toolbar ────────────────────────────────────────── -->
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15"
+           fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
         <circle cx="11" cy="11" r="8"/>
         <line x1="21" y1="21" x2="16.65" y2="16.65"/>
       </svg>
       <input
         type="text"
-        class="form-control search-input"
-        placeholder="Search by name, code or phone..."
+        class="search-input"
+        placeholder="Search by name, code or phone…"
         [value]="searchQuery()"
         (input)="onSearch($any($event.target).value)"
       />
       @if (searchQuery()) {
-        <button class="search-clear" (click)="onSearch('')">
+        <button class="search-clear" (click)="onSearch('')" aria-label="Clear search">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
-               viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="6" x2="6"  y2="18"/>
-            <line x1="6"  y1="6" x2="18" y2="18"/>
+               viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
           </svg>
         </button>
       }
     </div>
-    <span class="search-count text-secondary text-sm">
+    <span class="result-count">
       {{ customers().length }} customer{{ customers().length !== 1 ? 's' : '' }}
     </span>
   </div>
 
-  <!-- Loading skeletons -->
+  <!-- ── Skeleton ────────────────────────────────────────────────── -->
   @if (loading()) {
     <div class="customer-grid">
       @for (n of [1,2,3,4,5,6]; track n) {
         <div class="customer-card skeleton-card">
-          <div class="sk-avatar"></div>
-          <div class="sk-lines">
-            <div class="sk-line sk-name"></div>
-            <div class="sk-line sk-code"></div>
-            <div class="sk-line sk-phone"></div>
+          <div class="skeleton-header">
+            <div class="sk-avatar"></div>
+            <div class="sk-info">
+              <div class="sk-line sk-name"></div>
+              <div class="sk-line sk-code"></div>
+            </div>
+          </div>
+          <div class="sk-line sk-detail"></div>
+          <div class="sk-line sk-detail short"></div>
+          <div class="sk-actions-row">
+            <div class="sk-line sk-btn"></div>
+            <div class="sk-line sk-btn"></div>
           </div>
         </div>
       }
     </div>
+
+  <!-- ── Empty ───────────────────────────────────────────────────── -->
   } @else if (customers().length === 0) {
-    <div class="empty-state card">
-      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none"
-           viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.2">
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-        <circle cx="9" cy="7" r="4"/>
-        <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
-      </svg>
+    <div class="empty-state">
+      <div class="empty-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" fill="none"
+             viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.3">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+      </div>
       @if (searchQuery()) {
-        <p>No customers found for "<strong>{{ searchQuery() }}</strong>"</p>
-        <button class="btn btn-outline btn-sm" (click)="onSearch('')">
-          Clear Search
-        </button>
+        <p class="empty-title">No results for "<strong>{{ searchQuery() }}</strong>"</p>
+        <p class="empty-sub">Try a different name, code or phone number.</p>
+        <button class="btn btn-outline btn-sm" (click)="onSearch('')">Clear Search</button>
       } @else {
-        <p>No customers yet. Add your first customer.</p>
-        <a [routerLink]="['/customers/new']" class="btn btn-primary btn-sm">
-          Add Customer
-        </a>
+        <p class="empty-title">No customers yet</p>
+        <p class="empty-sub">Add your first customer to get started.</p>
+        <a [routerLink]="['/customers/new']" class="btn btn-primary btn-sm">Add Customer</a>
       }
     </div>
+
+  <!-- ── Customer Grid ───────────────────────────────────────────── -->
   } @else {
     <div class="customer-grid">
       @for (c of customers(); track c.customerId) {
         <div class="customer-card">
 
-          <!-- Card top -->
-          <div class="customer-card-top">
-            <div class="customer-avatar">
-              {{ getInitials(c.name) }}
-            </div>
-            <div class="customer-info">
-              <h4 class="customer-name">{{ c.name }}</h4>
-              <span class="customer-code">{{ c.customerId }}</span>
+          <div class="card-header">
+            <div class="avatar">{{ getInitials(c.name) }}</div>
+            <div class="card-identity">
+              <h4 class="c-name">{{ c.name }}</h4>
+              <span class="c-id">{{ c.customerId }}</span>
             </div>
           </div>
 
-          <!-- Details -->
-          <div class="customer-details">
+          <div class="card-details">
             @if (c.phone) {
               <div class="detail-row">
                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none"
                      viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07
-                           A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61
-                           3.38 2 2 0 0 1 3.6 1.18h3a2 2 0 0 1 2 1.72c.127.96.361
-                           1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.97a16 16 0 0 0
-                           6.12 6.12l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573
-                           2.81.7A2 2 0 0 1 21.73 16.92z"/>
+                           19.5 19.5 0 0 1-6.91-6.91 19.79 19.79 0 0 1-3.07-8.67
+                           A2 2 0 0 1 3.6 1.18h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81
+                           2 2 0 0 1-.45 2.11L7.91 8.97a16 16 0 0 0 6.12 6.12l.96-.96
+                           a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
                 </svg>
                 <span>{{ c.phone }}</span>
               </div>
@@ -145,37 +165,32 @@
                   <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/>
                   <circle cx="12" cy="10" r="3"/>
                 </svg>
-                <span class="address-text">{{ c.address }}</span>
+                <span class="truncate">{{ c.address }}</span>
               </div>
             }
             @if (c.notes) {
-              <div class="detail-row notes-row">
+              <div class="detail-row muted">
                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none"
                      viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0
-                           2-2V8z"/>
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                   <polyline points="14 2 14 8 20 8"/>
                 </svg>
-                <span class="notes-text">{{ c.notes }}</span>
+                <span class="truncate italic">{{ c.notes }}</span>
               </div>
             }
-            <div class="detail-row">
+            <div class="detail-row muted">
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none"
                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="10"/>
                 <polyline points="12 6 12 12 16 14"/>
               </svg>
-              <span class="text-muted">Added {{ c.createdAt | timeAgo }}</span>
+              <span>Added {{ c.createdAt | timeAgo }}</span>
             </div>
           </div>
 
-          <!-- Actions -->
-          <div class="customer-actions">
-            <a
-              [routerLink]="['/customers', c.customerId,'prices']"
-              class="btn btn-outline btn-sm"
-              title="Manage price rules"
-            >
+          <div class="card-actions">
+            <a [routerLink]="['/customers', c.customerId, 'prices']"
+               class="btn btn-secondary btn-sm">
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none"
                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <line x1="12" y1="1" x2="12" y2="23"/>
@@ -183,24 +198,16 @@
               </svg>
               Prices
             </a>
-            <a
-              [routerLink]="['/customers', c.customerId, 'edit']"
-              class="btn btn-ghost btn-sm"
-              title="Edit customer"
-            >
+            <a [routerLink]="['/customers', c.customerId, 'edit']"
+               class="btn btn-ghost btn-sm">
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none"
                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0
-                         2-2v-7"/>
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
               </svg>
               Edit
             </a>
-            <button
-              class="btn btn-ghost btn-sm danger-btn"
-              (click)="confirmDelete(c)"
-              title="Delete customer"
-            >
+            <button class="btn btn-ghost btn-sm btn-danger" (click)="confirmDelete(c)">
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none"
                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <polyline points="3 6 5 6 21 6"/>
@@ -211,19 +218,16 @@
               Delete
             </button>
           </div>
-
         </div>
       }
     </div>
   }
-
 </div>
 
-<!-- Delete confirmation dialog -->
 @if (deleteTarget()) {
   <app-confirm-dialog
     title="Delete Customer"
-    [message]="'Are you sure you want to delete &quot;' + deleteTarget()!.name + '&quot;? This action cannot be undone.'"
+    [message]="'Delete &quot;' + deleteTarget()!.name + '&quot;? This cannot be undone.'"
     confirmLabel="Delete"
     variant="danger"
     [loading]="deleteLoading()"

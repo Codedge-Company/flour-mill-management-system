@@ -1,198 +1,290 @@
-<!-- src/app/features/customers/customer-price-rules/customer-price-rules.component.html -->
+<!-- customer-price-rules.component.html -->
 <div class="price-rules-page">
 
-  <app-page-header [title]="(customer()?.name ?? 'Customer') + ' — Price Rules'"
-    subtitle="Custom selling prices per pack type. If not set, default price applies." [breadcrumbs]="breadcrumbs">
-    @if (!showForm()) {
-    <button class="btn btn-primary" (click)="openAddForm()">
-      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24"
-        stroke="currentColor" stroke-width="2">
-        <line x1="12" y1="5" x2="12" y2="19" />
-        <line x1="5" y1="12" x2="19" y2="12" />
-      </svg>
-      Add Price Rule
-    </button>
-    }
-  </app-page-header>
-
-  <!-- Success -->
-  @if (successMsg()) {
-  <div class="toast-success">
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-      stroke-width="2">
-      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-      <polyline points="22 4 12 14.01 9 11.01" />
-    </svg>
-    {{ successMsg() }}
-  </div>
-  }
-
-  <!-- Error -->
-  @if (error()) {
-  <div class="alert-error-bar">
-    {{ error() }}
-    <button class="btn btn-sm btn-outline" (click)="error.set(null)">Dismiss</button>
-  </div>
-  }
-
-  <!-- Add / Edit Form -->
-  @if (showForm()) {
-  <div class="card rule-form-card">
-    <h4 class="rule-form-title">
-      {{ editingRule() ? 'Edit Price Rule' : 'New Price Rule' }}
-    </h4>
-
-    <form [formGroup]="form" (ngSubmit)="onSave()" novalidate>
-      <div class="rule-form-grid">
-
-        <!-- Pack type -->
-        <div class="form-group">
-          <label class="form-label" for="packTypeId">
-            Pack Size <span>*</span>
-          </label>
-          <select id="packTypeId" class="form-control"
-            [class.error]="f['packTypeId'].invalid && f['packTypeId'].touched" formControlName="packTypeId">
-            <!-- ← [disabled] removed: handled via form.get('packTypeId')?.disable() in component -->
-            <option [ngValue]="null" disabled>Select pack size</option>
-            @if (editingRule()) {
-            <option [ngValue]="editingRule()!.packTypeId">
-              {{ getPackName(editingRule()!.packTypeId) }}
-            </option>
-            } @else {
-            @if (availablePacks.length > 0) {
-            @for (p of availablePacks; track p.packTypeId) {
-            <option [ngValue]="p.packTypeId">{{ p.packName }}</option>
-            }
-            } @else {
-            <option disabled>No packs available</option>
-            }
-            }
-          </select>
-          @if (f['packTypeId'].invalid && f['packTypeId'].touched) {
-          <span class="form-error">Please select a pack size</span>
-          }
-        </div>
-
-        <!-- Unit sell price -->
-        <div class="form-group">
-          <label class="form-label" for="unitSellPrice">
-            Special Sell Price (LKR) <span>*</span>
-          </label>
-          <input id="unitSellPrice" type="number" class="form-control"
-            [class.error]="f['unitSellPrice'].invalid && f['unitSellPrice'].touched" formControlName="unitSellPrice"
-            placeholder="e.g. 255.00" min="0.01" step="0.01" />
-          @if (f['unitSellPrice'].invalid && f['unitSellPrice'].touched) {
-          <span class="form-error">Enter a valid price (min 0.01)</span>
-          }
-
-          <!-- Cost reference hint -->
-          <!-- Use form.getRawValue() so disabled packTypeId is still readable -->
-          @if (form.getRawValue().packTypeId) {
-          <span class="price-hint">
-            Current cost for {{ getPackName(form.getRawValue().packTypeId) }}:
-            <strong>{{ getDefaultCost(form.getRawValue().packTypeId) | lkrCurrency }}</strong>
-          </span>
-          }
-        </div>
-
+  <!-- ── Page Header ─────────────────────────────────────────────── -->
+  <div class="page-header">
+    <div class="page-header-left">
+      <div class="page-header-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none"
+             viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <line x1="12" y1="1" x2="12" y2="23"/>
+          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+        </svg>
       </div>
-
-      <div class="rule-form-actions">
-        <button type="button" class="btn btn-outline" (click)="closeForm()" [disabled]="saveLoading()">
-          Cancel
-        </button>
-        <button type="submit" class="btn btn-primary" [disabled]="saveLoading() || form.invalid">
-          @if (saveLoading()) { <span class="btn-spinner"></span> }
-          {{ editingRule() ? 'Save Changes' : 'Add Rule' }}
-        </button>
+      <div>
+        <h1 class="page-title">{{ (customer()?.name ?? 'Customer') + ' — Price Rules' }}</h1>
+        <p class="page-subtitle">Custom selling prices per pack type. Default price applies if not set.</p>
       </div>
-    </form>
-  </div>
-  }
-
-  <!-- Rules Table -->
-  @if (loading()) {
-  <div class="card">
-    @for (n of [1,2,3]; track n) {
-    <div class="rule-skeleton"></div>
-    }
-  </div>
-  } @else if (!rules() || rules().length === 0) {
-  <div class="empty-state card">
-    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-      stroke-width="1.2">
-      <line x1="12" y1="1" x2="12" y2="23" />
-      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-    </svg>
-    <p>No special price rules. Default prices apply for all packs.</p>
-  </div>
-  } @else {
-  <div class="card" style="padding: 0; overflow: hidden;">
-    <div class="table-wrapper">
-      <table>
-        <thead>
-          <tr>
-            <th>Pack Size</th>
-            <th class="num">Special Sell Price</th>
-            <th class="num">Current Cost</th>
-            <th class="num">Margin</th>
-            <th>Effective From</th>
-            <th style="width: 120px;">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (rule of rules(); track rule.priceRuleId) {
-          <tr>
-            <td>
-              <span class="pack-chip">{{ rule.packName }}</span>
-            </td>
-            <td class="num">
-              <strong>{{ rule.unitSellPrice | lkrCurrency }}</strong>
-            </td>
-            <td class="num text-secondary">
-              {{ getDefaultCost(rule.packTypeId) | lkrCurrency }}
-            </td>
-            <td class="num">
-              <span class="margin-val" [class.positive]="rule.unitSellPrice > getDefaultCost(rule.packTypeId)"
-                [class.negative]="rule.unitSellPrice <= getDefaultCost(rule.packTypeId)">
-                {{ rule.unitSellPrice - getDefaultCost(rule.packTypeId) | lkrCurrency }}
-              </span>
-            </td>
-            <td class="text-sm text-secondary">
-              {{ rule.effectiveFrom | date: 'dd MMM yyyy, HH:mm' }}
-            </td>
-            <td>
-              <div class="row-actions">
-                <button class="btn btn-ghost btn-sm" (click)="openEditForm(rule)" title="Edit rule">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor" stroke-width="2">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                  </svg>
-                </button>
-                <button class="btn btn-ghost btn-sm danger-btn" (click)="confirmDeleteRule(rule)" title="Remove rule">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor" stroke-width="2">
-                    <polyline points="3 6 5 6 21 6" />
-                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                  </svg>
-                </button>
-              </div>
-            </td>
-          </tr>
+    </div>
+    <div class="header-right">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        @for (crumb of breadcrumbs; track crumb.label) {
+          @if (!$last) {
+            <a [routerLink]="crumb.route" class="breadcrumb-link">{{ crumb.label }}</a>
+            <span class="breadcrumb-sep">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none"
+                   viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </span>
+          } @else {
+            <span class="breadcrumb-current">{{ crumb.label }}</span>
           }
-        </tbody>
-      </table>
+        }
+      </nav>
+      @if (!showForm()) {
+        <button class="btn btn-primary" (click)="openAddForm()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none"
+               viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Add Price Rule
+        </button>
+      }
     </div>
   </div>
+
+  <!-- ── Alerts ──────────────────────────────────────────────────── -->
+  @if (successMsg()) {
+    <div class="alert alert-success">
+      <div class="alert-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
+             viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+          <polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+      </div>
+      {{ successMsg() }}
+    </div>
   }
 
+  @if (error()) {
+    <div class="alert alert-error">
+      <div class="alert-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
+             viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+      </div>
+      <span>{{ error() }}</span>
+      <button class="btn btn-sm btn-ghost" (click)="error.set(null)">Dismiss</button>
+    </div>
+  }
+
+  <!-- ── Add / Edit Form ─────────────────────────────────────────── -->
+  @if (showForm()) {
+    <div class="rule-form-card">
+      <div class="rule-form-header">
+        <div class="rule-form-title-wrap">
+          <div class="form-title-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none"
+                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="1" x2="12" y2="23"/>
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+          </div>
+          <h4 class="rule-form-title">{{ editingRule() ? 'Edit Price Rule' : 'New Price Rule' }}</h4>
+        </div>
+        <button class="close-btn" (click)="closeForm()" aria-label="Close form">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
+               viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <form [formGroup]="form" (ngSubmit)="onSave()" novalidate>
+        <div class="rule-form-grid">
+
+          <!-- Pack type -->
+          <div class="form-group">
+            <label class="form-label" for="packTypeId">
+              Pack Size <span class="required-star">*</span>
+            </label>
+            <select id="packTypeId" class="form-control"
+                    [class.is-error]="f['packTypeId'].invalid && f['packTypeId'].touched"
+                    formControlName="packTypeId">
+              <option [ngValue]="null" disabled>Select pack size…</option>
+              @if (editingRule()) {
+                <option [ngValue]="editingRule()!.packTypeId">
+                  {{ getPackName(editingRule()!.packTypeId) }}
+                </option>
+              } @else {
+                @if (availablePacks.length > 0) {
+                  @for (p of availablePacks; track p.packTypeId) {
+                    <option [ngValue]="p.packTypeId">{{ p.packName }}</option>
+                  }
+                } @else {
+                  <option disabled>No packs available</option>
+                }
+              }
+            </select>
+            @if (f['packTypeId'].invalid && f['packTypeId'].touched) {
+              <span class="field-error">Please select a pack size</span>
+            }
+          </div>
+
+          <!-- Unit sell price -->
+          <div class="form-group">
+            <label class="form-label" for="unitSellPrice">
+              Special Sell Price (LKR) <span class="required-star">*</span>
+            </label>
+            <div class="input-with-prefix">
+              <span class="input-prefix">LKR</span>
+              <input id="unitSellPrice" type="number" class="form-control has-prefix"
+                     [class.is-error]="f['unitSellPrice'].invalid && f['unitSellPrice'].touched"
+                     formControlName="unitSellPrice"
+                     placeholder="0.00" min="0.01" step="0.01" />
+            </div>
+            @if (f['unitSellPrice'].invalid && f['unitSellPrice'].touched) {
+              <span class="field-error">Enter a valid price (min 0.01)</span>
+            }
+            @if (form.getRawValue().packTypeId) {
+              <span class="price-hint">
+                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" fill="none"
+                     viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="8" x2="12" y2="12"/>
+                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                Cost for {{ getPackName(form.getRawValue().packTypeId) }}:
+                <strong>{{ getDefaultCost(form.getRawValue().packTypeId) | lkrCurrency }}</strong>
+              </span>
+            }
+          </div>
+
+        </div>
+
+        <div class="rule-form-actions">
+          <button type="button" class="btn btn-outline" (click)="closeForm()" [disabled]="saveLoading()">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" [disabled]="saveLoading() || form.invalid">
+            @if (saveLoading()) { <span class="btn-spinner"></span> }
+            {{ editingRule() ? 'Save Changes' : 'Add Rule' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+
+  <!-- ── Skeleton ────────────────────────────────────────────────── -->
+  @if (loading()) {
+    <div class="table-card">
+      @for (n of [1,2,3]; track n) {
+        <div class="rule-skeleton"></div>
+      }
+    </div>
+
+  <!-- ── Empty ───────────────────────────────────────────────────── -->
+  } @else if (!rules() || rules().length === 0) {
+    <div class="empty-state">
+      <div class="empty-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" fill="none"
+             viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.3">
+          <line x1="12" y1="1" x2="12" y2="23"/>
+          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+        </svg>
+      </div>
+      <p class="empty-title">No special price rules</p>
+      <p class="empty-sub">Default prices apply for all packs for this customer.</p>
+      <button class="btn btn-primary btn-sm" (click)="openAddForm()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none"
+             viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Add First Rule
+      </button>
+    </div>
+
+  <!-- ── Table ───────────────────────────────────────────────────── -->
+  } @else {
+    <div class="table-card">
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Pack Size</th>
+              <th class="num">Special Price</th>
+              <th class="num">Current Cost</th>
+              <th class="num">Margin</th>
+              <th>Effective From</th>
+              <th class="actions-col">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (rule of rules(); track rule.priceRuleId) {
+              <tr>
+                <td>
+                  <span class="pack-chip">{{ rule.packName }}</span>
+                </td>
+                <td class="num">
+                  <span class="price-val">{{ rule.unitSellPrice | lkrCurrency }}</span>
+                </td>
+                <td class="num cost-val">
+                  {{ getDefaultCost(rule.packTypeId) | lkrCurrency }}
+                </td>
+                <td class="num">
+                  <span class="margin-badge"
+                        [class.positive]="rule.unitSellPrice > getDefaultCost(rule.packTypeId)"
+                        [class.negative]="rule.unitSellPrice <= getDefaultCost(rule.packTypeId)">
+                    @if (rule.unitSellPrice > getDefaultCost(rule.packTypeId)) {
+                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="none"
+                           viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="18 15 12 9 6 15"/>
+                      </svg>
+                    } @else {
+                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="none"
+                           viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="6 9 12 15 18 9"/>
+                      </svg>
+                    }
+                    {{ rule.unitSellPrice - getDefaultCost(rule.packTypeId) | lkrCurrency }}
+                  </span>
+                </td>
+                <td class="date-val">{{ rule.effectiveFrom | date: 'dd MMM yyyy, HH:mm' }}</td>
+                <td>
+                  <div class="row-actions">
+                    <button class="btn btn-ghost btn-sm" (click)="openEditForm(rule)" title="Edit rule">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none"
+                           viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                      </svg>
+                      Edit
+                    </button>
+                    <button class="btn btn-ghost btn-sm btn-danger" (click)="confirmDeleteRule(rule)" title="Remove rule">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none"
+                           viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                      </svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
 
 </div>
 
 @if (deleteTarget()) {
-<app-confirm-dialog title="Remove Price Rule"
-  [message]="'Remove special price for ' + getPackName(deleteTarget()!.packTypeId) + '? Default price will apply.'"
-  confirmLabel="Remove" variant="danger" [loading]="deleteLoad()" (confirmed)="onDeleteRule()"
-  (cancelled)="deleteTarget.set(null)" />
+  <app-confirm-dialog
+    title="Remove Price Rule"
+    [message]="'Remove special price for ' + getPackName(deleteTarget()!.packTypeId) + '? Default price will apply.'"
+    confirmLabel="Remove"
+    variant="danger"
+    [loading]="deleteLoad()"
+    (confirmed)="onDeleteRule()"
+    (cancelled)="deleteTarget.set(null)"
+  />
 }
