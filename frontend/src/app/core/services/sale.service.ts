@@ -68,7 +68,8 @@ export class SaleService {
         unitCostAtSale: item.unit_cost_at_sale,
         lineRevenue: item.line_revenue,
         lineCost: item.line_cost,
-        lineProfit: item.line_profit
+        lineProfit: item.line_profit,
+        weightKg: item.pack_type_id?.weight_kg ?? null,  
       }))
     };
   }

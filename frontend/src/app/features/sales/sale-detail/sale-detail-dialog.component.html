@@ -99,7 +99,9 @@
               @for (item of s.items; track item.saleItemId) {
               <tr>
                 <td>
-                  <span class="pack-chip">{{ item.packName }}</span>
+                  <span class="pack-chip">
+                    {{ item.packName }}{{ item.weightKg != null ? ' - ' + item.weightKg + 'kg' : '' }}
+                  </span>
                 </td>
                 <td class="num">{{ item.qty }}</td>
                 <td class="num">{{ item.unitPriceSold | lkrCurrency }}</td>

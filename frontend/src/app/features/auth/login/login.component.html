@@ -1,124 +1,144 @@
-<!-- src/app/features/auth/login/login.component.html -->
 <div class="login-page">
 
-  <div class="login-card">
-
-    <!-- Brand -->
-    <div class="login-brand">
-      <div class="login-logo">
-        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="none"
-             viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+  <!-- Left panel — branding -->
+  <div class="login-panel login-panel--left">
+    <div class="brand-content">
+      <div class="brand-logo">
+        <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" fill="none"
+             viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
           <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
           <polyline points="9 22 9 12 15 12 15 22"/>
         </svg>
       </div>
-      <div>
-        <h1 class="login-title">Matheesha Flour Mill</h1>
-        <p class="login-subtitle">Sign in to your account</p>
-      </div>
+      <h1 class="brand-name">Matheesha<br>Flour Mill</h1>
+      <p class="brand-tagline">Enterprise Resource Planning</p>
+
+      <div class="brand-divider"></div>
+
+      <ul class="brand-features">
+        <li>
+          <span class="feat-icon"><i class="pi pi-chart-bar"></i></span>
+          <span>Real-time Sales & Analytics</span>
+        </li>
+        <li>
+          <span class="feat-icon"><i class="pi pi-box"></i></span>
+          <span>Inventory & Stock Control</span>
+        </li>
+        <li>
+          <span class="feat-icon"><i class="pi pi-users"></i></span>
+          <span>Customer Management</span>
+        </li>
+        <li>
+          <span class="feat-icon"><i class="pi pi-file"></i></span>
+          <span>Billing & Reporting</span>
+        </li>
+      </ul>
     </div>
 
-    <!-- Error banner -->
-    @if (error()) {
-      <div class="alert-error" role="alert">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
-             viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="8" x2="12" y2="12"/>
-          <line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
-        {{ error() }}
-      </div>
-    }
-
-    <!-- Form -->
-    <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
-
-      <!-- Username -->
-      <div class="form-group">
-        <label class="form-label" for="username">
-          Username <span>*</span>
-        </label>
-        <input
-          id="username"
-          type="text"
-          class="form-control"
-          [class.error]="f['username'].invalid && f['username'].touched"
-          formControlName="username"
-          placeholder="Enter your username"
-          autocomplete="username"
-        />
-        @if (f['username'].invalid && f['username'].touched) {
-          <span class="form-error">Username is required (min 3 characters)</span>
-        }
-      </div>
-
-      <!-- Password -->
-      <div class="form-group" style="margin-top: 16px;">
-        <label class="form-label" for="password">
-          Password <span>*</span>
-        </label>
-        <div class="input-group">
-          <input
-            id="password"
-            [type]="showPass() ? 'text' : 'password'"
-            class="form-control"
-            [class.error]="f['password'].invalid && f['password'].touched"
-            formControlName="password"
-            placeholder="Enter your password"
-            autocomplete="current-password"
-          />
-          <button
-            type="button"
-            class="input-suffix"
-            (click)="togglePassword()"
-            [title]="showPass() ? 'Hide password' : 'Show password'"
-          >
-            @if (showPass()) {
-              <!-- Eye-off -->
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
-                   viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8
-                         a18.45 18.45 0 0 1 5.06-5.94"/>
-                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8
-                         a18.5 18.5 0 0 1-2.16 3.19"/>
-                <line x1="1" y1="1" x2="23" y2="23"/>
-              </svg>
-            } @else {
-              <!-- Eye -->
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
-                   viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
-            }
-          </button>
-        </div>
-        @if (f['password'].invalid && f['password'].touched) {
-          <span class="form-error">Password is required (min 4 characters)</span>
-        }
-      </div>
-
-      <!-- Submit -->
-      <button
-        type="submit"
-        class="btn btn-primary w-full login-btn"
-        [disabled]="loading()"
-        style="margin-top: 24px;"
-      >
-        @if (loading()) {
-          <span class="btn-spinner"></span>
-          Signing in...
-        } @else {
-          Sign In
-        }
-      </button>
-
-    </form>
-
-    <p class="login-footer">
-      Matheesha Flour Mill &copy; {{ currentYear }}
+    <p class="panel-footer">
+      &copy; {{ currentYear }} Matheesha Flour Mill. All rights reserved.
     </p>
-
   </div>
+
+  <!-- Right panel — form -->
+  <div class="login-panel login-panel--right">
+    <div class="login-form-wrap">
+
+      <!-- Mobile logo (visible only on mobile) -->
+      <div class="mobile-brand">
+        <div class="brand-logo brand-logo--sm">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none"
+               viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+        </div>
+        <span>Matheesha Flour Mill</span>
+      </div>
+
+      <!-- Heading -->
+      <div class="form-heading">
+        <h2>Welcome back</h2>
+        <p>Sign in to your ERP account to continue</p>
+      </div>
+
+      <!-- Error banner -->
+      @if (error()) {
+        <div class="alert-error" role="alert">
+          <i class="pi pi-exclamation-circle"></i>
+          <span>{{ error() }}</span>
+        </div>
+      }
+
+      <!-- Form -->
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate class="login-form">
+
+        <!-- Username -->
+        <div class="field" [class.field--error]="f['username'].invalid && f['username'].touched">
+          <label for="username">Username</label>
+          <div class="input-wrap">
+            <span class="input-icon"><i class="pi pi-user"></i></span>
+            <input
+              id="username"
+              type="text"
+              formControlName="username"
+              placeholder="Enter your username"
+              autocomplete="username"
+            />
+          </div>
+          @if (f['username'].invalid && f['username'].touched) {
+            <span class="field-error">
+              <i class="pi pi-info-circle"></i>
+              Username is required (min. 3 characters)
+            </span>
+          }
+        </div>
+
+        <!-- Password -->
+        <div class="field" [class.field--error]="f['password'].invalid && f['password'].touched">
+          <label for="password">Password</label>
+          <div class="input-wrap">
+            <span class="input-icon"><i class="pi pi-lock"></i></span>
+            <input
+              id="password"
+              [type]="showPass() ? 'text' : 'password'"
+              formControlName="password"
+              placeholder="Enter your password"
+              autocomplete="current-password"
+            />
+            <button type="button" class="toggle-pass" (click)="togglePassword()"
+                    [title]="showPass() ? 'Hide password' : 'Show password'">
+              <i class="pi" [class.pi-eye]="!showPass()" [class.pi-eye-slash]="showPass()"></i>
+            </button>
+          </div>
+          @if (f['password'].invalid && f['password'].touched) {
+            <span class="field-error">
+              <i class="pi pi-info-circle"></i>
+              Password is required (min. 4 characters)
+            </span>
+          }
+        </div>
+
+        <!-- Submit -->
+        <button type="submit" class="btn-signin" [disabled]="loading()">
+          @if (loading()) {
+            <span class="spinner"></span>
+            <span>Signing in…</span>
+          } @else {
+            <i class="pi pi-sign-in"></i>
+            <span>Sign In</span>
+          }
+        </button>
+
+      </form>
+
+      <!-- Footer note -->
+      <p class="form-note">
+        <i class="pi pi-shield"></i>
+        Secured access — authorised personnel only
+      </p>
+
+    </div>
+  </div>
+
 </div>

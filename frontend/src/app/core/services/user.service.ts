@@ -24,7 +24,7 @@ export interface UserResponse {
   full_name: string;
   username: string;
   role: 'SALES' | 'ADMIN';
-  createdAt: string;
+  created_at: string;
 }
 
 @Injectable({ providedIn: 'root' })

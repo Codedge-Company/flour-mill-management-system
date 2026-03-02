@@ -155,7 +155,7 @@ export class InvoicePdfService {
       const qty = this.fmtQty(item.qty ?? item.quantityKg ?? 0);
       return [
         `${i + 1}`,
-        item.packName ?? item.productName ?? '',
+        `${item.packName ?? item.productName ?? ''}${item.weightKg != null ? ' - ' + item.weightKg + 'kg' : ''}`,
         `${qty}\npcs`,   // ← stacked: number + newline + "pcs"
         this.fmt(item.unitPriceSold ?? item.unitPrice ?? 0),
         this.fmt(item.lineRevenue ?? item.lineTotal ?? 0),

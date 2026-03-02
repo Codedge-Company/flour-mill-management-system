@@ -20,24 +20,43 @@
                 <form [formGroup]="headerForm">
                     <div class="header-form-grid">
 
-                        <div class="form-group">
-                            <label class="form-label" for="customerId">
-                                Customer <span>*</span>
-                            </label>
-                            <select id="customerId" class="form-control" formControlName="customerId"
-                                (change)="onCustomerChange(headerForm.value.customerId)">
-                                <option [ngValue]="null" disabled>Select a customer...</option>
-                                @for (c of customers(); track c.customerId) {
-                                <option [ngValue]="c.customerId">
-                                    {{ c.name }} ({{ c.customerCode }})
-                                </option>
-                                }
-                            </select>
-                            @if (!headerForm.value.customerId &&
-                            headerForm.get('customerId')?.touched) {
-                            <span class="form-error">Customer is required</span>
-                            }
-                        </div>
+<div class="form-group customer-search-group" #customerDropdownRef>
+    <label class="form-label" for="customerSearch">
+        Customer <span>*</span>
+    </label>
+    <div class="custom-select-wrapper">
+        <input
+            id="customerSearch"
+            type="text"
+            class="form-control"
+            placeholder="Search customer..."
+            [value]="customerSearchText()"
+            (input)="onCustomerSearch($event)"
+            (focus)="customerDropdownOpen.set(true)"
+            autocomplete="off"
+        />
+        @if (customerDropdownOpen() && filteredCustomers().length > 0) {
+        <ul class="custom-dropdown-list">
+            @for (c of filteredCustomers(); track c.customerId) {
+            <li class="custom-dropdown-item"
+                (mousedown)="selectCustomer(c)">
+                {{ c.name }}
+                <span class="customer-code">({{ c.customerCode }})</span>
+            </li>
+            }
+        </ul>
+        }
+        @if (customerDropdownOpen() && filteredCustomers().length === 0 && customerSearchText()) {
+        <ul class="custom-dropdown-list">
+            <li class="custom-dropdown-item no-result">No customers found</li>
+        </ul>
+        }
+    </div>
+    @if (!headerForm.value.customerId && headerForm.get('customerId')?.touched) {
+    <span class="form-error">Customer is required</span>
+    }
+</div>
+
 
                         <div class="form-group">
                             <label class="form-label">Payment Method</label>
@@ -94,7 +113,7 @@
                                 <option [ngValue]="null" disabled>Select pack...</option>
                                 @for (p of getAvailablePacks(i); track p.packTypeId) {
                                 <option [ngValue]="p.packTypeId">
-                                    {{ p.packName }}
+                                    {{ p.packName }} - {{ p.weightKg }}kg
                                     @if (p.isLowStock) { ⚠️ }
                                 </option>
                                 }

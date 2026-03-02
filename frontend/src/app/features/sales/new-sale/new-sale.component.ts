@@ -88,6 +88,16 @@ hasValidRows = computed(() =>
   selectedCustomer = computed(() =>
     this.getCustomer(this.headerForm.get('customerId')?.value)
   );
+ customerSearchText = signal<string>('');
+customerDropdownOpen = signal<boolean>(false);
+filteredCustomers = computed(() => {
+    const search = this.customerSearchText().toLowerCase().trim();
+    if (!search) return this.customers();
+    return this.customers().filter(c =>
+        c.name.toLowerCase().includes(search) ||
+        c.customerCode.toLowerCase().includes(search)
+    );
+});
 
   constructor(
     private fb: FormBuilder,
@@ -287,4 +297,21 @@ hasValidRows = computed(() =>
   getCustomer(customerId: string | null): Customer | null {
     return customerId ? this.customers().find(c => c.customerId === customerId) ?? null : null;
   }
+  onCustomerSearch(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.customerSearchText.set(value);
+    this.customerDropdownOpen.set(true);
+    // Clear selection if user edits the text
+    if (this.headerForm.value.customerId) {
+        this.headerForm.patchValue({ customerId: null });
+    }
+}
+
+selectCustomer(customer: Customer): void {
+    this.headerForm.patchValue({ customerId: customer.customerId });
+    this.customerSearchText.set(`${customer.name} (${customer.customerCode})`);
+    this.customerDropdownOpen.set(false);
+    this.headerForm.get('customerId')?.markAsTouched();
+    this.onCustomerChange(customer.customerId);
+}
 }

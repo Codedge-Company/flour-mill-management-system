@@ -19,7 +19,7 @@
 }
 
 .panel {
-  width: 680px;
+  width: 700px;
   max-width: 95vw;
   height: 100vh;
   background: var(--surface);
@@ -175,7 +175,7 @@
 .items-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 11px;
 }
 
 .items-table thead tr {
@@ -222,7 +222,7 @@
 .pack-chip {
   background: color-mix(in srgb, var(--primary) 10%, transparent);
   color: var(--primary);
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 700;
   padding: 3px 10px;
   border-radius: 20px;

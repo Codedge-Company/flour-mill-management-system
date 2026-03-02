@@ -10,6 +10,7 @@ export interface SaleItem {
   unitCostAtSale: number;
   lineRevenue: number;
   lineCost: number;
+  weightKg: number | null;
   lineProfit: number;
 }
 

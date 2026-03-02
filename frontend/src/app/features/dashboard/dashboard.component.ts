@@ -62,8 +62,8 @@ export class DashboardComponent implements OnInit {
 
   // ── Date Pickers ───────────────────────────────────────────────────────────
   singleDate: Date | null = null;
-  customFromDate: Date | null = null;
-  customToDate: Date | null = null;
+  customFromDate = signal<Date | null>(null);
+  customToDate = signal<Date | null>(null);
   today = new Date();
 
   // Chart view toggle
@@ -89,13 +89,14 @@ export class DashboardComponent implements OnInit {
 
   // ✅ Custom Range Label
   customRangeLabel = computed(() => {
-    if (!this.customFromDate || !this.customToDate) return 'Custom Range';
-    const from = this.customFromDate.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
-    const to = this.customToDate.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
-    return `${from} → ${to}`;
+    const from = this.customFromDate();
+    const to = this.customToDate();
+    if (!from || !to) return 'Custom Range';
+    return `${from.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })} → ${to.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })}`;
   });
 
-  isCustomRangeValid = computed(() => !!this.customFromDate && !!this.customToDate);
+  isCustomRangeValid = computed(() => !!this.customFromDate() && !!this.customToDate());
+
 
   // ── DYNAMIC PERCENTAGE DELTAS ──────────────────────────────────────────────
   prevTotals = computed(() => {
@@ -206,9 +207,9 @@ export class DashboardComponent implements OnInit {
       x: { display: false, grid: { display: false }, ticks: { display: false } },
       y: { display: false, beginAtZero: true, grid: { display: false }, ticks: { display: false } },
     },
-    elements: { 
-      bar: { borderRadius: 2, borderSkipped: false }, 
-      point: { radius: 0 } 
+    elements: {
+      bar: { borderRadius: 2, borderSkipped: false },
+      point: { radius: 0 }
     },
     animation: false,
     categoryPercentage: 0.8,
@@ -228,7 +229,7 @@ export class DashboardComponent implements OnInit {
     private dashboardService: DashboardService,
     private inventoryService: InventoryService,
     private notificationService: NotificationService,
-  ) {}
+  ) { }
 
   // ── LIFECYCLE ──────────────────────────────────────────────────────────────
   ngOnInit(): void {
@@ -242,7 +243,7 @@ export class DashboardComponent implements OnInit {
     this.activePreset.set(type);
     this.showCustom.set(false);
     this.showCustomRange.set(false);
-    
+
     switch (type) {
       case 'today':
         this.singleDate = new Date();
@@ -253,7 +254,7 @@ export class DashboardComponent implements OnInit {
       default:
         this.singleDate = null;
     }
-    
+
     this.loadData(this.buildRange(type));
   }
 
@@ -268,23 +269,23 @@ export class DashboardComponent implements OnInit {
     this.showCustomRange.update(show => !show);
   }
 
-  clearCustomRange(): void {
-    this.customFromDate = null;
-    this.customToDate = null;
-    this.showCustomRange.set(false);
-  }
-
   applyCustomRange(): void {
     if (!this.isCustomRangeValid()) return;
     const fmt = (d: Date) => d.toISOString().split('T')[0];
-    this.loadData({ 
-      dateFrom: fmt(this.customFromDate!), 
-      dateTo: fmt(this.customToDate!) 
+    this.loadData({
+      dateFrom: fmt(this.customFromDate()!),
+      dateTo: fmt(this.customToDate()!)
     });
     this.showCustomRange.set(false);
     this.activePreset.set('custom');
   }
 
+
+  clearCustomRange(): void {
+    this.customFromDate.set(null);
+    this.customToDate.set(null);
+    this.showCustomRange.set(false);
+  }
   // ── EXISTING METHODS (Updated) ─────────────────────────────────────────────
   applyPreset(preset: RangePreset): void {
     this.setDateFilter(preset);  // ✅ Reuse new filter logic
@@ -337,13 +338,14 @@ export class DashboardComponent implements OnInit {
   }
 
   refresh(): void {
-    if (this.activePreset() === 'custom' && this.customFromDate && this.customToDate) {
+    if (this.activePreset() === 'custom' && this.customFromDate() && this.customToDate()) {
       this.applyCustomRange();
     } else {
       this.loadData(this.buildRange(this.activePreset()));
     }
     this.loadInventory();
   }
+
 
   // ── Sparkline builders ──────────────────────────────────────────────────────
   private buildSparklines(metrics: DailyMetric[]): void {
@@ -352,7 +354,7 @@ export class DashboardComponent implements OnInit {
     this.sparkRevenue = this.buildSparkLine(labels, metrics.map(m => m.revenue), '#3b82f6', 'rgba(59,130,246,0.12)');
     this.sparkCost = this.buildSparkLine(labels, metrics.map(m => m.cost), '#f59e0b', 'rgba(245,158,11,0.12)');
     this.sparkProfit = this.buildSparkLine(labels, metrics.map(m => m.profit), '#10b981', 'rgba(16,185,129,0.12)');
-    
+
     // Fixed sales data with fallback from summary
     const salesData = metrics.map(() => (this.summary()?.totalSales ?? 1) / Math.max(1, metrics.length));
     this.sparkSales = this.buildSparkBar(labels, salesData);

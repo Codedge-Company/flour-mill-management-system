@@ -1,4 +1,4 @@
-/* revenue-chart.component.css — Light/White Theme */
+/* revenue-chart.component.css — Light/White Theme + Scroll-Snap Sections */
 
 :host {
   --blue:    #2563eb;
@@ -19,10 +19,145 @@
   display: block;
 }
 
+/* ─── Root ────────────────────────────────────────────────────────────────── */
 .rc-root {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 0; /* sections are separated by their own padding/dividers */
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCROLL CONTAINER — three sections scroll within a fixed-height window
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Scroll indicator dots (visible on the right edge) */
+.scroll-nav {
+  position: absolute;
+  right: -20px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.scroll-nav-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--border);
+  transition: all .3s ease;
+}
+
+.scroll-nav-dot--active {
+  background: var(--blue);
+  transform: scale(1.4);
+}
+
+/* Outer scroll wrapper */
+.rc-scroll-wrapper {
+  position: relative;
+  /* fixed viewport height — shows one section at a time */
+  height: 500px;
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+  border-radius: var(--radius, 12px);
+  /* subtle scroll track */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.rc-scroll-wrapper::-webkit-scrollbar {
+  width: 4px;
+}
+.rc-scroll-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+.rc-scroll-wrapper::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 99px;
+}
+
+/* Each section snaps into view */
+.rc-section {
+  height: 500px; /* exactly the wrapper height */
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 4px 20px 4px;
+  box-sizing: border-box;
+  /* fade-in when snapped */
+  opacity: 1;
+  transition: opacity .3s ease;
+}
+
+/* Section header pill */
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .7px;
+  color: var(--muted);
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-label-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+}
+
+.section-label-icon--blue    { background: var(--blue-muted);    color: var(--blue); }
+.section-label-icon--violet  { background: var(--violet-muted);  color: var(--violet); }
+.section-label-icon--emerald { background: var(--emerald-muted); color: var(--emerald); }
+
+/* Scroll hint arrow — shown at bottom of each non-last section */
+.scroll-hint {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+  animation: hint-bounce 2s ease-in-out infinite;
+  padding-bottom: 4px;
+  user-select: none;
+}
+
+.scroll-hint i { font-size: 12px; }
+
+@keyframes hint-bounce {
+  0%,100% { transform: translateY(0); opacity: .6; }
+  50%      { transform: translateY(4px); opacity: 1; }
+}
+
+/* Hide scroll hint in the last section */
+.rc-section:last-child .scroll-hint {
+  display: none;
+}
+
+/* Section divider (visible between sections as a faint line) */
+.section-divider {
+  position: absolute;
+  left: 0; right: 0;
+  height: 1px;
+  background: var(--border);
+  pointer-events: none;
 }
 
 /* ─── Month tabs ──────────────────────────────────────────────────────────── */
@@ -68,6 +203,7 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 10px;
+  flex-shrink: 0;
 }
 
 .spot-card {
@@ -104,10 +240,14 @@
   color: var(--text);
 }
 
-/* ─── Chart area ──────────────────────────────────────────────────────────── */
-.chart-area { width: 100%; }
+/* ─── Chart area (Section 1 — bar chart) ─────────────────────────────────── */
+.chart-area {
+  width: 100%;
+  flex: 1;
+  min-height: 0; /* allow flex shrink */
+}
 
-/* ─── Pie row ─────────────────────────────────────────────────────────────── */
+/* ─── Pie row (Section 2) ─────────────────────────────────────────────────── */
 .pie-row {
   display: grid;
   grid-template-columns: 200px 1fr;
@@ -117,6 +257,8 @@
   background: var(--bg-2);
   border-radius: 12px;
   border: 1px solid var(--border);
+  flex: 1;
+  min-height: 0;
 }
 
 .pie-wrap {
@@ -185,8 +327,14 @@
 .pie-leg-pct  { font-size: 11px; color: var(--muted); min-width: 36px; text-align: right; }
 .pie-leg-val  { font-size: 13px; font-weight: 600; color: var(--text); min-width: 72px; text-align: right; }
 
-/* ─── PrimeNG Table light ─────────────────────────────────────────────────── */
-.month-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+/* ─── PrimeNG Table light (Section 3) ────────────────────────────────────── */
+.month-table-wrap {
+  overflow-x: auto;
+  overflow-y: auto; /* table can scroll inside its section */
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+  min-height: 0;
+}
 
 ::ng-deep .rc-table.p-datatable {
   background: transparent !important;
@@ -203,6 +351,10 @@
   border-color: var(--border) !important;
   padding: 10px 12px !important;
   white-space: nowrap;
+  /* sticky header inside scrolling table section */
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 
 ::ng-deep .rc-table .p-datatable-tbody > tr > td {
@@ -228,7 +380,6 @@
 
 .num-col { text-align: right !important; }
 .bar-col { width: 130px !important; min-width: 130px; }
-
 
 /* Month cell */
 .month-cell { display: flex; align-items: center; gap: 8px; }
@@ -290,6 +441,15 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 @media (max-width: 768px) {
+  .rc-scroll-wrapper {
+    height: 460px;
+  }
+
+  .rc-section {
+    height: 460px;
+    padding: 16px 4px;
+  }
+
   .spotlight-row {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -315,6 +475,15 @@
 }
 
 @media (max-width: 480px) {
+  .rc-scroll-wrapper {
+    height: 420px;
+  }
+
+  .rc-section {
+    height: 420px;
+    padding: 12px 2px;
+  }
+
   .month-tabs-row {
     gap: 3px;
   }

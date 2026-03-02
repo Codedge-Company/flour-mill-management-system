@@ -1,15 +1,18 @@
-<!-- revenue-chart.component.html -->
+<!-- revenue-chart.component.html
+     Three scroll-snap sections: 1) Bar/Line Chart  2) Pie/Donut  3) Data Table
+-->
 <div class="rc-root">
 
-  <!-- Month selector tabs -->
+  <!-- ── Month filter tabs (always visible) ─────────────────────────────── -->
   <div class="month-tabs-row">
-    <button
-      *ngFor="let m of monthLabels; let i = index"
-      class="month-tab"
-      [class.month-tab--active]="selectedMonth === i"
-      (click)="selectMonth(i)">
-      {{ m }}
-    </button>
+    @for (m of availableMonths; track m.key) {
+      <button
+        class="month-tab"
+        [class.month-tab--active]="selectedMonth === m.key"
+        (click)="selectMonth(m.key)">
+        {{ m.label }}
+      </button>
+    }
     <button
       class="month-tab month-tab--all"
       [class.month-tab--active]="selectedMonth === -1"
@@ -18,123 +21,217 @@
     </button>
   </div>
 
-  <!-- Selected month spotlight cards -->
-  @if (selectedMonth >= 0 && spotlightData) {
-    <div class="spotlight-row">
-      <div class="spot-card spot-card--blue">
-        <span class="spot-label">Revenue</span>
-        <span class="spot-val">{{ formatCurrency(spotlightData.revenue) }}</span>
-      </div>
-      <div class="spot-card spot-card--amber">
-        <span class="spot-label">Cost</span>
-        <span class="spot-val">{{ formatCurrency(spotlightData.cost) }}</span>
-      </div>
-      <div class="spot-card spot-card--emerald">
-        <span class="spot-label">Profit</span>
-        <span class="spot-val">{{ formatCurrency(spotlightData.profit) }}</span>
-      </div>
-      <div class="spot-card spot-card--violet">
-        <span class="spot-label">Margin</span>
-        <span class="spot-val">{{ spotlightMargin }}%</span>
-      </div>
+  <!-- ── Spotlight summary cards (always visible) ───────────────────────── -->
+  <div class="spotlight-row">
+    <div class="spot-card spot-card--blue">
+      <span class="spot-label">Revenue</span>
+      <span class="spot-val">{{ spotRevenue | lkrCurrency }}</span>
     </div>
-  }
-
-  <!-- Main bar + line chart -->
-  <div class="chart-area">
-    <p-chart
-      type="bar"
-      [data]="barLineData"
-      [options]="barLineOptions"
-      [height]="'300px'">
-    </p-chart>
-  </div>
-
-  <!-- Pie row (shown when view is 'both' or 'trend') -->
-  <div class="pie-row">
-    <div class="pie-wrap">
-      <p-chart
-        type="doughnut"
-        [data]="pieData"
-        [options]="pieOptions"
-        [height]="'200px'">
-      </p-chart>
-      <div class="donut-center">
-        <span class="donut-pct">{{ totalMargin }}%</span>
-        <span class="donut-sub">Margin</span>
-      </div>
+    <div class="spot-card spot-card--amber">
+      <span class="spot-label">Cost</span>
+      <span class="spot-val">{{ spotCost | lkrCurrency }}</span>
     </div>
-    <div class="pie-legend">
-      <div class="pie-leg-item" *ngFor="let l of pieLegend">
-        <div class="pie-leg-left">
-          <span class="pie-leg-dot" [style.background]="l.color"></span>
-          <span class="pie-leg-name">{{ l.label }}</span>
-        </div>
-        <div class="pie-leg-right">
-          <span class="pie-leg-pct">{{ l.pct }}%</span>
-          <span class="pie-leg-val">{{ formatCurrency(l.value) }}</span>
-        </div>
-      </div>
+    <div class="spot-card spot-card--emerald">
+      <span class="spot-label">Profit</span>
+      <span class="spot-val">{{ spotProfit | lkrCurrency }}</span>
+    </div>
+    <div class="spot-card spot-card--violet">
+      <span class="spot-label">Margin</span>
+      <span class="spot-val">{{ spotMargin }}%</span>
     </div>
   </div>
 
-  <!-- Month-by-month PrimeNG data table -->
-  <div class="month-table-wrap">
-    <p-table
-      [value]="tableRows"
-      styleClass="rc-table"
-      [tableStyle]="{'min-width': '600px'}"
-      [sortField]="'month'"
-      [sortOrder]="1">
-      <ng-template pTemplate="header">
-        <tr>
-          <th pSortableColumn="month">Month <p-sortIcon field="month"/></th>
-          <th pSortableColumn="revenue" class="num-col">Revenue <p-sortIcon field="revenue"/></th>
-          <th pSortableColumn="cost"    class="num-col">Cost    <p-sortIcon field="cost"/></th>
-          <th pSortableColumn="profit"  class="num-col">Profit  <p-sortIcon field="profit"/></th>
-          <th pSortableColumn="margin"  class="num-col">Margin  <p-sortIcon field="margin"/></th>
-          <th class="bar-col">vs Peak</th>
-        </tr>
-      </ng-template>
-      <ng-template pTemplate="body" let-row>
-        <tr [class.row-best]="row.isBest">
-          <td>
-            <div class="month-cell">
-              <span class="month-name">{{ row.month }}</span>
-              @if (row.isBest) {
-                <span class="best-tag">
-                  <i class="pi pi-star-fill"></i> Best
+  <!-- ═══ SCROLLABLE SECTIONS ═════════════════════════════════════════════ -->
+  <div class="rc-scroll-wrapper">
+
+    <!-- ── SECTION 1: Bar / Line Chart ─────────────────────────────────── -->
+    <div class="rc-section">
+      <div class="section-label">
+        <span class="section-label-icon section-label-icon--blue">
+          <i class="pi pi-chart-bar"></i>
+        </span>
+        Revenue · Cost · Profit — Chart
+      </div>
+
+      <div class="chart-area">
+        <p-chart
+          type="bar"
+          [data]="barLineData"
+          [options]="barLineOptions"
+          height="280px">
+        </p-chart>
+      </div>
+
+      <div class="scroll-hint">
+        <i class="pi pi-angle-down"></i> Scroll for breakdown
+      </div>
+    </div>
+
+    <!-- ── SECTION 2: Donut / Pie Chart ────────────────────────────────── -->
+    <div class="rc-section">
+      <div class="section-label">
+        <span class="section-label-icon section-label-icon--violet">
+          <i class="pi pi-chart-pie"></i>
+        </span>
+        Revenue Breakdown — Pie View
+      </div>
+
+      <div class="pie-row">
+        <!-- Donut -->
+        <div class="pie-wrap">
+          <p-chart
+            type="doughnut"
+            [data]="pieData"
+            [options]="pieOptions"
+            height="180px"
+            width="180px">
+          </p-chart>
+          <div class="donut-center">
+            <span class="donut-pct">{{ spotMargin }}%</span>
+            <span class="donut-sub">Margin</span>
+          </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="pie-legend">
+          <div class="pie-leg-item">
+            <div class="pie-leg-left">
+              <span class="pie-leg-dot" style="background:#3b82f6"></span>
+              <span class="pie-leg-name">Revenue</span>
+            </div>
+            <div class="pie-leg-right">
+              <span class="pie-leg-pct">{{ revPct }}%</span>
+              <span class="pie-leg-val">{{ spotRevenue | lkrCurrency }}</span>
+            </div>
+          </div>
+          <div class="pie-leg-item">
+            <div class="pie-leg-left">
+              <span class="pie-leg-dot" style="background:#f59e0b"></span>
+              <span class="pie-leg-name">Cost</span>
+            </div>
+            <div class="pie-leg-right">
+              <span class="pie-leg-pct">{{ costPct }}%</span>
+              <span class="pie-leg-val">{{ spotCost | lkrCurrency }}</span>
+            </div>
+          </div>
+          <div class="pie-leg-item">
+            <div class="pie-leg-left">
+              <span class="pie-leg-dot" style="background:#10b981"></span>
+              <span class="pie-leg-name">Profit</span>
+            </div>
+            <div class="pie-leg-right">
+              <span class="pie-leg-pct">{{ profitPct }}%</span>
+              <span class="pie-leg-val">{{ spotProfit | lkrCurrency }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="scroll-hint">
+        <i class="pi pi-angle-down"></i> Scroll for monthly table
+      </div>
+    </div>
+
+    <!-- ── SECTION 3: Data Table ────────────────────────────────────────── -->
+    <div class="rc-section">
+      <div class="section-label">
+        <span class="section-label-icon section-label-icon--emerald">
+          <i class="pi pi-table"></i>
+        </span>
+        Monthly Breakdown — Table
+      </div>
+
+      <div class="month-table-wrap">
+        <p-table
+          [value]="tableRows"
+          styleClass="rc-table p-datatable-sm"
+          sortField="revenue"
+          [sortOrder]="-1">
+
+          <ng-template pTemplate="header">
+            <tr>
+              <th pSortableColumn="month">
+                Month <p-sortIcon field="month" />
+              </th>
+              <th pSortableColumn="revenue" class="num-col">
+                Revenue <p-sortIcon field="revenue" />
+              </th>
+              <th pSortableColumn="cost" class="num-col">
+                Cost <p-sortIcon field="cost" />
+              </th>
+              <th pSortableColumn="profit" class="num-col">
+                Profit <p-sortIcon field="profit" />
+              </th>
+              <th class="num-col">Margin</th>
+              <th class="bar-col">Bars</th>
+            </tr>
+          </ng-template>
+
+          <ng-template pTemplate="body" let-row>
+            <tr [class.row-best]="row.isBest">
+              <!-- Month -->
+              <td>
+                <div class="month-cell">
+                  <span class="month-name">{{ row.month }}</span>
+                  @if (row.isBest) {
+                    <span class="best-tag">
+                      <i class="pi pi-star-fill"></i> Best
+                    </span>
+                  }
+                </div>
+              </td>
+
+              <!-- Revenue -->
+              <td class="num-col">{{ row.revenue | lkrCurrency }}</td>
+
+              <!-- Cost -->
+              <td class="num-col">{{ row.cost | lkrCurrency }}</td>
+
+              <!-- Profit -->
+              <td class="num-col">{{ row.profit | lkrCurrency }}</td>
+
+              <!-- Margin chip -->
+              <td class="num-col">
+                <span class="margin-chip"
+                  [class.chip-good]="row.margin >= 20"
+                  [class.chip-ok]="row.margin >= 10 && row.margin < 20"
+                  [class.chip-low]="row.margin < 10">
+                  {{ row.margin | number:'1.1-1' }}%
                 </span>
-              }
-            </div>
-          </td>
-          <td class="num-col val-blue">{{ formatCurrency(row.revenue) }}</td>
-          <td class="num-col val-amber">{{ formatCurrency(row.cost) }}</td>
-          <td class="num-col" [class.val-emerald]="row.profit >= 0" [class.val-rose]="row.profit < 0">
-            {{ formatCurrency(row.profit) }}
-          </td>
-          <td class="num-col">
-            <span class="margin-chip"
-              [class.chip-good]="row.margin >= 30"
-              [class.chip-ok]="row.margin >= 15 && row.margin < 30"
-              [class.chip-low]="row.margin < 15">
-              {{ row.margin.toFixed(1) }}%
-            </span>
-          </td>
-          <td class="bar-col">
-            <div class="mini-track">
-              <div class="mini-fill mini-fill--rev" [style.width.%]="(row.revenue / peakRevenue) * 100"></div>
-            </div>
-            <div class="mini-track">
-              <div class="mini-fill mini-fill--cost" [style.width.%]="(row.cost / peakRevenue) * 100"></div>
-            </div>
-            <div class="mini-track">
-              <div class="mini-fill mini-fill--profit" [style.width.%]="(row.profit / peakRevenue) * 100"></div>
-            </div>
-          </td>
-        </tr>
-      </ng-template>
-    </p-table>
-  </div>
+              </td>
+
+              <!-- Mini bar tracks -->
+              <td class="bar-col">
+                <div class="mini-track">
+                  <div class="mini-fill mini-fill--rev"    [style.width.%]="row.revPct"></div>
+                </div>
+                <div class="mini-track">
+                  <div class="mini-fill mini-fill--cost"   [style.width.%]="row.costPct"></div>
+                </div>
+                <div class="mini-track">
+                  <div class="mini-fill mini-fill--profit" [style.width.%]="row.profitPct"></div>
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+
+          <ng-template pTemplate="emptymessage">
+            <tr>
+              <td colspan="6"
+                style="text-align:center; padding:40px; color:var(--muted)">
+                No data for this period
+              </td>
+            </tr>
+          </ng-template>
+
+        </p-table>
+      </div>
+
+      <div class="scroll-hint" style="animation-direction:reverse">
+        <i class="pi pi-angle-up"></i> Scroll up for charts
+      </div>
+    </div>
+
+  </div><!-- end .rc-scroll-wrapper -->
 
 </div>

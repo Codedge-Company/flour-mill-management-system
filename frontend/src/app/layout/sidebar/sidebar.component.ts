@@ -1,5 +1,5 @@
 // sidebar.component.ts
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, Signal, computed } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule }  from '@angular/common';
 import { TooltipModule } from 'primeng/tooltip';
@@ -34,7 +34,15 @@ export class SidebarComponent {
     { label: 'Notifications',   route: '/notifications',   icon: 'pi-bell' },
     { label: 'User Management', route: '/user-management', icon: 'pi-user-edit',    adminOnly: true },
   ];
+  readonly displayName: Signal<string> = computed(() => {
+    const u: any = this.authService.currentUser();
+    return (u?.fullName ?? u?.full_name ?? '').trim();
+  });
 
+  readonly avatarLabel: Signal<string> = computed(() => {
+    const name = this.displayName();
+    return (name?.charAt(0) || '?').toUpperCase();
+  });
   constructor(readonly authService: AuthService) {}
 
   get visibleItems(): NavItem[] {

@@ -49,21 +49,23 @@
   <div class="sidebar-spacer"></div>
 
   <!-- User footer -->
-  <div class="sidebar-footer">
-    <div class="user-row" [class.user-row--collapsed]="collapsed">
-      <div class="user-avatar">
-        {{ authService.currentUser()?.fullName?.charAt(0)?.toUpperCase() ?? '?' }}
-      </div>
-      @if (!collapsed) {
-        <div class="user-meta">
-          <span class="user-name">{{ authService.currentUser()?.fullName }}</span>
-          <span class="user-role">{{ authService.currentUser()?.role }}</span>
-        </div>
-        <button class="logout-btn" (click)="authService.logout()" title="Logout">
-          <i class="pi pi-sign-out"></i>
-        </button>
-      }
+<div class="sidebar-footer">
+  <div class="user-row" [class.user-row--collapsed]="collapsed">
+    <div class="user-avatar">
+      {{ avatarLabel() }}
     </div>
+
+    @if (!collapsed) {
+      <div class="user-meta">
+        <span class="user-name">{{ displayName() }}</span>
+        <span class="user-role">{{ authService.currentUser()?.role }}</span>
+      </div>
+
+      <button class="logout-btn" (click)="authService.logout()" title="Logout">
+        <i class="pi pi-sign-out"></i>
+      </button>
+    }
   </div>
+</div>
 
 </aside>

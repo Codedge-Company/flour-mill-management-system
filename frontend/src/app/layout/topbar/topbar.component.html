@@ -16,109 +16,137 @@
   <!-- Right actions -->
   <div class="topbar-right">
 
-    <!-- Search button -->
-    <button class="icon-btn hide-mobile" title="Search">
-      <i class="pi pi-search"></i>
-    </button>
-
     <!-- Notification bell + panel -->
     <div class="bell-wrapper">
-      <a class="icon-btn bell-btn"
-         (click)="toggleNotifPanel(); $event.stopPropagation()"
-         title="{{ unreadCount() }} unread notifications{{ !isSocketConnected() ? ' (offline)' : '' }}">
+      <a class="icon-btn bell-btn" (click)="toggleNotifPanel(); $event.stopPropagation()"
+        title="{{ unreadCount() }} unread notifications{{ !isSocketConnected() ? ' (offline)' : '' }}">
         <i class="pi pi-bell"></i>
         @if (unreadCount() > 0) {
-          <span class="notif-badge">
-            {{ unreadCount() > 99 ? '99+' : unreadCount() }}
-          </span>
+        <span class="notif-badge">
+          {{ unreadCount() > 99 ? '99+' : unreadCount() }}
+        </span>
         }
       </a>
 
       @if (showNotifPanel()) {
-        <div class="notif-panel">
-          <div class="notif-panel-header">
-            <span>Notifications</span>
+      <div class="notif-panel">
+        <div class="notif-panel-header">
+          <span>Notifications</span>
+          <div class="notif-header-actions">
+            @if (notificationService.newNotifications().length > 0) {
+            <button class="mark-all-btn"
+              (click)="notificationService.markAllRead().subscribe(); $event.stopPropagation()">
+              Mark all read
+            </button>
+
+            <!-- ✅ NEW: Clear panel button -->
+            <button class="clear-btn" (click)="notificationService.clearPanel(); $event.stopPropagation()"
+              title="Clear notifications">
+              <i class="pi pi-times"></i>
+            </button>
+            }
             <a [routerLink]="['/notifications']" class="view-all-link" (click)="showNotifPanel.set(false)">
               View all
             </a>
           </div>
 
-          @if (notificationService.newNotifications().length === 0) {
-            <div class="notif-empty">
-              <span>No new notifications</span>
+        </div>
+
+        @if (notificationService.newNotifications().length === 0) {
+        <div class="notif-empty">
+          <i class="pi pi-bell-slash notif-empty-icon"></i>
+          <span>No new notifications</span>
+        </div>
+        } @else {
+        <div class="notif-panel-list">
+          @for (n of notificationService.newNotifications(); track n.notificationId) {
+          <div class="notif-panel-item" [class.unread]="!n.isRead"
+            (click)="markReadAndNavigate(n); $event.stopPropagation()">
+            <!-- Unread dot indicator -->
+            @if (!n.isRead) {
+            <span class="unread-dot"></span>
+            }
+
+            <div class="notif-icon" [class]="notificationService.getTypeClass(n.type)"
+              [innerHTML]="notificationService.getTypeIcon(n.type)">
             </div>
-          } @else {
-            <div class="notif-panel-list">
-              @for (n of notificationService.newNotifications(); track n.notificationId) {
-                <div class="notif-panel-item" [class.unread]="!n.isRead">
-                  <div class="notif-icon" [class]="notificationService.getTypeClass(n.type)"
-                       [innerHTML]="notificationService.getTypeIcon(n.type)">
-                  </div>
-                  <div class="notif-panel-body">
-                    <div class="notif-panel-message">{{ n.message }}</div>
-                    <div class="notif-panel-meta">
-                      <span class="badge" [class]="notificationService.getTypeClass(n.type)">
-                        {{ notificationService.getFormattedType(n.type) }}
-                      </span>
-                      @if (n.packName) {
-                        <span class="notif-pack">{{ n.packName }} - </span>
-                      }
-                      @if (n.currentStock !== undefined) {
-                        <span class="notif-stock">Stock: {{ n.currentStock }}</span>
-                      }
-                    </div>
-                  </div>
-                </div>
-              }
+
+            <div class="notif-panel-body">
+              <div class="notif-panel-message">{{ n.message }}</div>
+              <div class="notif-panel-meta">
+                <span class="badge" [class]="notificationService.getTypeClass(n.type)">
+                  {{ notificationService.getFormattedType(n.type) }}
+                </span>
+                @if (n.packName) {
+                <span class="notif-pack">{{ n.packName }}</span>
+                }
+                @if (n.currentStock !== undefined) {
+                <span class="notif-stock">Stock: {{ n.currentStock }}</span>
+                }
+              </div>
+              <div class="notif-time">{{ n.createdAt | date:'MMM d, h:mm a' }}</div>
             </div>
+
+            <!-- Navigate arrow -->
+            <i class="pi pi-chevron-right notif-arrow"></i>
+          </div>
           }
         </div>
+        }
+      </div>
       }
+
     </div>
 
     <!-- User menu -->
     <div class="user-menu-wrapper">
       <button class="user-trigger" (click)="toggleUserMenu()">
         <div class="topbar-avatar">
-          {{ authService.currentUser()?.fullName?.charAt(0)?.toUpperCase() ?? '?' }}
+          <p-avatar [label]="avatarLabel()" size="normal" shape="circle"
+            [style]="{ 'background-color': '#3b82f6', color: '#ffffff' }">
+          </p-avatar>
         </div>
+
         <div class="user-trigger-info hide-mobile">
-          <span class="user-trigger-name">{{ authService.currentUser()?.fullName }}</span>
+          <span class="user-trigger-name">{{ displayName() }}</span>
           <span class="user-trigger-role">{{ authService.currentUser()?.role }}</span>
         </div>
+
         <i class="pi pi-chevron-down chevron hide-mobile" [class.open]="showUserMenu()"></i>
       </button>
 
       @if (showUserMenu()) {
-        <div class="user-dropdown">
-          <div class="dropdown-header">
-            <div class="dropdown-avatar">
-              {{ authService.currentUser()?.fullName?.charAt(0)?.toUpperCase() ?? '?' }}
-            </div>
-            <div class="dropdown-user-info">
-              <span class="dropdown-name">{{ authService.currentUser()?.fullName }}</span>
-              <span class="dropdown-role">{{ authService.currentUser()?.role }}</span>
-            </div>
+      <div class="user-dropdown">
+        <div class="dropdown-header">
+          <div class="dropdown-avatar">
+            <p-avatar [label]="avatarLabel()" size="normal" shape="circle"
+              [style]="{ 'background-color': '#3b82f6', color: '#ffffff' }">
+            </p-avatar>
           </div>
-
-          <div class="dropdown-divider"></div>
-
-          <button class="dropdown-item">
-            <i class="pi pi-user"></i>
-            <span>My Profile</span>
-          </button>
-          <button class="dropdown-item">
-            <i class="pi pi-cog"></i>
-            <span>Settings</span>
-          </button>
-
-          <div class="dropdown-divider"></div>
-
-          <button class="dropdown-item dropdown-item--danger" (click)="logout()">
-            <i class="pi pi-sign-out"></i>
-            <span>Logout</span>
-          </button>
+          <div class="dropdown-user-info">
+            <span class="dropdown-name">{{ displayName() }}</span>
+            <span class="dropdown-role">{{ authService.currentUser()?.role }}</span>
+          </div>
         </div>
+
+        <div class="dropdown-divider"></div>
+
+        <button class="dropdown-item">
+          <i class="pi pi-user"></i>
+          <span>My Profile</span>
+        </button>
+        <button class="dropdown-item">
+          <i class="pi pi-cog"></i>
+          <span>Settings</span>
+        </button>
+
+        <div class="dropdown-divider"></div>
+
+        <button class="dropdown-item dropdown-item--danger" (click)="logout()">
+          <i class="pi pi-sign-out"></i>
+          <span>Logout</span>
+        </button>
+      </div>
       }
     </div>
   </div>
