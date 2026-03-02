@@ -95,7 +95,7 @@ export class SaleService {
       items: request.items.map(item => ({
         pack_type_id: item.packTypeId,
         qty: item.qty,
-        unit_price_sold: item.unitPriceSold  
+        unit_price_sold: item.unitPriceSold
       }))
     };
 
@@ -111,5 +111,28 @@ export class SaleService {
     return this.http.patch<ApiResponse<Sale>>(
       `${this.apiUrl}/${saleId}/cancel`, {}
     );
+  }
+
+  updateSale(saleId: string, request: CreateSaleRequest): Observable<ApiResponse<Sale>> {
+    const payload = {
+      customer_id: request.customerId,
+      payment_method: request.paymentMethod,
+      items: request.items.map(item => ({
+        pack_type_id: item.packTypeId,
+        qty: item.qty,
+        unit_price_sold: item.unitPriceSold
+      }))
+    };
+
+    return this.http.patch<any>(`${this.apiUrl}/${saleId}`, payload).pipe(
+      map((response) => ({
+        success: true,
+        data: this.mapToSale(response.data || response)
+      }))
+    );
+  }
+
+  deleteSale(saleId: string): Observable<ApiResponse<void>> {
+    return this.http.delete<ApiResponse<void>>(`${this.apiUrl}/${saleId}`);
   }
 }

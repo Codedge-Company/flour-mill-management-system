@@ -15,6 +15,11 @@ export const salesRoutes: Routes = [
   {
     path: ':id',
     loadComponent: () =>
-      import('./sale-detail/sale-detail.component').then(m => m.SaleDetailComponent)
+      import('./sale-detail/sale-detail-dialog.component').then(m => m.SaleDetailDialogComponent)
+  },
+   {
+    path: ':id/edit',
+    loadComponent: () =>
+      import('./edit-sale/edit-sale.component').then(m => m.EditSaleComponent)
   }
 ];
