@@ -1,0 +1,239 @@
+<!-- src/app/features/sales/edit-sale/edit-sale.component.html -->
+<div class="edit-sale-page">
+
+    <!-- ── Page Header (plain HTML — no app-page-header dependency) ────────── -->
+    <div class="page-header-bar">
+        <div class="page-header-left">
+            <nav class="breadcrumbs">
+                <a routerLink="/sales">Sales</a>
+                <span class="bc-sep">›</span>
+                <span>Edit Sale</span>
+            </nav>
+            <h1 class="page-title">{{ saleNo ? 'Edit Sale — ' + saleNo : 'Edit Sale' }}</h1>
+            <p class="page-subtitle">Update customer, payment method, or line items</p>
+        </div>
+        <div class="page-header-right">
+            <button class="btn btn-ghost" (click)="onCancel()">Cancel</button>
+        </div>
+    </div>
+
+    <!-- ── Error ──────────────────────────────────────────────────────────── -->
+    @if (error()) {
+    <div class="alert-error-bar">
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+        {{ error() }}
+    </div>
+    }
+
+    <!-- ── Loading ────────────────────────────────────────────────────────── -->
+    @if (dataLoading()) {
+    <div class="loading-state">
+        <div class="spinner"></div>
+        <span>Loading sale data…</span>
+    </div>
+    } @else {
+
+    <div class="sale-layout">
+
+        <!-- ── LEFT : Sale Details form ──────────────────────────────────── -->
+        <div class="left-col">
+            <div class="card section-card">
+                <h3 class="section-title">Sale Details</h3>
+
+                <form [formGroup]="headerForm" class="header-form">
+
+                    <div class="form-group">
+                        <label class="form-label">Customer <span class="req">*</span></label>
+                        <select class="form-control" formControlName="customerId"
+                            (change)="onCustomerChange($any($event.target).value)">
+                            <option [ngValue]="null" disabled>Select customer…</option>
+                            @for (c of customers(); track c.customerId) {
+                            <option [value]="c.customerId">{{ c.name }} ({{ c.customerCode }})</option>
+                            }
+                        </select>
+                        @if (isCustomerIdInvalid()) {
+                        <span class="field-error">Customer is required</span>
+                        }
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Payment Method <span class="req">*</span></label>
+                        <div class="payment-radio-group">
+                            @for (pm of paymentMethods; track pm.value) {
+                            <label class="payment-radio" [class.selected]="getPaymentValue() === pm.value">
+                                <input type="radio" formControlName="paymentMethod" [value]="pm.value" />
+                                {{ pm.label }}
+                            </label>
+                            }
+                        </div>
+                    </div>
+
+                </form>
+            </div>
+
+            <!-- Customer info -->
+            @if (selectedCustomer()) {
+            <div class="card customer-info-card">
+                <div class="customer-info-header">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                    </svg>
+                    <span class="customer-info-name">{{ selectedCustomer()!.name }}</span>
+                    <span class="customer-info-code">{{ selectedCustomer()!.customerCode }}</span>
+                </div>
+                @if (selectedCustomer()!.phone) {
+                <div class="customer-info-row">
+                    <span class="ci-label">Phone</span>
+                    <span>{{ selectedCustomer()!.phone }}</span>
+                </div>
+                }
+                @if (selectedCustomer()!.address) {
+                <div class="customer-info-row">
+                    <span class="ci-label">Address</span>
+                    <span>{{ selectedCustomer()!.address }}</span>
+                </div>
+                }
+            </div>
+            }
+        </div>
+
+        <!-- ── RIGHT : Items + Totals ─────────────────────────────────────── -->
+        <div class="right-col">
+            <div class="card section-card items-card">
+
+                <div class="items-header">
+                    <h3 class="section-title">Items</h3>
+                    <button class="btn btn-outline btn-sm" (click)="addRow()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                        Add Item
+                    </button>
+                </div>
+
+                <div class="items-table-wrapper">
+                    <table class="items-table">
+                        <thead>
+                            <tr>
+                                <th>Pack</th>
+                                <th class="num-col">Qty</th>
+                                <th class="num-col">Unit Price</th>
+                                <th class="num-col">Stock</th>
+                                <th class="num-col">Line Total</th>
+                                <th style="width:36px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (row of rows(); track row.id; let i = $index) {
+                            <tr [class.row-error]="hasStockError(i)">
+
+                                <!-- Pack select -->
+                                <td>
+                                    <select class="form-control form-control-sm" [value]="row.packTypeId"
+                                        (change)="onPackChange(i, $any($event.target).value)">
+                                        <option value="">Select pack…</option>
+                                        @for (p of getAvailablePacks(i); track p.packTypeId) {
+                                        <option [value]="p.packTypeId" [selected]="p.packTypeId === row.packTypeId">
+                                            {{ p.packName }}{{ p.isLowStock ? ' ⚠️' : '' }}
+                                        </option>
+                                        }
+                                        @if (isPackMissingFromAvailable(i, row.packTypeId)) {
+                                        <option [value]="row.packTypeId" selected>{{ row.packName }}</option>
+                                        }
+                                    </select>
+                                    @if (hasStockError(i)) {
+                                    <span class="stock-error">{{ getStockError(i) }}</span>
+                                    }
+                                </td>
+
+                                <!-- Qty -->
+                                <td class="num-col">
+                                    <input type="number" class="form-control form-control-sm num-input" min="1"
+                                        [value]="row.qty" (change)="onQtyChange(i, +$any($event.target).value)" />
+                                </td>
+
+                                <!-- Unit Price -->
+                                <td class="num-col">
+                                    <input type="number" class="form-control form-control-sm num-input" min="0"
+                                        step="0.01" [value]="row.unitPriceSold"
+                                        (change)="onPriceChange(i, +$any($event.target).value)" />
+                                </td>
+
+                                <!-- Stock -->
+                                <td class="num-col stock-col" [class.low-stock]="isLowStock(row)">
+                                    {{ row.availableStock }}
+                                </td>
+
+                                <!-- Line Total -->
+                                <td class="num-col">{{ row.lineRevenue | lkrCurrency }}</td>
+
+                                <!-- Remove -->
+                                <td>
+                                    @if (rows().length > 1) {
+                                    <button class="btn-remove" (click)="removeRow(i)" title="Remove row">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <line x1="18" y1="6" x2="6" y2="18" />
+                                            <line x1="6" y1="6" x2="18" y2="18" />
+                                        </svg>
+                                    </button>
+                                    }
+                                </td>
+
+                            </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Totals -->
+                <div class="totals-block">
+                    <div class="totals-row">
+                        <span class="totals-label">Revenue</span>
+                        <span class="totals-val primary">{{ totalRevenue() | lkrCurrency }}</span>
+                    </div>
+                    <div class="totals-row">
+                        <span class="totals-label">Cost</span>
+                        <span class="totals-val muted">{{ totalCost() | lkrCurrency }}</span>
+                    </div>
+                    <div class="totals-row totals-profit">
+                        <span class="totals-label">Profit</span>
+                        <span class="totals-val" [class.profit-pos]="isProfitPositive()"
+                            [class.profit-neg]="isProfitNegative()">
+                            {{ totalProfit() | lkrCurrency }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="form-actions">
+                    <button class="btn btn-ghost" (click)="onCancel()">Cancel</button>
+                    <button class="btn btn-primary" [disabled]="!canSave()" (click)="onSave()">
+                        @if (loading()) {
+                        <svg class="spin" xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                        </svg>
+                        Updating…
+                        } @else {
+                        Update Sale
+                        }
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+    }
+
+</div>

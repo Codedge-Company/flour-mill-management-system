@@ -271,7 +271,7 @@ hasValidRows = computed(() =>
     }).subscribe({
       next: res => {
         this.loading.set(false);
-        this.router.navigate(['/sales', res.data.saleId]);
+        this.router.navigate(['/sales']);
       },
       error: err => {
         this.loading.set(false);

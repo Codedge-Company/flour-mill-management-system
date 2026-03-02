@@ -1,0 +1,156 @@
+<div class="overlay" (click)="closed.emit()">
+  <div class="panel" (click)="$event.stopPropagation()">
+
+    <!-- Header -->
+    <div class="panel-header">
+      <div class="header-left">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24"
+          stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="16" y1="13" x2="8" y2="13" />
+          <line x1="16" y1="17" x2="8" y2="17" />
+          <polyline points="10 9 9 9 8 9" />
+        </svg>
+        <div>
+          <h3>Sale Details</h3>
+          @if (sale()) {
+          <span class="sale-no-badge">{{ sale()!.saleNo }}</span>
+          }
+        </div>
+      </div>
+      <button class="btn-icon" (click)="closed.emit()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24"
+          stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="panel-body">
+
+      <!-- Loading -->
+      @if (loading()) {
+      <div class="skeleton-wrap">
+        @for (n of [1,2,3,4]; track n) {
+        <div class="sk-block"></div>
+        }
+      </div>
+      }
+
+      <!-- Error -->
+      @if (error()) {
+      <div class="dialog-error">{{ error() }}</div>
+      }
+
+      <!-- Content -->
+      @if (!loading() && sale(); as s) {
+
+      <!-- Status + Date row -->
+      <div class="meta-row">
+        <span [class]="(s.status | statusBadge).cssClass">
+          {{ (s.status | statusBadge).label }}
+        </span>
+        <span class="meta-date">{{ formatDate(s.saleDatetime) }}</span>
+      </div>
+
+      <!-- Info grid -->
+      <div class="info-grid">
+        <div class="info-card">
+          <span class="info-label">Customer</span>
+          <span class="info-value">{{ s.customerName }}</span>
+          <span class="info-sub">{{ s.customerCode }}</span>
+        </div>
+        <div class="info-card">
+          <span class="info-label">Payment</span>
+          <span [class]="(s.paymentMethod | statusBadge).cssClass">
+            {{ (s.paymentMethod | statusBadge).label }}
+          </span>
+        </div>
+        <div class="info-card">
+          <span class="info-label">Recorded By</span>
+          <span class="info-value">{{ s.createdByUserName || '—' }}</span>
+        </div>
+        <div class="info-card">
+          <span class="info-label">Items</span>
+          <span class="info-value">{{ s.items.length }} line(s)</span>
+        </div>
+      </div>
+
+      <!-- Items table -->
+      <div class="section">
+        <h4 class="section-title">Sale Items</h4>
+        <div class="items-table-wrap">
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Pack</th>
+                <th class="num">Qty</th>
+                <th class="num">Unit Price</th>
+                <th class="num">Unit Cost</th>
+                <th class="num">Revenue</th>
+                <th class="num">Cost</th>
+                <th class="num">Profit</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of s.items; track item.saleItemId) {
+              <tr>
+                <td>
+                  <span class="pack-chip">{{ item.packName }}</span>
+                </td>
+                <td class="num">{{ item.qty }}</td>
+                <td class="num">{{ item.unitPriceSold | lkrCurrency }}</td>
+                <td class="num text-muted">{{ item.unitCostAtSale | lkrCurrency }}</td>
+                <td class="num font-semibold">{{ item.lineRevenue | lkrCurrency }}</td>
+                <td class="num text-muted">{{ item.lineCost | lkrCurrency }}</td>
+                <td class="num">
+                  <span [class.profit-pos]="item.lineProfit >= 0" [class.profit-neg]="item.lineProfit < 0">
+                    {{ item.lineProfit | lkrCurrency }}
+                  </span>
+                </td>
+              </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Totals summary -->
+      <div class="totals-section">
+        <div class="totals-grid">
+          <div class="total-card revenue">
+            <span class="total-label">Total Revenue</span>
+            <span class="total-val">{{ s.totalRevenue | lkrCurrency }}</span>
+          </div>
+          <div class="total-card cost">
+            <span class="total-label">Total Cost</span>
+            <span class="total-val">{{ s.totalCost | lkrCurrency }}</span>
+          </div>
+          <div class="total-card profit" [class.negative]="s.totalProfit < 0">
+            <span class="total-label">Net Profit</span>
+            <span class="total-val">{{ s.totalProfit | lkrCurrency }}</span>
+            <span class="total-margin">{{ profitMargin }}% margin</span>
+          </div>
+        </div>
+      </div>
+
+      }
+    </div>
+
+    <!-- Footer -->
+    @if (!loading() && sale()) {
+    <div class="panel-footer">
+      <button class="btn btn-outline" (click)="closed.emit()">Close</button>
+      @if (sale()!.status === 'SAVED') {
+      <a [routerLink]="['/sales', saleId, 'edit']" class="btn btn-primary">
+        Edit Sale
+      </a>
+      }
+    </div>
+    }
+
+  </div>
+</div>

@@ -7,12 +7,15 @@ import { forkJoin } from 'rxjs';
 import { SaleService } from '../../../core/services/sale.service';
 import { CustomerService } from '../../../core/services/customer.service';
 import { Sale, SaleFilters, SaleStatus } from '../../../core/models/sale';
+import { AuthService } from '../../../core/services/auth.service';
 import { Customer } from '../../../core/models/customer';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { LkrCurrencyPipe } from '../../../shared/pipes/lkr-currency.pipe';
 import { StatusBadgePipe } from '../../../shared/pipes/status-badge.pipe';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { InvoicePdfService } from '../../../core/services/invoice-pdf.service';
+import { Router } from '@angular/router';
+import { SaleDetailDialogComponent } from '../sale-detail/sale-detail-dialog.component';
 
 @Component({
   selector: 'app-sale-list',
@@ -24,8 +27,9 @@ import { InvoicePdfService } from '../../../core/services/invoice-pdf.service';
     PageHeaderComponent,
     LkrCurrencyPipe,
     StatusBadgePipe,
-    ConfirmDialogComponent
-  ],
+    ConfirmDialogComponent,
+    SaleDetailDialogComponent
+],
   templateUrl: './sale-list.component.html',
   styleUrl: './sale-list.component.css'
 })
@@ -58,11 +62,15 @@ export class SaleListComponent implements OnInit {
 
   // Download state – tracks which saleId is currently generating a PDF
   downloadingId = signal<string | null>(null);
-
+  deleteTarget = signal<Sale | null>(null);
+  deleteLoading = signal(false);
+  viewSaleId = signal<string | null>(null);
   constructor(
     private saleService: SaleService,
     private customerService: CustomerService,
-    private invoicePdf: InvoicePdfService
+    private invoicePdf: InvoicePdfService,
+    private authService: AuthService,
+    private router: Router
   ) { }
 
   ngOnInit(): void {
@@ -220,4 +228,34 @@ export class SaleListComponent implements OnInit {
     };
     return icons[method] ?? '';
   }
+
+  get isAdmin(): boolean {
+    return this.authService.currentUser()?.role === 'ADMIN'; // adjust to your auth service
+  }
+
+  confirmDelete(sale: Sale): void { this.deleteTarget.set(sale); }
+  deleteDialog(): void { this.deleteTarget.set(null); }
+
+  onDeleteSale(): void {
+    const sale = this.deleteTarget();
+    if (!sale) return;
+    this.deleteLoading.set(true);
+
+    this.saleService.deleteSale(sale.saleId).subscribe({
+      next: () => {
+        this.deleteLoading.set(false);
+        this.deleteTarget.set(null);
+        this.showSuccess(`Sale ${sale.saleNo} deleted.`);
+        this.load(this.currentPage());
+      },
+      error: err => {
+        this.deleteLoading.set(false);
+        this.deleteTarget.set(null);
+        this.error.set(err?.error?.message ?? 'Failed to delete sale.');
+      }
+    });
+  }
+
+  openView(sale: Sale): void { this.viewSaleId.set(sale.saleId); }
+  closeView(): void { this.viewSaleId.set(null); }
 }
