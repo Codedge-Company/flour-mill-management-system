@@ -1,5 +1,4 @@
-// src/environments/environment.prod.ts
 export const environment = {
   production: true,
-  apiUrl: 'https://your-production-url.com/api'
+  apiUrl: 'https://flour-mill-api.onrender.com/api'
 };
