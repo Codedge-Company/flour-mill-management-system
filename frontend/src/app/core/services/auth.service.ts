@@ -5,7 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { map } from 'rxjs/operators';     
 import { Observable } from 'rxjs';
-import { environment } from '../../../environments/environment';
+import { environment } from '../../../environments/environment.prod';
 import { BackendResponse, ErrorAuthResponse, LoginRequest, SuccessAuthResponse, User } from '../models/user';
 import { NotificationService } from './notification.service';
 import { PushNotificationService } from './push-notification.service';

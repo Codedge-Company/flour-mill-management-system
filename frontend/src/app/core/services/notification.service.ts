@@ -8,7 +8,7 @@ import { io, Socket } from 'socket.io-client';
 import { ToastrService } from 'ngx-toastr';
 import { AudioService } from './audio.service';
 import { PushNotificationService } from './push-notification.service';
-import { environment } from '../../../environments/environment';
+import { environment } from '../../../environments/environment.prod';
 import { Notification } from '../models/notification';
 
 const TOKEN_KEY = 'mfm_token';   // ✅ must match auth.service.ts

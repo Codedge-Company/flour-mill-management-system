@@ -8,7 +8,7 @@ const errorHandler = require('./middlewares/errorHandler');
 const app = express();
 
 app.use(cors({
-  origin: ['http://localhost:4200', 'http://127.0.0.1:4200'],
+  origin: ['http://localhost:4200', 'http://127.0.0.1:4200', 'https://flour-mill-management-system-nine.vercel.app'],
   credentials: true
 }));
 
