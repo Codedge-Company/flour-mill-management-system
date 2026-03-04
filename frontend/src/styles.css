@@ -314,3 +314,14 @@ td { padding: 10px 14px; color: var(--text-primary); }
 @media (max-width: 768px) {
   .hide-mobile { display: none !important; }
 }
+.badge-amber {
+  background-color: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.badge-orange {
+  background-color: #fff7ed;
+  color: #9a3412;
+  border: 1px solid #fed7aa;
+}

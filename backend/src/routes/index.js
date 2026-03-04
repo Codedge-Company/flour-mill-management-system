@@ -13,5 +13,6 @@ router.use('/customer-price-rules', require('./customerPriceRule.routes'));
 router.use('/sales', require('./sales.routes'));
 router.use('/notifications', require('./notification.routes'));
 router.use('/dashboard', require('./dashboard.routes'));
+router.use('/payments', require('./payment.routes'));
 
 module.exports = router;

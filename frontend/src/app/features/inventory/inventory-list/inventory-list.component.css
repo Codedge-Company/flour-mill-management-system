@@ -737,7 +737,7 @@
   }
 
   .inv-actions {
-    flex-wrap: wrap;
+    flex-wrap: inherit;
   }
 
   .action-group {

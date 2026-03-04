@@ -39,11 +39,12 @@ export class NewSaleComponent implements OnInit {
 
   private nextRowId = 0; // Added for unique row ids
 
-  readonly paymentMethods: { value: PaymentMethod; label: string }[] = [
-    { value: 'CASH', label: 'Cash' },
-    { value: 'CARD', label: 'Card' },
-    { value: 'BANK', label: 'Bank Transfer' }
-  ];
+readonly paymentMethods: { value: PaymentMethod; label: string; hint?: string }[] = [
+  { value: 'CASH',   label: 'Cash'          },
+  { value: 'CARD',   label: 'Card'          },
+  { value: 'BANK',   label: 'Bank Transfer' },
+  { value: 'CREDIT', label: 'Credit',  hint: 'Payment pending' },
+];
 
   readonly breadcrumbs: Breadcrumb[] = [
     { label: 'Sales', route: '/sales' },

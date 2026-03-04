@@ -33,6 +33,7 @@ export interface UpdateStockRequest {
 export interface UpdateCostRequest {
   packTypeId: string;
   unitCost:   number;
+  effectiveFrom: string;   
 }
 
 export interface UpdateThresholdRequest {

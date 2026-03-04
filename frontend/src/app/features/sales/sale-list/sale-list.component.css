@@ -277,3 +277,24 @@
   background: var(--border) !important;
   color: var(--text-primary) !important;
 }
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.page-btn {
+  min-width: 2.5rem;
+  height: 2.5rem;
+}
+
+.page-btn.active {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.page-info {
+  margin-left: auto;
+}

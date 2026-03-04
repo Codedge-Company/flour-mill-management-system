@@ -88,7 +88,8 @@ export class InventoryService {
   updateCost(request: UpdateCostRequest): Observable<ApiResponse<InventoryItem>> {
     return this.http.post<any>(this.costUrl, {
       pack_type_id: request.packTypeId,
-      unit_cost: request.unitCost
+      unit_cost: request.unitCost,
+      effective_from: request.effectiveFrom,
     }).pipe(
       map(res => ({ success: true, data: this.mapItem(res.data ?? res) }))
     );

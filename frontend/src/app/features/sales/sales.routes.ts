@@ -1,5 +1,6 @@
 // src/app/features/sales/sales.routes.ts
 import { Routes } from '@angular/router';
+import { CreditPaymentsComponent } from '../credit-payments/credit-payments.component';
 
 export const salesRoutes: Routes = [
   {
@@ -21,5 +22,5 @@ export const salesRoutes: Routes = [
     path: ':id/edit',
     loadComponent: () =>
       import('./edit-sale/edit-sale.component').then(m => m.EditSaleComponent)
-  }
+  },
 ];

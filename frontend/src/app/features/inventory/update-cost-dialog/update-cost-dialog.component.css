@@ -64,3 +64,82 @@
   animation: spin .6s linear infinite;
   display: inline-block;
 }
+/* --- Date field: professional look --- */
+.date-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.date-icon {
+  position: absolute;
+  left: 12px;
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted, #94a3b8);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Make date input match your normal form-control */
+.form-control.date-input {
+  height: 44px;
+  border-radius: var(--radius-md);
+  padding-left: 40px !important;
+  padding-right: 42px; /* space for calendar indicator */
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e2e8f0);
+  font-size: 14px;
+  color: var(--text-primary, #0f172a);
+  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+
+/* Hover */
+.form-control.date-input:hover {
+  border-color: rgba(59, 130, 246, 0.45);
+}
+
+/* Focus ring */
+.form-control.date-input:focus {
+  outline: none;
+  border-color: rgba(59, 130, 246, 0.9);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+}
+
+/* Placeholder-ish look when empty (some browsers) */
+.form-control.date-input:invalid {
+  color: rgba(15, 23, 42, 0.55);
+}
+
+/* Error state (same idea as your other inputs) */
+.form-control.date-input.error {
+  border-color: rgba(239, 68, 68, 0.9) !important;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.12);
+}
+
+/* Make the calendar icon area look clickable */
+.form-control.date-input {
+  cursor: pointer;
+}
+
+/* Improve native picker indicator */
+.form-control.date-input::-webkit-calendar-picker-indicator {
+  position: absolute;
+  right: 12px;
+  width: 18px;
+  height: 18px;
+  opacity: 0.65;
+  cursor: pointer;
+}
+
+.form-control.date-input::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* Optional: small helper text style if you don’t already have */
+.form-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-muted, #64748b);
+}
