@@ -1,0 +1,528 @@
+<!-- inventory-budget-overview.component.html -->
+<div class="budget-panel">
+
+    <!-- ══ Header ═══════════════════════════════════════════════════ -->
+    <div class="budget-header">
+        <div class="budget-header-left">
+            <div class="budget-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor" stroke-width="1.8">
+                    <line x1="12" y1="1" x2="12" y2="23" />
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                </svg>
+            </div>
+            <div>
+                <h2 class="budget-title">Budget Overview</h2>
+                <p class="budget-subtitle">Inventory + additional expenditures vs capital</p>
+            </div>
+        </div>
+        <div class="budget-header-right">
+            <div class="budget-input-group">
+                <label class="budget-input-label">Total Budget (LKR)</label>
+                <div class="budget-input-wrap">
+                    <span class="budget-input-prefix">LKR</span>
+                    <input class="budget-input" type="number" [value]="totalBudget" (change)="onBudgetChange($event)"
+                        min="0" step="100000" />
+                </div>
+            </div>
+            <button class="btn btn-primary" (click)="openAddForm()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor" stroke-width="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                Add Expenditure
+            </button>
+        </div>
+    </div>
+
+    <!-- ══ Notifications ════════════════════════════════════════════ -->
+    @if (successMsg()) {
+    <div class="alert alert-success">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+            <polyline points="22 4 12 14.01 9 11.01" />
+        </svg>
+        {{ successMsg() }}
+    </div>
+    }
+    @if (errorMsg()) {
+    <div class="alert alert-error">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+        {{ errorMsg() }}
+    </div>
+    }
+
+    <!-- ══ Loading ══════════════════════════════════════════════════ -->
+    @if (loading()) {
+    <div class="budget-loading">
+        <div class="spinner"></div>
+        <span>Loading data…</span>
+    </div>
+    }
+
+    @if (!loading() && hasData) {
+
+    <!-- Summary Cards -->
+    <div class="summary-row">
+        <div class="summary-card summary-card--total">
+            <span class="summary-label">Total Budget</span>
+            <span class="summary-value">{{ totalBudget | lkrCurrency }}</span>
+        </div>
+        <div class="summary-card summary-card--inv">
+            <span class="summary-label">Inventory Cost</span>
+            <span class="summary-value">{{ totalInvSpent | lkrCurrency }}</span>
+            <span class="summary-pct">{{ (totalInvSpent / totalBudget * 100) | number:'1.1-1' }}% of budget</span>
+        </div>
+        <div class="summary-card summary-card--exp">
+            <span class="summary-label">Other Expenses</span>
+            <span class="summary-value">{{ totalExpSpent | lkrCurrency }}</span>
+            <span class="summary-pct">{{ expenditures().length }} item{{ expenditures().length !== 1 ? 's' : ''
+                }}</span>
+        </div>
+        <div class="summary-card summary-card--spent">
+            <span class="summary-label">Total Spent</span>
+            <span class="summary-value">{{ totalSpent | lkrCurrency }}</span>
+            <span class="summary-pct">{{ spentPercent | number:'1.1-1' }}% of budget</span>
+        </div>
+        <div class="summary-card summary-card--balance" [class.overbudget]="balance < 0">
+            <span class="summary-label">Balance</span>
+            <span class="summary-value">{{ balance | lkrCurrency }}</span>
+            <span class="summary-pct" [class.text-danger]="balance < 0">
+                {{ balance < 0 ? 'Over budget!' : 'Remaining' }} </span>
+        </div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="budget-progress-section">
+        <div class="budget-progress-track">
+            <div class="budget-progress-fill" [class.budget-progress-fill--over]="totalSpent > totalBudget"
+                [style.width.%]="spentPercent">
+            </div>
+        </div>
+        <div class="budget-progress-labels">
+            <span>LKR 0</span>
+            <span class="budget-progress-mid">{{ spentPercent | number:'1.1-1' }}% used</span>
+            <span>{{ totalBudget | lkrCurrency }}</span>
+        </div>
+    </div>
+
+    <!-- ── Table LEFT | Chart RIGHT ──────────────────────────── -->
+    <div class="main-content-row">
+
+        <!-- LEFT: Tables -->
+        <div class="tables-side">
+
+            <!-- Inventory breakdown -->
+            <div class="section-heading">
+                <span class="section-dot" style="background:#3b82f6"></span>
+                Inventory Breakdown
+            </div>
+            <div class="breakdown-table">
+                <div class="breakdown-header">
+                    <span>Pack Type</span>
+                    <span>Stock × Min × Cost</span>
+                    <span>Amount</span>
+                    <span>Share</span>
+                </div>
+                @for (row of invBreakdownRows; track row.packTypeId; let i = $index) {
+                <div class="breakdown-row">
+                    <div class="breakdown-name">
+                        <span class="breakdown-dot" style="background:#3b82f6" [style.opacity]="0.5 + i * 0.12"></span>
+                        <div>
+                            <span class="breakdown-packname">{{ row.packName }}</span>
+                            <span class="breakdown-weight">{{ row.weightKg }}kg</span>
+                        </div>
+                    </div>
+                    <div class="breakdown-formula">
+                        <span class="formula-num">{{ row.stockQty }}</span>
+                        <span class="formula-op">×</span>
+                        <span class="formula-num">{{ row.threshold }}</span>
+                        <span class="formula-op">×</span>
+                        <span class="formula-num">{{ row.unitCost | lkrCurrency }}</span>
+                    </div>
+                    <div class="breakdown-amount">{{ row.cost | lkrCurrency }}</div>
+                    <div class="breakdown-share">
+                        <div class="share-bar-track">
+                            <div class="share-bar-fill" [style.width.%]="row.sharePct" style="background:#3b82f6"></div>
+                        </div>
+                        <span class="share-pct">{{ row.sharePct | number:'1.1-1' }}%</span>
+                    </div>
+                </div>
+                }
+                <div class="breakdown-subtotal">
+                    <span>Inventory Total</span><span></span>
+                    <span>{{ totalInvSpent | lkrCurrency }}</span>
+                    <span>{{ (totalInvSpent / totalSpent * 100) | number:'1.1-1' }}%</span>
+                </div>
+            </div>
+
+            <!-- Expenditures table -->
+            <div class="section-heading" style="margin-top:18px">
+                <span class="section-dot" style="background:#f59e0b"></span>
+                Other Expenditures
+                <button class="btn btn-sm btn-outline" style="margin-left:auto" (click)="openAddForm()">
+                    + Add
+                </button>
+            </div>
+
+            @if (expenditures().length === 0) {
+            <div class="exp-empty">
+                No expenditures added yet.
+                <button class="link-btn" (click)="openAddForm()">Add one now</button>
+            </div>
+            } @else {
+            <div class="breakdown-table">
+                <div class="breakdown-header exp-header">
+                    <span>Icon</span>
+                    <span>Date</span>
+                    <span>Description</span>
+                    <span>Amount</span>
+                    <span>Share</span>
+                    <span></span>
+                </div>
+                @for (exp of expenditures(); track exp._id; let i = $index) {
+                <div class="breakdown-row exp-row">
+                    <!-- matched icon preview -->
+                    <div class="exp-icon-cell">
+                        <div class="exp-icon-badge" [style.background]="expColors[i % expColors.length] + '18'"
+                            [style.borderColor]="expColors[i % expColors.length] + '44'">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
+                                [style.stroke]="expColors[i % expColors.length]" stroke-width="1.8"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                @for (p of getIconForDesc(exp.description).paths; track p) {
+                                <path [attr.d]="p" />
+                                }
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="exp-date">{{ formatDate(exp.date) }}</div>
+                    <div class="breakdown-name">
+                        <span class="breakdown-dot" [style.background]="expColors[i % expColors.length]"></span>
+                        <span class="breakdown-packname">{{ exp.description }}</span>
+                    </div>
+                    <div class="breakdown-amount">{{ exp.amount | lkrCurrency }}</div>
+                    <div class="breakdown-share">
+                        <div class="share-bar-track">
+                            <div class="share-bar-fill" [style.width.%]="(exp.amount / totalSpent) * 100"
+                                [style.background]="expColors[i % expColors.length]">
+                            </div>
+                        </div>
+                        <span class="share-pct">{{ (exp.amount / totalSpent * 100) | number:'1.1-1' }}%</span>
+                    </div>
+                    <div class="exp-actions">
+                        <button class="btn-icon btn-icon--edit" title="Edit" (click)="openEditForm(exp)">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                            </svg>
+                        </button>
+                        <button class="btn-icon btn-icon--delete" title="Delete" [disabled]="deleting() === exp._id"
+                            (click)="deleteExpenditure(exp._id)">
+                            @if (deleting() === exp._id) {
+                            <span class="btn-spinner btn-spinner--sm"></span>
+                            } @else {
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                                <path d="M10 11v6M14 11v6" />
+                                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                            </svg>
+                            }
+                        </button>
+                    </div>
+                </div>
+                }
+                <div class="breakdown-subtotal exp-subtotal">
+                    <span></span>
+                    <span>Expenditure Total</span>
+                    <span></span>
+                    <span>{{ totalExpSpent | lkrCurrency }}</span>
+                    <span>{{ (totalExpSpent / totalSpent * 100) | number:'1.1-1' }}%</span>
+                    <span></span>
+                </div>
+            </div>
+            }
+
+            <div class="grand-total-row">
+                <span class="grand-label">Grand Total</span>
+                <span class="grand-value">{{ totalSpent | lkrCurrency }}</span>
+                <span class="grand-balance" [class.over]="balance < 0">
+                    Balance: {{ balance | lkrCurrency }}
+                </span>
+            </div>
+        </div>
+
+        <!-- RIGHT: Chart -->
+        <div class="chart-side">
+            <div class="chart-type-bar">
+                <button class="chart-type-btn" [class.active]="chartType === 'donut'" (click)="chartType = 'donut'">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10" />
+                        <circle cx="12" cy="12" r="4" />
+                    </svg>
+                    Donut
+                </button>
+                <button class="chart-type-btn" [class.active]="chartType === 'pie'" (click)="chartType = 'pie'">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <path d="M21.21 15.89A10 10 0 1 1 8 2.83" />
+                        <path d="M22 12A10 10 0 0 0 12 2v10z" />
+                    </svg>
+                    Pie
+                </button>
+                <button class="chart-type-btn" [class.active]="chartType === 'bar'" (click)="chartType = 'bar'">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="12" width="4" height="9" />
+                        <rect x="10" y="7" width="4" height="14" />
+                        <rect x="17" y="3" width="4" height="18" />
+                    </svg>
+                    Bar
+                </button>
+            </div>
+
+            <!-- ══ DONUT — Monefy-style with floating icons ═══════ -->
+            @if (chartType === 'donut') {
+            <!-- viewBox 500×500; donut centred at 250,250; icons orbit at r≈220 -->
+            <svg class="big-chart monefy-chart" viewBox="0 0 500 500">
+
+                <!-- connector lines: slice edge → icon bubble -->
+                @for (fi of floatingIcons; track fi.label) {
+                <line [attr.x1]="fi.lx1" [attr.y1]="fi.ly1" [attr.x2]="fi.lx2" [attr.y2]="fi.ly2"
+                    [attr.stroke]="fi.color" stroke-width="1.2" stroke-dasharray="4 3" opacity="0.55" />
+                }
+
+                <!-- donut slices -->
+                @for (s of donutSlices; track s.label; let i = $index) {
+                <path [attr.d]="s.path" [attr.fill]="s.color" class="donut-slice"
+                    [class.slice-hovered]="hoveredSlice === i" (mouseenter)="hoveredSlice = i"
+                    (mouseleave)="hoveredSlice = null">
+                    <title>{{ s.label }}: {{ s.value | lkrCurrency }} ({{ s.pct | number:'1.1-1' }}%)</title>
+                </path>
+                }
+
+                <!-- centre text — anchored to 250,250 -->
+                <text x="250" y="232" class="chart-center-label">Budget</text>
+                <text x="250" y="256" class="chart-center-budget">{{ totalBudget | lkrCurrency }}</text>
+                <text x="250" y="276" class="chart-center-balance" [attr.fill]="balance < 0 ? '#ef4444' : '#10b981'">
+                    {{ balance | lkrCurrency }}
+                </text>
+
+                <!-- floating icon bubbles (spread via collision-avoidance) -->
+                @for (fi of floatingIcons; track fi.label; let i = $index) {
+                <g class="float-icon-group" [class.float-hovered]="hoveredSlice === i" (mouseenter)="hoveredSlice = i"
+                    (mouseleave)="hoveredSlice = null">
+
+                    <!-- bubble -->
+                    <circle [attr.cx]="fi.x" [attr.cy]="fi.y" r="22" [attr.fill]="fi.color + '1a'"
+                        [attr.stroke]="fi.color" stroke-width="1.8" />
+
+                    <!-- icon centred in bubble (18×18 inside r=22 bubble) -->
+                    <svg [attr.x]="fi.x - 9" [attr.y]="fi.y - 9" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        [attr.stroke]="fi.color" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        @for (p of fi.paths; track p) {
+                        <path [attr.d]="p" /> }
+                    </svg>
+
+                    <!-- % label below bubble -->
+                    <text [attr.x]="fi.x" [attr.y]="fi.y + 33" class="float-icon-pct" [attr.fill]="fi.color">
+                        {{ fi.pct | number:'1.0-0' }}%
+                    </text>
+                </g>
+                }
+            </svg>
+            }
+
+            <!-- Pie -->
+            @if (chartType === 'pie') {
+            <svg class="big-chart" viewBox="0 0 300 300">
+                @for (s of pieSlices; track s.label; let i = $index) {
+                <path [attr.d]="s.path" [attr.fill]="s.color" class="donut-slice"
+                    [class.slice-hovered]="hoveredSlice === i" (mouseenter)="hoveredSlice = i"
+                    (mouseleave)="hoveredSlice = null">
+                    <title>{{ s.label }}: {{ s.value | lkrCurrency }} ({{ s.pct | number:'1.1-1' }}%)</title>
+                </path>
+                }
+                @for (lbl of pieLabels; track lbl.label) {
+                <text [attr.x]="lbl.x" [attr.y]="lbl.y" class="pie-label">
+                    {{ lbl.pct | number:'1.0-0' }}%
+                </text>
+                }
+            </svg>
+            }
+
+            <!-- Bar -->
+            @if (chartType === 'bar') {
+            <svg class="big-chart" viewBox="0 0 300 260">
+                @for (b of barSlices; track b.label; let i = $index) {
+                <rect [attr.x]="b.x" [attr.y]="b.y" [attr.width]="b.w" [attr.height]="b.h" [attr.fill]="b.color"
+                    class="bar-rect" rx="4" [class.slice-hovered]="hoveredSlice === i" (mouseenter)="hoveredSlice = i"
+                    (mouseleave)="hoveredSlice = null">
+                    <title>{{ b.label }}: {{ b.value | lkrCurrency }} ({{ b.pct | number:'1.1-1' }}%)</title>
+                </rect>
+                <!-- icon above bar -->
+                <svg [attr.x]="b.x + b.w/2 - 8" [attr.y]="b.y - 22" width="16" height="16" viewBox="0 0 24 24"
+                    fill="none" [attr.stroke]="b.color" stroke-width="1.8" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    @for (p of b.iconPaths; track p) {
+                    <path [attr.d]="p" /> }
+                </svg>
+                <text [attr.x]="b.x + b.w/2" [attr.y]="b.y - 25" class="bar-label-top">
+                    {{ b.pct | number:'1.0-0' }}%
+                </text>
+                <text [attr.x]="b.x + b.w/2" [attr.y]="242" class="bar-label-bottom">
+                    {{ b.shortName }}
+                </text>
+                }
+                <line x1="24" y1="225" x2="290" y2="225" stroke="#e5e7eb" stroke-width="1" />
+            </svg>
+            }
+
+            <!-- Legend for pie / donut -->
+            @if (chartType !== 'bar') {
+            <div class="chart-legend">
+                @for (e of chartEntries; track e.label; let i = $index) {
+                <div class="legend-item" [class.legend-item--active]="hoveredSlice === i"
+                    (mouseenter)="hoveredSlice = i" (mouseleave)="hoveredSlice = null">
+                    <!-- matched icon in legend -->
+                    <div class="legend-icon-wrap" [style.background]="e.color + '18'"
+                        [style.borderColor]="e.color + '55'">
+                        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" [style.stroke]="e.color"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            @for (p of e.iconPaths; track p) {
+                            <path [attr.d]="p" /> }
+                        </svg>
+                    </div>
+                    <span class="legend-label">{{ e.label }}</span>
+                    <span class="legend-amount">{{ e.value | lkrCurrency }}</span>
+                    <span class="legend-pct">{{ e.pct | number:'1.1-1' }}%</span>
+                </div>
+                }
+            </div>
+            } @else {
+            <div class="chart-legend">
+                @for (e of chartEntries; track e.label; let i = $index) {
+                <div class="legend-item" [class.legend-item--active]="hoveredSlice === i"
+                    (mouseenter)="hoveredSlice = i" (mouseleave)="hoveredSlice = null">
+                    <div class="legend-icon-wrap" [style.background]="e.color + '18'"
+                        [style.borderColor]="e.color + '55'">
+                        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" [style.stroke]="e.color"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            @for (p of e.iconPaths; track p) {
+                            <path [attr.d]="p" /> }
+                        </svg>
+                    </div>
+                    <span class="legend-label">{{ e.label }}</span>
+                    <span class="legend-amount">{{ e.value | lkrCurrency }}</span>
+                </div>
+                }
+            </div>
+            }
+        </div>
+    </div>
+    }
+
+    @if (!loading() && !hasData) {
+    <div class="budget-empty">No inventory or expenditure data found.</div>
+    }
+</div>
+
+<!-- ══ Modal Dialog ═══════════════════════════════════════════════ -->
+@if (showForm) {
+<div class="modal-backdrop" (click)="cancelForm()"></div>
+<div class="modal-dialog" role="dialog" aria-modal="true">
+
+    <div class="modal-header">
+        <div class="modal-header-left">
+            <!-- live icon preview in modal header -->
+            <div class="modal-icon-live" [style.background]="getIconForDesc(form.description).color + '18'"
+                [style.borderColor]="getIconForDesc(form.description).color + '55'">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+                    [style.stroke]="getIconForDesc(form.description).color" stroke-width="1.8" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    @for (p of getIconForDesc(form.description).paths; track p) {
+                    <path [attr.d]="p" />
+                    }
+                </svg>
+            </div>
+            <div>
+                <h3 class="modal-title">{{ editingId ? 'Edit Expenditure' : 'Add Expenditure' }}</h3>
+                <p class="modal-subtitle">
+                    Category detected:
+                    <strong [style.color]="getIconForDesc(form.description).color">
+                        {{ getIconForDesc(form.description).label }}
+                    </strong>
+                </p>
+            </div>
+        </div>
+        <button class="modal-close" (click)="cancelForm()" title="Close">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor" stroke-width="2.5">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+        </button>
+    </div>
+
+    <div class="modal-body">
+        <div class="form-grid">
+            <div class="form-group form-group--full">
+                <label class="form-label">Description <span class="req">*</span></label>
+                <input class="form-input" type="text" placeholder="e.g. Transport, Food, Fuel, Repairs…"
+                    [(ngModel)]="form.description" maxlength="120" autofocus />
+            </div>
+            <div class="form-group">
+                <label class="form-label">Amount <span class="req">*</span></label>
+                <div class="input-prefix-wrap">
+                    <span class="input-prefix">LKR</span>
+                    <input class="form-input" type="number" placeholder="0.00" [(ngModel)]="form.amount" min="1"
+                        step="0.01" />
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Date <span class="req">*</span></label>
+                <input class="form-input" type="date" [(ngModel)]="form.date" />
+            </div>
+        </div>
+
+        @if (formError) {
+        <div class="form-error">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            {{ formError }}
+        </div>
+        }
+    </div>
+
+    <div class="modal-footer">
+        <button class="btn btn-outline" (click)="cancelForm()">Cancel</button>
+        <button class="btn btn-primary" (click)="saveExpenditure()" [disabled]="saving()">
+            @if (saving()) {
+            <span class="btn-spinner"></span> Saving…
+            } @else {
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor" stroke-width="2.5">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                <polyline points="17 21 17 13 7 13 7 21" />
+                <polyline points="7 3 7 8 15 8" />
+            </svg>
+            {{ editingId ? 'Update Expenditure' : 'Save Expenditure' }}
+            }
+        </button>
+    </div>
+</div>
+}

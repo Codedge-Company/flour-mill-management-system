@@ -33,6 +33,7 @@ export class SidebarComponent {
     { label: 'Inventory',       route: '/inventory',       icon: 'pi-box',          adminOnly: true },
     { label: 'Notifications',   route: '/notifications',   icon: 'pi-bell' },
     { label: 'User Management', route: '/user-management', icon: 'pi-user-edit',    adminOnly: true },
+    { label: 'Budget Management', route: '/budget', icon: 'pi-chart-bar',    adminOnly: true }
   ];
   readonly displayName: Signal<string> = computed(() => {
     const u: any = this.authService.currentUser();

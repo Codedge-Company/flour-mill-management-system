@@ -47,6 +47,11 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./features/user-management/user-management.routes').then(m => m.userManagementRoutes)
       },
+      {
+        path: 'budget',
+        loadChildren: () =>
+          import('./features/budget/budget-management.routes').then(m => m.BudgetManagementRoutes)
+      },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       { path: 'credit-payments', component: CreditPaymentsComponent }
     ]
