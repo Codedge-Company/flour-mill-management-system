@@ -64,41 +64,40 @@ const create = async ({ pack_type_id, stock_qty }) => {
   return enrichOne(populated);
 };
 
-// ── UPDATE (add stock) ────────────────────────────────────────────
-// Frontend sends { add_qty } → atomically INCREMENT using $inc
-const update = async (pack_type_id, body) => {
+const update = async (pack_type_id, body, userId) => {   // ← add userId param
   const { add_qty } = body;
 
-  // Validate
-  if (add_qty === undefined || add_qty === null) {
+  if (add_qty === undefined || add_qty === null)
     throw Object.assign(new Error('add_qty is required'), { statusCode: 400 });
-  }
-  const addQty = Number(add_qty);
-  if (isNaN(addQty) || addQty <= 0) {
-    throw Object.assign(new Error('add_qty must be a positive number'), { statusCode: 400 });
-  }
 
-  // $inc atomically adds to the current value — no fetch-then-save race condition
+  const addQty = Number(add_qty);
+  if (isNaN(addQty) || addQty <= 0)
+    throw Object.assign(new Error('add_qty must be a positive number'), { statusCode: 400 });
+
   const inv = await Inventory.findOneAndUpdate(
     { pack_type_id },
-    {
-      $inc: { stock_qty: addQty },   // ✅ ADD to existing, not replace
-      $set: { last_updated_at: new Date() }
-    },
-    { new: true }                    // return updated document
+    { $inc: { stock_qty: addQty }, $set: { last_updated_at: new Date() } },
+    { new: true }
   ).populate('pack_type_id', 'pack_name weight_kg is_active').lean();
 
   if (!inv) throw Object.assign(new Error('Inventory record not found'), { statusCode: 404 });
 
-  // Fire low-stock notification if the new qty is still below threshold
   const threshold = await StockThreshold.findOne({ pack_type_id }).lean();
-  if (threshold && inv.stock_qty <= threshold.threshold_qty) {
-    const pt = inv.pack_type_id ?? await PackType.findById(pack_type_id).lean();
-    await Notification.create({
-      type: 'LOW_STOCK',
-      pack_type_id,
-      message: `Low stock alert: ${pt?.pack_name ?? pack_type_id} has only ${inv.stock_qty} units remaining.`,
-    });
+  try {
+    if (threshold && inv.stock_qty <= threshold.threshold_qty) {
+      const pt = inv.pack_type_id ?? await PackType.findById(pack_type_id).lean();
+      await Notification.create({
+        type: 'LOW_STOCK',
+        pack_type_id,
+        current_stock: inv.stock_qty,
+        threshold: threshold.threshold_qty,
+        message: `Low stock alert: ${pt?.pack_name ?? pack_type_id} has only ${inv.stock_qty} units remaining.`,
+        userId,
+      });
+    }
+  } catch (notifErr) {
+    console.error('[Inventory] Notification create failed:', notifErr.message);
+
   }
 
   return enrichOne(inv);
