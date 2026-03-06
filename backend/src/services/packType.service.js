@@ -2,6 +2,7 @@ const PackType = require('../models/PackType');
 const Inventory = require('../models/Inventory');
 const StockThreshold = require('../models/StockThreshold');
 const CostHistory = require('../models/CostHistory');
+const CustomerPriceRule = require('../models/CustomerPriceRule');
 const DefaultPrice = require('../models/DefaultPrice');
 
 const getAll = () => PackType.find().sort({ weight_kg: 1 });
@@ -79,6 +80,7 @@ const remove = async (id) => {
     Inventory.deleteOne({ pack_type_id: id }),
     StockThreshold.deleteOne({ pack_type_id: id }),
     CostHistory.deleteMany({ pack_type_id: id }),
+    CustomerPriceRule.deleteMany({ pack_type_id: id })
   ]);
 };
 

@@ -39,12 +39,12 @@ export class NewSaleComponent implements OnInit {
 
   private nextRowId = 0; // Added for unique row ids
 
-readonly paymentMethods: { value: PaymentMethod; label: string; hint?: string }[] = [
-  { value: 'CASH',   label: 'Cash'          },
-  { value: 'CARD',   label: 'Card'          },
-  { value: 'BANK',   label: 'Bank Transfer' },
-  { value: 'CREDIT', label: 'Credit',  hint: 'Payment pending' },
-];
+  readonly paymentMethods: { value: PaymentMethod; label: string; hint?: string }[] = [
+    { value: 'CASH', label: 'Cash' },
+    { value: 'CARD', label: 'Card' },
+    { value: 'BANK', label: 'Bank Transfer' },
+    { value: 'CREDIT', label: 'Credit', hint: 'Payment pending' },
+  ];
 
   readonly breadcrumbs: Breadcrumb[] = [
     { label: 'Sales', route: '/sales' },
@@ -62,9 +62,9 @@ readonly paymentMethods: { value: PaymentMethod; label: string; hint?: string }[
   totalProfit = computed(() =>
     this.rows().reduce((s, r) => s + r.lineProfit, 0));
 
-hasValidRows = computed(() => 
-  this.rows().some(r => r.packTypeId !== null && r.qty >= 1 && r.unitPriceSold >= 0.01)
-);
+  hasValidRows = computed(() =>
+    this.rows().some(r => r.packTypeId !== null && r.qty >= 1 && r.unitPriceSold >= 0.01)
+  );
 
 
   canSave = computed(() => {
@@ -89,16 +89,16 @@ hasValidRows = computed(() =>
   selectedCustomer = computed(() =>
     this.getCustomer(this.headerForm.get('customerId')?.value)
   );
- customerSearchText = signal<string>('');
-customerDropdownOpen = signal<boolean>(false);
-filteredCustomers = computed(() => {
+  customerSearchText = signal<string>('');
+  customerDropdownOpen = signal<boolean>(false);
+  filteredCustomers = computed(() => {
     const search = this.customerSearchText().toLowerCase().trim();
     if (!search) return this.customers();
     return this.customers().filter(c =>
-        c.name.toLowerCase().includes(search) ||
-        c.customerCode.toLowerCase().includes(search)
+      c.name.toLowerCase().includes(search) ||
+      c.customerCode.toLowerCase().includes(search)
     );
-});
+  });
 
   constructor(
     private fb: FormBuilder,
@@ -109,7 +109,8 @@ filteredCustomers = computed(() => {
   ) {
     this.headerForm = this.fb.group({
       customerId: [null, Validators.required],
-      paymentMethod: ['CASH', Validators.required]
+      paymentMethod: ['CASH', Validators.required],
+      saleDate: [this.todayDateString(), Validators.required]
     });
   }
 
@@ -117,7 +118,9 @@ filteredCustomers = computed(() => {
     this.loadData();
     this.addRow();
   }
-
+  protected todayDateString(): string {
+    return new Date().toISOString().split('T')[0];
+  }
   private loadData(): void {
     this.dataLoading.set(true);
     let done = 0;
@@ -274,6 +277,7 @@ filteredCustomers = computed(() => {
     this.saleService.createSale({
       customerId: this.headerForm.value.customerId,
       paymentMethod: this.headerForm.value.paymentMethod,
+      saleDate: this.headerForm.value.saleDate,
       items: validRows.map(r => ({
         packTypeId: r.packTypeId!,
         qty: r.qty,
@@ -290,7 +294,6 @@ filteredCustomers = computed(() => {
       }
     });
   }
-
   onCancel(): void {
     this.router.navigate(['/sales']);
   }
@@ -304,15 +307,15 @@ filteredCustomers = computed(() => {
     this.customerDropdownOpen.set(true);
     // Clear selection if user edits the text
     if (this.headerForm.value.customerId) {
-        this.headerForm.patchValue({ customerId: null });
+      this.headerForm.patchValue({ customerId: null });
     }
-}
+  }
 
-selectCustomer(customer: Customer): void {
+  selectCustomer(customer: Customer): void {
     this.headerForm.patchValue({ customerId: customer.customerId });
     this.customerSearchText.set(`${customer.name} (${customer.customerCode})`);
     this.customerDropdownOpen.set(false);
     this.headerForm.get('customerId')?.markAsTouched();
     this.onCustomerChange(customer.customerId);
-}
+  }
 }

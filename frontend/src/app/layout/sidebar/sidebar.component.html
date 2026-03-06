@@ -4,13 +4,13 @@
   <!-- Brand header -->
   <div class="sidebar-brand">
     <div class="brand-logo">
-      <i class="pi pi-chart-bar brand-icon"></i>
+      <img src="assets/icons/flour-mill.png" alt="Flour Mill" class="brand-icon" />
     </div>
     @if (!collapsed) {
-      <div class="brand-text">
-        <span class="brand-name">Matheesha</span>
-        <span class="brand-sub">Flour Mill</span>
-      </div>
+    <div class="brand-text">
+      <span class="brand-name">Matheesha</span>
+      <span class="brand-sub">Flour Mill</span>
+    </div>
     }
     <!-- Mobile close button -->
     <button class="mobile-close-btn" (click)="closeMenu.emit()">
@@ -20,28 +20,24 @@
 
   <!-- Nav section label -->
   @if (!collapsed) {
-    <div class="nav-section-label">Main Menu</div>
+  <div class="nav-section-label">Main Menu</div>
   }
 
   <!-- Navigation -->
   <nav class="sidebar-nav">
     @for (item of visibleItems; track item.route) {
-      <a
-        [routerLink]="item.route"
-        routerLinkActive="active"
-        class="nav-item"
-        [pTooltip]="collapsed ? item.label : ''"
-        tooltipPosition="right">
-        <span class="nav-icon">
-          <i [class]="'pi ' + item.icon"></i>
-        </span>
-        @if (!collapsed) {
-          <span class="nav-label">{{ item.label }}</span>
-        }
-        @if (!collapsed && item.badge) {
-          <span class="nav-badge">{{ item.badge }}</span>
-        }
-      </a>
+    <a [routerLink]="item.route" routerLinkActive="active" class="nav-item" [pTooltip]="collapsed ? item.label : ''"
+      tooltipPosition="right">
+      <span class="nav-icon">
+        <i [class]="'pi ' + item.icon"></i>
+      </span>
+      @if (!collapsed) {
+      <span class="nav-label">{{ item.label }}</span>
+      }
+      @if (!collapsed && item.badge) {
+      <span class="nav-badge">{{ item.badge }}</span>
+      }
+    </a>
     }
   </nav>
 
@@ -49,13 +45,13 @@
   <div class="sidebar-spacer"></div>
 
   <!-- User footer -->
-<div class="sidebar-footer">
-  <div class="user-row" [class.user-row--collapsed]="collapsed">
-    <div class="user-avatar">
-      {{ avatarLabel() }}
-    </div>
+  <div class="sidebar-footer">
+    <div class="user-row" [class.user-row--collapsed]="collapsed">
+      <div class="user-avatar">
+        {{ avatarLabel() }}
+      </div>
 
-    @if (!collapsed) {
+      @if (!collapsed) {
       <div class="user-meta">
         <span class="user-name">{{ displayName() }}</span>
         <span class="user-role">{{ authService.currentUser()?.role }}</span>
@@ -64,8 +60,8 @@
       <button class="logout-btn" (click)="authService.logout()" title="Logout">
         <i class="pi pi-sign-out"></i>
       </button>
-    }
+      }
+    </div>
   </div>
-</div>
 
 </aside>

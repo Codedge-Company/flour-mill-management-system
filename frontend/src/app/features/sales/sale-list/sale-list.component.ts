@@ -34,19 +34,18 @@ import { SaleDetailDialogComponent } from '../sale-detail/sale-detail-dialog.com
   styleUrl: './sale-list.component.css'
 })
 export class SaleListComponent implements OnInit {
-  sales         = signal<Sale[]>([]);
-  customers     = signal<Customer[]>([]);
-  loading       = signal(true);
-  error         = signal<string | null>(null);
+  sales          = signal<Sale[]>([]);
+  customers      = signal<Customer[]>([]);
+  loading        = signal(true);
+  error          = signal<string | null>(null);
   successMessage = signal<string | null>(null);
 
-  // ── Filters ──────────────────────────────────────────────────────────────
-  filterCustomerId   = signal<string | null>(null);
-  filterStatus       = signal<SaleStatus | ''>('');
-  filterPaymentStatus = signal<PaymentStatus | ''>('');   // ← NEW
-
-  filterDateFrom = signal('');
-  filterDateTo   = signal('');
+  // ── Filters ───────────────────────────────────────────────────────────────
+  filterCustomerId    = signal<string | null>(null);
+  filterStatus        = signal<SaleStatus | ''>('');
+  filterPaymentStatus = signal<PaymentStatus | ''>('');
+  filterDateFrom      = signal('');
+  filterDateTo        = signal('');
 
   // ── Pagination ────────────────────────────────────────────────────────────
   currentPage   = signal(0);
@@ -62,20 +61,21 @@ export class SaleListComponent implements OnInit {
   viewSaleId    = signal<string | null>(null);
   downloadingId = signal<string | null>(null);
 
-  // ── Mark-as-paid ─────────────────────────────────────────────────────────
-  markPaidTarget  = signal<Sale | null>(null);   // ← NEW: confirms before calling API
-  markPaidLoading = signal(false);               // ← NEW
+  // ── Mark-as-paid ──────────────────────────────────────────────────────────
+  markPaidTarget  = signal<Sale | null>(null);
+  markPaidLoading = signal(false);
 
-  // ── Summary ───────────────────────────────────────────────────────────────
+  // ── Summary (all-pages totals from backend aggregate) ────────────────────
   filteredRevenue = signal(0);
+  filteredCost    = signal(0);
   filteredProfit  = signal(0);
 
   constructor(
-    private saleService:   SaleService,
+    private saleService:     SaleService,
     private customerService: CustomerService,
-    private invoicePdf:    InvoicePdfService,
-    private authService:   AuthService,
-    private router:        Router
+    private invoicePdf:      InvoicePdfService,
+    private authService:     AuthService,
+    private router:          Router
   ) {}
 
   ngOnInit(): void {
@@ -94,7 +94,7 @@ export class SaleListComponent implements OnInit {
     const filters: SaleFilters = {};
     if (this.filterCustomerId())    filters.customerId    = this.filterCustomerId()!;
     if (this.filterStatus())        filters.status        = this.filterStatus() as SaleStatus;
-    if (this.filterPaymentStatus()) filters.paymentStatus = this.filterPaymentStatus() as PaymentStatus;  // ← NEW
+    if (this.filterPaymentStatus()) filters.paymentStatus = this.filterPaymentStatus() as PaymentStatus;
     if (this.filterDateFrom())      filters.dateFrom      = this.filterDateFrom();
     if (this.filterDateTo())        filters.dateTo        = this.filterDateTo();
 
@@ -102,10 +102,10 @@ export class SaleListComponent implements OnInit {
       next: (res) => {
         const paged = res.data;
         this.sales.set(paged.content);
-        this.currentPage.set(paged.page || 0);
-        this.totalPages.set(paged.totalPages || 0);
+        this.currentPage.set(paged.page          || 0);
+        this.totalPages.set(paged.totalPages      || 0);
         this.totalElements.set(paged.totalElements || 0);
-        this.computeSummary(paged.content);
+        this.computeSummary(paged.totals);
         this.loading.set(false);
       },
       error: () => {
@@ -156,8 +156,8 @@ export class SaleListComponent implements OnInit {
   }
 
   // ── Cancel ────────────────────────────────────────────────────────────────
-  confirmCancel(sale: Sale): void  { this.cancelTarget.set(sale); }
-  cancelDialog(): void             { this.cancelTarget.set(null); }
+  confirmCancel(sale: Sale): void { this.cancelTarget.set(sale); }
+  cancelDialog(): void            { this.cancelTarget.set(null); }
 
   onCancelSale(): void {
     const sale = this.cancelTarget();
@@ -225,8 +225,8 @@ export class SaleListComponent implements OnInit {
   }
 
   // ── View ──────────────────────────────────────────────────────────────────
-  openView(sale: Sale): void  { this.viewSaleId.set(sale.saleId); }
-  closeView(): void           { this.viewSaleId.set(null); }
+  openView(sale: Sale): void { this.viewSaleId.set(sale.saleId); }
+  closeView(): void          { this.viewSaleId.set(null); }
 
   // ── Invoice ───────────────────────────────────────────────────────────────
   downloadInvoice(sale: Sale): void {
@@ -254,10 +254,26 @@ export class SaleListComponent implements OnInit {
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
-  private computeSummary(sales: Sale[]): void {
-    const saved = sales.filter(s => s.status === 'SAVED');
-    this.filteredRevenue.set(saved.reduce((a, s) => a + s.totalRevenue, 0));
-    this.filteredProfit.set(saved.reduce((a, s) => a + s.totalProfit, 0));
+
+  /** Use all-pages totals from backend aggregate */
+  private computeSummary(totals?: any): void {
+    if (totals) {
+      this.filteredRevenue.set(totals.total_revenue ?? 0);
+      this.filteredCost.set(totals.total_cost       ?? 0);
+      this.filteredProfit.set(totals.total_profit   ?? 0);
+    } else {
+      // Fallback: sum current page only
+      const saved = this.sales().filter(s => s.status === 'SAVED');
+      this.filteredRevenue.set(saved.reduce((a, s) => a + s.totalRevenue, 0));
+      this.filteredCost.set(saved.reduce((a, s)    => a + s.totalCost,    0));
+      this.filteredProfit.set(saved.reduce((a, s)  => a + s.totalProfit,  0));
+    }
+  }
+
+  /** Percentage of credit payment collected (0–100) */
+  getPaymentPct(sale: Sale): number {
+    if (!sale.totalRevenue) return 0;
+    return Math.min(100, Math.round(((sale.totalPaid ?? 0) / sale.totalRevenue) * 100));
   }
 
   private showSuccess(msg: string): void {
@@ -276,7 +292,6 @@ export class SaleListComponent implements OnInit {
     return this.authService.currentUser()?.role === 'ADMIN';
   }
 
-  /** Whether a sale has an outstanding (unpaid) credit balance */
   isPendingCredit(sale: Sale): boolean {
     return sale.paymentMethod === 'CREDIT' && sale.paymentStatus === 'PENDING';
   }

@@ -3,12 +3,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { map, Observable } from 'rxjs';
 import { environment } from '../../../environments/environment.prod';
-import {
-  Sale,
-  PaymentStatus,
-  CreateSaleRequest,
-  SaleFilters
-} from '../models/sale';
+import { Sale, CreateSaleRequest, SaleFilters } from '../models/sale';
 import { ApiResponse } from '../models/api-response';
 
 @Injectable({ providedIn: 'root' })
@@ -24,8 +19,8 @@ export class SaleService {
 
     if (filters?.customerId)    params = params.set('customerId',    filters.customerId);
     if (filters?.status)        params = params.set('status',        filters.status);
-    if (filters?.paymentMethod) params = params.set('paymentMethod', filters.paymentMethod);  // ← NEW
-    if (filters?.paymentStatus) params = params.set('paymentStatus', filters.paymentStatus);  // ← NEW
+    if (filters?.paymentMethod) params = params.set('paymentMethod', filters.paymentMethod);
+    if (filters?.paymentStatus) params = params.set('paymentStatus', filters.paymentStatus);
     if (filters?.dateFrom)      params = params.set('dateFrom',      filters.dateFrom!);
     if (filters?.dateTo)        params = params.set('dateTo',        filters.dateTo!);
 
@@ -35,11 +30,12 @@ export class SaleService {
         return {
           success: true,
           data: {
-            content:       paged.content.map(this.mapToSale),
+            content:       paged.content.map((r: any) => this.mapToSale(r)),
             page:          paged.page,
             totalPages:    paged.totalPages,
             totalElements: paged.totalElements,
-            size:          paged.size || size
+            size:          paged.size || size,
+            totals:        paged.totals ?? { total_revenue: 0, total_cost: 0, total_profit: 0 },
           }
         };
       })
@@ -50,19 +46,19 @@ export class SaleService {
     return {
       saleId:            raw._id,
       saleNo:            raw.sale_no,
-      customerId:        raw.customer_id?._id   || raw.customer_id   || '',
-      customerName:      raw.customer_id?.name  || '',
+      customerId:        raw.customer_id?._id  || raw.customer_id || '',
+      customerName:      raw.customer_id?.name || '',
       customerCode:      raw.customer_id?.customer_code || '',
       createdByUserName: raw.created_by_user_id?.full_name || raw.created_by_user_id?.username || '',
       saleDatetime:      raw.sale_datetime,
       paymentMethod:     raw.payment_method,
-      // Legacy records (CASH/CARD/BANK) may not have payment_status → default to 'PAID'
-      paymentStatus:     raw.payment_status ?? 'PAID',              // ← NEW
+      paymentStatus:     raw.payment_status ?? 'PAID',
       status:            raw.status,
-      totalRevenue:      raw.total_revenue,
-      totalCost:         raw.total_cost,
-      totalProfit:       raw.total_profit,
-      items: raw.items.map((item: any) => ({
+      totalRevenue:      raw.total_revenue  ?? 0,
+      totalCost:         raw.total_cost     ?? 0,
+      totalProfit:       raw.total_profit   ?? 0,
+      totalPaid:         raw.total_paid     ?? 0,
+      items: (raw.items ?? []).map((item: any) => ({
         saleItemId:     item._id,
         packTypeId:     item.pack_type_id?._id  || item.pack_type_id,
         packName:       item.pack_type_id?.pack_name || '',
@@ -90,6 +86,7 @@ export class SaleService {
     const payload = {
       customer_id:    request.customerId,
       payment_method: request.paymentMethod,
+      sale_datetime:  request.saleDate ? new Date(request.saleDate).toISOString() : undefined,
       items: request.items.map(item => ({
         pack_type_id:    item.packTypeId,
         qty:             item.qty,
@@ -105,6 +102,7 @@ export class SaleService {
     const payload = {
       customer_id:    request.customerId,
       payment_method: request.paymentMethod,
+      sale_datetime:  request.saleDate ? `${request.saleDate}T00:00:00.000Z` : undefined,
       items: request.items.map(item => ({
         pack_type_id:    item.packTypeId,
         qty:             item.qty,
@@ -120,10 +118,6 @@ export class SaleService {
     return this.http.patch<ApiResponse<Sale>>(`${this.apiUrl}/${saleId}/cancel`, {});
   }
 
-  /**
-   * Marks a CREDIT sale's payment as received.
-   * Calls PATCH /sales/:id/mark-paid
-   */
   markAsPaid(saleId: string): Observable<ApiResponse<Sale>> {
     return this.http.patch<any>(`${this.apiUrl}/${saleId}/mark-paid`, {}).pipe(
       map((response) => ({ success: true, data: this.mapToSale(response.data || response) }))

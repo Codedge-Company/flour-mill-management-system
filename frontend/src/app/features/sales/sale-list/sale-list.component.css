@@ -298,3 +298,160 @@
 .page-info {
   margin-left: auto;
 }
+/* ── Add to sale-list.component.css ─────────────────────────────────────────
+   Paste below your existing styles                                           */
+
+/* ── Summary strip ───────────────────────────────────────────────────────── */
+.summary-strip {
+  display: flex;
+  align-items: center;
+  padding: 10px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  flex-wrap: wrap;
+  gap: 4px 0;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 4px 18px;
+  flex: 1;
+  min-width: 130px;
+}
+
+.summary-divider {
+  width: 1px;
+  height: 36px;
+  background: var(--border);
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.summary-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--text-muted);
+}
+
+.summary-val {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.summary-val.primary { color: var(--primary); }
+.summary-val.success { color: #16a34a; }
+.summary-val.danger  { color: var(--danger); }
+.summary-val.muted   { color: var(--text-secondary); font-weight: 600; }
+
+.summary-note {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 0 12px;
+  flex: none;
+  white-space: nowrap;
+}
+
+/* ── Credit progress column ──────────────────────────────────────────────── */
+.credit-progress-cell {
+  min-width: 140px;
+  max-width: 180px;
+}
+
+.credit-prog-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.credit-prog-amounts {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.credit-prog-paid {
+  font-weight: 700;
+  color: #d97706;
+}
+
+.credit-prog-paid.fully-paid {
+  color: #16a34a;
+}
+
+.credit-prog-sep {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.credit-prog-total {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.credit-prog-pct {
+  font-size: 9px;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-align: right;
+}
+
+.credit-prog-bar {
+  height: 4px;
+  background: var(--border);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.credit-prog-fill {
+  height: 100%;
+  background: #f59e0b;
+  border-radius: 99px;
+  transition: width .3s ease;
+  min-width: 2px;
+}
+
+.credit-prog-fill.fill-full {
+  background: #22c55e;
+}
+
+.no-credit-dash {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .summary-strip {
+    gap: 8px;
+    padding: 12px 14px;
+  }
+
+  .summary-divider { display: none; }
+
+  .summary-item {
+    padding: 4px 0;
+    min-width: calc(50% - 8px);
+    flex: none;
+    width: calc(50% - 8px);
+  }
+
+  .summary-note {
+    width: 100%;
+    padding: 0;
+  }
+}

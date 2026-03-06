@@ -1,7 +1,7 @@
 <!-- src/app/features/sales/edit-sale/edit-sale.component.html -->
 <div class="edit-sale-page">
 
-    <!-- ── Page Header (plain HTML — no app-page-header dependency) ────────── -->
+    <!-- ── Page Header ──────────────────────────────────────────────────────── -->
     <div class="page-header-bar">
         <div class="page-header-left">
             <nav class="breadcrumbs">
@@ -17,7 +17,7 @@
         </div>
     </div>
 
-    <!-- ── Error ──────────────────────────────────────────────────────────── -->
+    <!-- ── Top-level error ──────────────────────────────────────────────────── -->
     @if (error()) {
     <div class="alert-error-bar">
         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24"
@@ -30,7 +30,7 @@
     </div>
     }
 
-    <!-- ── Loading ────────────────────────────────────────────────────────── -->
+    <!-- ── Loading ──────────────────────────────────────────────────────────── -->
     @if (dataLoading()) {
     <div class="loading-state">
         <div class="spinner"></div>
@@ -40,13 +40,18 @@
 
     <div class="sale-layout">
 
-        <!-- ── LEFT : Sale Details form ──────────────────────────────────── -->
+        <!-- ════════════════════════════════════════════════════════════════════
+             LEFT COLUMN — Sale details form
+        ════════════════════════════════════════════════════════════════════ -->
         <div class="left-col">
+
+            <!-- Sale Details card -->
             <div class="card section-card">
                 <h3 class="section-title">Sale Details</h3>
 
                 <form [formGroup]="headerForm" class="header-form">
 
+                    <!-- Customer -->
                     <div class="form-group">
                         <label class="form-label">Customer <span class="req">*</span></label>
                         <select class="form-control" formControlName="customerId"
@@ -61,22 +66,48 @@
                         }
                     </div>
 
+                    <!-- Sale Date -->
+                    <div class="form-group">
+                        <label class="form-label">Sale Date <span class="req">*</span></label>
+                        <input type="date" class="form-control" formControlName="saleDate" />
+                    </div>
+
+                    <!-- Payment Method -->
                     <div class="form-group">
                         <label class="form-label">Payment Method <span class="req">*</span></label>
                         <div class="payment-radio-group">
                             @for (pm of paymentMethods; track pm.value) {
-                            <label class="payment-radio" [class.selected]="getPaymentValue() === pm.value">
+                            <label class="payment-radio"
+                                [class.selected]="getPaymentValue() === pm.value"
+                                [class.credit-radio]="pm.value === 'CREDIT'">
                                 <input type="radio" formControlName="paymentMethod" [value]="pm.value" />
                                 {{ pm.label }}
+                                @if (pm.hint) {
+                                <span class="payment-radio-hint">{{ pm.hint }}</span>
+                                }
                             </label>
                             }
                         </div>
+
+                        <!-- Credit notice -->
+                        @if (getPaymentValue() === 'CREDIT') {
+                        <div class="credit-notice">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="12" y1="8" x2="12" y2="12" />
+                                <line x1="12" y1="16" x2="12.01" y2="16" />
+                            </svg>
+                            Sale recorded with <strong>payment pending</strong>.
+                            Add payments below as instalments are received.
+                        </div>
+                        }
                     </div>
 
                 </form>
             </div>
 
-            <!-- Customer info -->
+            <!-- Customer info card -->
             @if (selectedCustomer()) {
             <div class="card customer-info-card">
                 <div class="customer-info-header">
@@ -102,9 +133,179 @@
                 }
             </div>
             }
+
+            <!-- ══════════════════════════════════════════════════════════════
+                 CREDIT PAYMENTS PANEL (only shown when method = CREDIT)
+            ══════════════════════════════════════════════════════════════ -->
+            @if (getPaymentValue() === 'CREDIT') {
+            <div class="card payments-card">
+
+                <!-- Header with payment status badge -->
+                <div class="payments-card-header">
+                    <h3 class="section-title">Payments</h3>
+                    @if (isFullyPaid()) {
+                    <span class="badge badge-paid">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor" stroke-width="3">
+                            <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                        Fully Paid
+                    </span>
+                    } @else {
+                    <span class="badge badge-pending">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="8" x2="12" y2="12" />
+                            <line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
+                        Payment Pending
+                    </span>
+                    }
+                </div>
+
+                <!-- Payment summary bar -->
+                <div class="payment-summary-bar">
+                    <div class="ps-item">
+                        <span class="ps-label">Sale Total</span>
+                        <span class="ps-value">{{ saleTotalRevenue() | lkrCurrency }}</span>
+                    </div>
+                    <div class="ps-item">
+                        <span class="ps-label">Total Paid</span>
+                        <span class="ps-value text-success">{{ totalPaid() | lkrCurrency }}</span>
+                    </div>
+                    <div class="ps-item">
+                        <span class="ps-label">Balance Due</span>
+                        <span class="ps-value" [class.text-danger]="balanceDue() > 0"
+                            [class.text-success]="balanceDue() <= 0">
+                            {{ balanceDue() | lkrCurrency }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Progress bar -->
+                @if (saleTotalRevenue() > 0) {
+                <div class="payment-progress-wrap">
+                    <div class="payment-progress-bar">
+                        <div class="payment-progress-fill"
+                            [style.width.%]="Math.min(100, (totalPaid() / saleTotalRevenue()) * 100)">
+                        </div>
+                    </div>
+                    <span class="payment-progress-pct">
+                        {{ ((totalPaid() / saleTotalRevenue()) * 100).toFixed(0) }}%
+                    </span>
+                </div>
+                }
+
+                <!-- Payment error -->
+                @if (paymentError()) {
+                <div class="alert-error-bar small-alert">{{ paymentError() }}</div>
+                }
+
+                <!-- ── Add payment form (hidden when fully paid) ── -->
+                @if (!isFullyPaid()) {
+                <div class="add-payment-form">
+                    <p class="add-payment-title">Record a Payment</p>
+
+                    <div class="add-payment-grid">
+                        <div class="form-group">
+                            <label class="form-label">Amount (LKR) <span class="req">*</span></label>
+                            <div class="amount-input-wrap">
+                                <input type="number" class="form-control" min="0.01" step="0.01"
+                                    placeholder="0.00"
+                                    [ngModel]="newPaymentAmount()"
+                                    (ngModelChange)="newPaymentAmount.set($event)" />
+                                <button class="btn-fill-balance" type="button"
+                                    (click)="fillBalance()" title="Fill remaining balance">
+                                    Full
+                                </button>
+                            </div>
+                            @if (newPaymentAmount() !== null && newPaymentAmount()! > balanceDue() + 0.001) {
+                            <span class="field-error">
+                                Amount exceeds balance ({{ balanceDue() | lkrCurrency: false }})
+                            </span>
+                            }
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Payment Date <span class="req">*</span></label>
+                            <input type="date" class="form-control"
+                                [ngModel]="newPaymentDate()"
+                                (ngModelChange)="newPaymentDate.set($event)" />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Notes</label>
+                        <input type="text" class="form-control" placeholder="e.g. Cash received, bank ref…"
+                            [ngModel]="newPaymentNotes()"
+                            (ngModelChange)="newPaymentNotes.set($event)" />
+                    </div>
+
+                    <button class="btn btn-primary btn-sm w-full" [disabled]="!canAddPayment()"
+                        (click)="onAddPayment()">
+                        @if (addingPayment()) {
+                        <span class="btn-spinner"></span> Saving…
+                        } @else {
+                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                        Add Payment
+                        }
+                    </button>
+                </div>
+                }
+
+                <!-- ── Existing payments list ── -->
+                @if (paymentsLoading()) {
+                <div class="spinner small-spinner"></div>
+                } @else if (payments().length === 0) {
+                <p class="no-payments-msg">No payments recorded yet.</p>
+                } @else {
+                <div class="payments-list">
+                    <p class="payments-list-title">Payment History</p>
+                    @for (p of payments(); track p.paymentId) {
+                    <div class="payment-row">
+                        <div class="payment-row-left">
+                            <span class="payment-no">{{ p.paymentNo }}</span>
+                            <span class="payment-date">
+                                {{ p.paymentDate | date: 'dd MMM yyyy' }}
+                            </span>
+                            @if (p.notes) {
+                            <span class="payment-notes">{{ p.notes }}</span>
+                            }
+                            @if (p.recordedBy) {
+                            <span class="payment-by">by {{ p.recordedBy }}</span>
+                            }
+                        </div>
+                        <div class="payment-row-right">
+                            <span class="payment-amount">{{ p.amount | lkrCurrency }}</span>
+                            <button class="btn-remove" title="Delete payment"
+                                [disabled]="deletingPayment() === p.paymentId"
+                                (click)="onDeletePayment(p.paymentId)">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <line x1="18" y1="6" x2="6" y2="18" />
+                                    <line x1="6" y1="6" x2="18" y2="18" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    }
+                </div>
+                }
+
+            </div>
+            }
+            <!-- /payments panel -->
+
         </div>
 
-        <!-- ── RIGHT : Items + Totals ─────────────────────────────────────── -->
+        <!-- ════════════════════════════════════════════════════════════════════
+             RIGHT COLUMN — Items table + totals + save actions
+        ════════════════════════════════════════════════════════════════════ -->
         <div class="right-col">
             <div class="card section-card items-card">
 
@@ -136,13 +337,13 @@
                             @for (row of rows(); track row.id; let i = $index) {
                             <tr [class.row-error]="hasStockError(i)">
 
-                                <!-- Pack select -->
                                 <td>
                                     <select class="form-control form-control-sm" [value]="row.packTypeId"
                                         (change)="onPackChange(i, $any($event.target).value)">
                                         <option value="">Select pack…</option>
                                         @for (p of getAvailablePacks(i); track p.packTypeId) {
-                                        <option [value]="p.packTypeId" [selected]="p.packTypeId === row.packTypeId">
+                                        <option [value]="p.packTypeId"
+                                            [selected]="p.packTypeId === row.packTypeId">
                                             {{ p.packName }}{{ p.isLowStock ? ' ⚠️' : '' }}
                                         </option>
                                         }
@@ -155,28 +356,24 @@
                                     }
                                 </td>
 
-                                <!-- Qty -->
                                 <td class="num-col">
                                     <input type="number" class="form-control form-control-sm num-input" min="1"
-                                        [value]="row.qty" (change)="onQtyChange(i, +$any($event.target).value)" />
+                                        [value]="row.qty"
+                                        (change)="onQtyChange(i, +$any($event.target).value)" />
                                 </td>
 
-                                <!-- Unit Price -->
                                 <td class="num-col">
                                     <input type="number" class="form-control form-control-sm num-input" min="0"
                                         step="0.01" [value]="row.unitPriceSold"
                                         (change)="onPriceChange(i, +$any($event.target).value)" />
                                 </td>
 
-                                <!-- Stock -->
                                 <td class="num-col stock-col" [class.low-stock]="isLowStock(row)">
                                     {{ row.availableStock }}
                                 </td>
 
-                                <!-- Line Total -->
                                 <td class="num-col">{{ row.lineRevenue | lkrCurrency }}</td>
 
-                                <!-- Remove -->
                                 <td>
                                     @if (rows().length > 1) {
                                     <button class="btn-remove" (click)="removeRow(i)" title="Remove row">

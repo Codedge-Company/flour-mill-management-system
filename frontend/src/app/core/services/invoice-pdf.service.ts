@@ -755,303 +755,336 @@ export class InvoicePdfService {
   // ════════════════════════════════════════════════════════════════════════════
   // CUSTOMER PROFORMA  (all sales — pending + paid, with separate payment tables)
   // ════════════════════════════════════════════════════════════════════════════
-  generateCustomerProforma(summaries: SaleCreditSummary[]): void {
-    if (summaries.length === 0) return;
+ generateCustomerProforma(summaries: SaleCreditSummary[]): void {
+  if (summaries.length === 0) return;
 
-    const doc = new jsPDF('p', 'pt', 'a4');
-    const pageW = doc.internal.pageSize.getWidth();
-    const mL = 40, mR = 40, rEdge = pageW - mR;
+  const doc   = new jsPDF('p', 'pt', 'a4');
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const mL = 40, mR = 40, rEdge = pageW - mR;
+  const BOTTOM_MARGIN = 55;
+  let y = 40;
 
-    const first        = summaries[0].sale;
-    const pending      = summaries.filter(s => !s.isPaid);
-    const paid         = summaries.filter(s =>  s.isPaid);
-    const grandTotal   = summaries.reduce((a, s) => a + s.sale.totalRevenue, 0);
-    const grandPaid    = summaries.reduce((a, s) => a + s.totalPaid, 0);
-    const grandBalance = summaries.reduce((a, s) => a + s.balanceDue, 0);
+  const first        = summaries[0].sale;
+  const pending      = summaries.filter(s => !s.isPaid);
+  const paid         = summaries.filter(s =>  s.isPaid);
+  const grandTotal   = summaries.reduce((a, s) => a + s.sale.totalRevenue, 0);
+  const grandPaid    = summaries.reduce((a, s) => a + s.totalPaid, 0);
+  const grandBalance = summaries.reduce((a, s) => a + s.balanceDue, 0);
 
-    // ── Header ───────────────────────────────────────────────────────────────
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(13.5); doc.setTextColor(20, 20, 20);
-    doc.text('Matheesha Flour Mill', mL, 55);
-    doc.setFontSize(24);
-    doc.text('ACCOUNT STATEMENT', rEdge, 55, { align: 'right' });
+  // ── Page-break guard ────────────────────────────────────────────────────────
+  const checkPageBreak = (needed = 40) => {
+    if (y + needed > pageH - BOTTOM_MARGIN) {
+      doc.addPage();
+      y = 40;
+    }
+  };
 
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(110, 110, 110);
-    doc.text('North Central Province', mL, 69);
-    doc.text('SriLanka', mL, 81);
-    doc.text('matheeshaflourmill@gmail.com', mL, 93);
+  // ── Header ──────────────────────────────────────────────────────────────────
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(13.5); doc.setTextColor(20, 20, 20);
+  doc.text('Matheesha Flour Mill', mL, y + 15);
+  doc.setFontSize(24);
+  doc.text('ACCOUNT STATEMENT', rEdge, y + 15, { align: 'right' });
 
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(60, 60, 60);
-    doc.text(`Date: ${this.formatDate(new Date().toISOString())}`, rEdge, 71, { align: 'right' });
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
-    doc.text('Outstanding Balance', rEdge, 89, { align: 'right' });
-    doc.setFontSize(13);
-    doc.setTextColor(grandBalance > 0 ? 180 : 22, grandBalance > 0 ? 20 : 163, grandBalance > 0 ? 20 : 74);
-    doc.text(`LKR${this.fmt(grandBalance)}`, rEdge, 104, { align: 'right' });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(110, 110, 110);
+  doc.text('North Central Province',          mL, y + 29);
+  doc.text('SriLanka',                        mL, y + 41);
+  doc.text('matheeshaflourmill@gmail.com',    mL, y + 53);
 
-    this.drawDivider(doc, mL, rEdge, 116);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(60, 60, 60);
+  doc.text(`Date: ${this.formatDate(new Date().toISOString())}`, rEdge, y + 31, { align: 'right' });
 
-    // ── Customer Info ─────────────────────────────────────────────────────────
-    const b2Y = 134;
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(130, 130, 130);
-    doc.text('Customer', mL, b2Y);
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(20, 20, 20);
-    doc.text(first.customerName, mL, b2Y + 14);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(80, 80, 80);
+  doc.text('Outstanding Balance', rEdge, y + 49, { align: 'right' });
 
-    let addrEndY = b2Y + 14;
-    if (first.customerAddress?.trim()) {
-      const wrapped = doc.splitTextToSize(first.customerAddress.trim(), 260);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(80, 80, 80);
-      wrapped.forEach((line: string, i: number) => {
-        addrEndY = b2Y + 14 + 13 * (i + 1);
-        doc.text(line, mL, addrEndY);
+  doc.setFontSize(13);
+  doc.setTextColor(
+    grandBalance > 0 ? 180 : 22,
+    grandBalance > 0 ?  20 : 163,
+    grandBalance > 0 ?  20 :  74,
+  );
+  doc.text(`LKR${this.fmt(grandBalance)}`, rEdge, y + 64, { align: 'right' });
+
+  y += 76;
+  this.drawDivider(doc, mL, rEdge, y);
+  y += 18;
+
+  // ── Customer Info ────────────────────────────────────────────────────────────
+  const infoStartY = y;
+
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(130, 130, 130);
+  doc.text('Customer', mL, y);
+  y += 14;
+
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(20, 20, 20);
+  doc.text(first.customerName, mL, y);
+
+  if (first.customerAddress?.trim()) {
+    const wrapped = doc.splitTextToSize(first.customerAddress.trim(), 260);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(80, 80, 80);
+    wrapped.forEach((line: string) => {
+      y += 13;
+      doc.text(line, mL, y);
+    });
+  }
+  if (first.customerPhone) {
+    y += 13;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(80, 80, 80);
+    doc.text(first.customerPhone, mL, y);
+  }
+  const leftColEndY = y;
+
+  const metaRows = [
+    { label: 'Customer Code :', value: first.customerCode    },
+    { label: 'Total Sales :',   value: `${summaries.length}` },
+    { label: 'Pending :',       value: `${pending.length}`   },
+    { label: 'Completed :',     value: `${paid.length}`      },
+  ];
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+  metaRows.forEach((row, i) => {
+    const ry = infoStartY + i * 18;
+    doc.setTextColor(100, 100, 100); doc.text(row.label, 460,   ry, { align: 'right' });
+    doc.setTextColor(30,   30,  30); doc.text(row.value, rEdge, ry, { align: 'right' });
+  });
+  const rightColEndY = infoStartY + (metaRows.length - 1) * 18;
+
+  y = Math.max(leftColEndY, rightColEndY) + 22;
+
+  // ── Summary stats bar ────────────────────────────────────────────────────────
+  autoTable(doc, {
+    body: [[
+      { content: `Total Invoiced\nLKR${this.fmt(grandTotal)}`,
+        styles: { halign: 'center', fillColor: [245,245,245], textColor: [40,40,40],
+                  fontSize: 8.5, cellPadding: { top:8, bottom:8, left:6, right:6 } } },
+      { content: `Total Paid\nLKR${this.fmt(grandPaid)}`,
+        styles: { halign: 'center', fillColor: [240,253,244], textColor: [22,163,74],
+                  fontSize: 8.5, cellPadding: { top:8, bottom:8, left:6, right:6 } } },
+      { content: `Outstanding\nLKR${this.fmt(grandBalance)}`,
+        styles: { halign: 'center', fillColor: [254,242,242], textColor: [180,20,20],
+                  fontSize: 8.5, cellPadding: { top:8, bottom:8, left:6, right:6 } } },
+    ]],
+    startY: y, theme: 'plain',
+    styles: { fontSize: 8.5, lineWidth: 0.4, lineColor: [210,210,210] },
+    columnStyles: {
+      0: { cellWidth: (rEdge - mL) / 3 },
+      1: { cellWidth: (rEdge - mL) / 3 },
+      2: { cellWidth: (rEdge - mL) / 3 },
+    },
+    margin: { left: mL, right: mR },
+  });
+  y = (doc as any).lastAutoTable.finalY + 20;
+
+  // ── Helper: render one section ───────────────────────────────────────────────
+  const renderSection = (
+    sectionSummaries: SaleCreditSummary[],
+    title: string,
+    headerFill: [number, number, number],
+  ) => {
+    if (sectionSummaries.length === 0) return;
+
+    checkPageBreak(60);
+
+    // ✅ FIX: set bold/11pt FIRST, draw title, capture width, THEN switch font for count
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(20, 20, 20);
+    doc.text(title, mL, y);
+
+    // Measure title width while the font is still bold 11pt — correct position
+    const titleWidth = doc.getTextWidth(title);
+
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(100, 100, 100);
+    doc.text(
+      `(${sectionSummaries.length} sale${sectionSummaries.length > 1 ? 's' : ''})`,
+      mL + titleWidth + 6, y,
+    );
+
+    y += 16;
+
+    sectionSummaries.forEach((summary, sIdx) => {
+      const { sale, payments, totalPaid, balanceDue, isPaid } = summary;
+
+      const tableW = rEdge - mL;
+      const cNo = 26, cRate = 82, cAmt = 88, cQty = 54;
+      const cDesc = tableW - cNo - cQty - cRate - cAmt;
+
+      checkPageBreak(60);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(40, 40, 40);
+      doc.text(`${sIdx + 1}.  ${sale.saleNo}`, mL, y);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(110, 110, 110);
+      doc.text(this.formatDate(sale.saleDatetime), rEdge, y, { align: 'right' });
+      y += 10;
+
+      autoTable(doc, {
+        head: [['#', 'Item & Description', 'Qty', 'Unit Price', 'Amount']],
+        body: sale.items.map((item, i) => [
+          `${i + 1}`,
+          `${item.packName}${item.weightKg != null ? ' - ' + item.weightKg + 'kg' : ''}`,
+          `${this.fmtQty(item.qty)}\npcs`,
+          this.fmt(item.unitPriceSold),
+          this.fmt(item.lineRevenue),
+        ]),
+        startY: y,
+        theme: 'grid',
+        headStyles: {
+          fillColor: headerFill, textColor: [255,255,255],
+          fontStyle: 'bold', fontSize: 8,
+          cellPadding: { top:5, bottom:5, left:5, right:5 },
+        },
+        columnStyles: {
+          0: { halign: 'center', cellWidth: cNo   },
+          1: { halign: 'left',   cellWidth: cDesc },
+          2: { halign: 'center', cellWidth: cQty  },
+          3: { halign: 'right',  cellWidth: cRate },
+          4: { halign: 'right',  cellWidth: cAmt  },
+        },
+        bodyStyles: {
+          textColor: [40,40,40], fontSize: 8,
+          cellPadding: { top:4, bottom:4, left:5, right:5 },
+        },
+        styles: { lineColor: [200,200,200], lineWidth: 0.4 },
+        margin: { left: mL, right: mR },
       });
-    }
-    if (first.customerPhone) {
-      addrEndY += 13;
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(80, 80, 80);
-      doc.text(first.customerPhone, mL, addrEndY);
-    }
+      y = (doc as any).lastAutoTable.finalY + 4;
 
-    const metaRows = [
-      { label: 'Customer Code :', value: first.customerCode },
-      { label: 'Total Sales :',    value: `${summaries.length}` },
-      { label: 'Pending :',        value: `${pending.length}` },
-      { label: 'Completed :',      value: `${paid.length}` },
-    ];
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
-    metaRows.forEach((row, i) => {
-      const ry = b2Y + i * 18;
-      doc.setTextColor(100, 100, 100); doc.text(row.label, 460, ry, { align: 'right' });
-      doc.setTextColor(30,  30,  30);  doc.text(row.value,  rEdge, ry, { align: 'right' });
-    });
+      const tLbl = 110, tVal = 100;
+      const tLeft = rEdge - tLbl - tVal;
+      autoTable(doc, {
+        body: [
+          [
+            { content: 'Invoice Total',
+              styles: { halign: 'right', textColor: [60,60,60], fillColor: [255,255,255] } },
+            { content: `LKR${this.fmt(sale.totalRevenue)}`,
+              styles: { halign: 'right', fontStyle: 'bold', textColor: [20,20,20], fillColor: [255,255,255] } },
+          ],
+          [
+            { content: 'Amount Paid',
+              styles: { halign: 'right', textColor: [22,163,74], fillColor: [240,253,244] } },
+            { content: `(LKR${this.fmt(totalPaid)})`,
+              styles: { halign: 'right', textColor: [22,163,74], fillColor: [240,253,244] } },
+          ],
+          [
+            { content: 'Balance Due',
+              styles: { halign: 'right', fontStyle: 'bold',
+                textColor: isPaid ? [22,163,74] : [180,20,20],
+                fillColor: isPaid ? [240,253,244] : [254,242,242] } },
+            { content: isPaid ? 'PAID' : `LKR${this.fmt(balanceDue)}`,
+              styles: { halign: 'right', fontStyle: 'bold',
+                textColor: isPaid ? [22,163,74] : [180,20,20],
+                fillColor: isPaid ? [240,253,244] : [254,242,242] } },
+          ],
+        ],
+        startY: y, theme: 'plain',
+        styles: { fontSize: 8.5, lineWidth: 0, cellPadding: { top:3, bottom:3, left:7, right:7 } },
+        columnStyles: { 0: { cellWidth: tLbl }, 1: { cellWidth: tVal } },
+        margin: { left: tLeft, right: mR },
+      });
+      y = (doc as any).lastAutoTable.finalY + 8;
 
-    // ── Summary stats bar ─────────────────────────────────────────────────────
-    let y = Math.max(addrEndY, b2Y + 3 * 18) + 22;
-
-    autoTable(doc, {
-      body: [[
-        { content: `Total Invoiced\nLKR${this.fmt(grandTotal)}`,
-          styles: { halign: 'center', fillColor: [245,245,245], textColor: [40,40,40], fontSize: 8.5, cellPadding: {top:8,bottom:8,left:6,right:6} } },
-        { content: `Total Paid\nLKR${this.fmt(grandPaid)}`,
-          styles: { halign: 'center', fillColor: [240,253,244], textColor: [22,163,74], fontSize: 8.5, cellPadding: {top:8,bottom:8,left:6,right:6} } },
-        { content: `Outstanding\nLKR${this.fmt(grandBalance)}`,
-          styles: { halign: 'center', fillColor: [254,242,242], textColor: [180,20,20], fontSize: 8.5, cellPadding: {top:8,bottom:8,left:6,right:6} } },
-      ]],
-      startY: y, theme: 'plain',
-      styles: { fontSize: 8.5, lineWidth: 0.4, lineColor: [210,210,210] },
-      columnStyles: {
-        0: { cellWidth: (rEdge - mL) / 3 },
-        1: { cellWidth: (rEdge - mL) / 3 },
-        2: { cellWidth: (rEdge - mL) / 3 },
-      },
-      margin: { left: mL, right: mR },
-    });
-
-    y = (doc as any).lastAutoTable.finalY + 16;
-
-    // ── Helper: render one section (Pending / Completed) ─────────────────────
-    const renderSection = (
-      sectionSummaries: SaleCreditSummary[],
-      title: string,
-      headerFill: [number, number, number],
-    ) => {
-      if (sectionSummaries.length === 0) return;
-
-      // Section heading
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(20, 20, 20);
-      doc.text(title, mL, y);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(100, 100, 100);
-      doc.text(
-        `(${sectionSummaries.length} sale${sectionSummaries.length > 1 ? 's' : ''})`,
-        mL + doc.getTextWidth(title) + 6, y,
-      );
-      y += 8;
-
-      // ── Per-sale invoice + payment history ─────────────────────────────────
-      sectionSummaries.forEach((summary, sIdx) => {
-        const { sale, payments, totalPaid, balanceDue, isPaid } = summary;
-
-        // Items table for this sale
-        const tableW = rEdge - mL;
-        const cNo = 26, cRate = 82, cAmt = 88, cQty = 54;
-        const cDesc = tableW - cNo - cQty - cRate - cAmt;
-
-        // Sale sub-header
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(40, 40, 40);
-        doc.text(`${sIdx + 1}.  ${sale.saleNo}`, mL, y);
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(110, 110, 110);
-        doc.text(this.formatDate(sale.saleDatetime), rEdge, y, { align: 'right' });
-        y += 6;
+      if (payments.length > 0) {
+        checkPageBreak(40);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(60, 60, 60);
+        doc.text('Payment History', mL + 8, y);
+        y += 8;
 
         autoTable(doc, {
-          head: [['#', 'Item & Description', 'Qty', 'Unit Price', 'Amount']],
-          body: sale.items.map((item, i) => [
-            `${i + 1}`,
-            `${item.packName}${item.weightKg != null ? ' - ' + item.weightKg + 'kg' : ''}`,
-            `${this.fmtQty(item.qty)}\npcs`,
-            this.fmt(item.unitPriceSold),
-            this.fmt(item.lineRevenue),
+          head: [['Payment No', 'Date', 'Amount', 'Notes', 'Recorded By']],
+          body: payments.map(p => [
+            p.paymentNo,
+            this.formatDate(p.paymentDate),
+            `LKR${this.fmt(p.amount)}`,
+            p.notes      || '—',
+            p.recordedBy || '—',
           ]),
           startY: y,
-          theme: 'grid',
+          theme: 'striped',
           headStyles: {
-            fillColor: headerFill, textColor: [255, 255, 255],
-            fontStyle: 'bold', fontSize: 8,
-            cellPadding: { top: 5, bottom: 5, left: 5, right: 5 },
+            fillColor: [235,235,235], textColor: [50,50,50],
+            fontStyle: 'bold', fontSize: 7.5,
+            cellPadding: { top:4, bottom:4, left:5, right:5 },
           },
           columnStyles: {
-            0: { halign: 'center', cellWidth: cNo },
-            1: { halign: 'left',   cellWidth: cDesc },
-            2: { halign: 'center', cellWidth: cQty },
-            3: { halign: 'right',  cellWidth: cRate },
-            4: { halign: 'right',  cellWidth: cAmt },
+            0: { halign: 'left',  fontSize: 7.5 },
+            1: { halign: 'left',  fontSize: 7.5 },
+            2: { halign: 'right', fontSize: 7.5, textColor: [22,163,74] },
+            3: { halign: 'left',  fontSize: 7.5, textColor: [100,100,100] },
+            4: { halign: 'left',  fontSize: 7.5, textColor: [100,100,100] },
           },
           bodyStyles: {
-            textColor: [40, 40, 40], fontSize: 8,
-            cellPadding: { top: 4, bottom: 4, left: 5, right: 5 },
+            fontSize: 7.5, fillColor: [255,255,255],
+            cellPadding: { top:4, bottom:4, left:5, right:5 },
           },
-          styles: { lineColor: [200, 200, 200], lineWidth: 0.4 },
-          margin: { left: mL, right: mR },
+          alternateRowStyles: { fillColor: [249,250,251] },
+          styles: { lineColor: [220,220,220], lineWidth: 0.25 },
+          margin: { left: mL + 8, right: mR },
         });
+        y = (doc as any).lastAutoTable.finalY + 4;
+      }
 
-        y = (doc as any).lastAutoTable.finalY + 2;
+      y += 12;
 
-        // Invoice totals mini-block (right-aligned)
-        const tLbl = 110, tVal = 100, tLeft = rEdge - tLbl - tVal;
-        autoTable(doc, {
-          body: [
-            [
-              { content: 'Invoice Total',
-                styles: { halign: 'right', textColor: [60,60,60], fillColor: [255,255,255] } },
-              { content: `LKR${this.fmt(sale.totalRevenue)}`,
-                styles: { halign: 'right', fontStyle: 'bold', textColor: [20,20,20], fillColor: [255,255,255] } },
-            ],
-            [
-              { content: 'Amount Paid',
-                styles: { halign: 'right', textColor: [22,163,74], fillColor: [240,253,244] } },
-              { content: `(LKR${this.fmt(totalPaid)})`,
-                styles: { halign: 'right', textColor: [22,163,74], fillColor: [240,253,244] } },
-            ],
-            [
-              { content: 'Balance Due',
-                styles: { halign: 'right', fontStyle: 'bold',
-                  textColor: isPaid ? [22,163,74] : [180,20,20],
-                  fillColor: isPaid ? [240,253,244] : [254,242,242] } },
-              { content: isPaid ? 'PAID' : `LKR${this.fmt(balanceDue)}`,
-                styles: { halign: 'right', fontStyle: 'bold',
-                  textColor: isPaid ? [22,163,74] : [180,20,20],
-                  fillColor: isPaid ? [240,253,244] : [254,242,242] } },
-            ],
-          ],
-          startY: y, theme: 'plain',
-          styles: { fontSize: 8.5, lineWidth: 0, cellPadding: { top: 3, bottom: 3, left: 7, right: 7 } },
-          columnStyles: { 0: { cellWidth: tLbl }, 1: { cellWidth: tVal } },
-          margin: { left: tLeft, right: mR },
-        });
-
-        y = (doc as any).lastAutoTable.finalY + 6;
-
-        // Per-sale payment history table
-        if (payments.length > 0) {
-          doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(60, 60, 60);
-          doc.text('Payment History', mL + 8, y);
-          y += 5;
-
-          autoTable(doc, {
-            head: [['Payment No', 'Date', 'Amount', 'Notes', 'Recorded By']],
-            body: payments.map(p => [
-              p.paymentNo,
-              this.formatDate(p.paymentDate),
-              `LKR${this.fmt(p.amount)}`,
-              p.notes       || '—',
-              p.recordedBy  || '—',
-            ]),
-            startY: y,
-            theme: 'striped',
-            headStyles: {
-              fillColor: [235, 235, 235], textColor: [50, 50, 50],
-              fontStyle: 'bold', fontSize: 7.5,
-              cellPadding: { top: 4, bottom: 4, left: 5, right: 5 },
-            },
-            columnStyles: {
-              0: { halign: 'left',  fontSize: 7.5 },
-              1: { halign: 'left',  fontSize: 7.5 },
-              2: { halign: 'right', fontSize: 7.5, textColor: [22,163,74] },
-              3: { halign: 'left',  fontSize: 7.5, textColor: [100,100,100] },
-              4: { halign: 'left',  fontSize: 7.5, textColor: [100,100,100] },
-            },
-            bodyStyles: {
-              fontSize: 7.5, fillColor: [255,255,255],
-              cellPadding: { top: 4, bottom: 4, left: 5, right: 5 },
-            },
-            alternateRowStyles: { fillColor: [249,250,251] },
-            styles: { lineColor: [220,220,220], lineWidth: 0.25 },
-            margin: { left: mL + 8, right: mR },
-          });
-
-          y = (doc as any).lastAutoTable.finalY + 4;
-        }
-
-        // Small gap between sales
-        y += 10;
-        if (sIdx < sectionSummaries.length - 1) {
-          doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.3);
-          doc.line(mL, y, rEdge, y);
-          y += 10;
-        }
-      });
-
-      y += 8;
-    };
-
-    // ── Render sections ───────────────────────────────────────────────────────
-    renderSection(pending, 'Pending Sales', [180, 40, 40]);
-    renderSection(paid,    'Completed Sales', [26, 26, 26]);
-
-    // ── Grand Totals ─────────────────────────────────────────────────────────
-    const totLblW = 130, totValW = 110;
-    const totLeft = rEdge - totLblW - totValW;
-
-    autoTable(doc, {
-      body: [
-        [
-          { content: 'Total Invoiced (All)',
-            styles: { halign: 'right', textColor: [80,80,80], fillColor: [255,255,255] } },
-          { content: `LKR${this.fmt(grandTotal)}`,
-            styles: { halign: 'right', fillColor: [255,255,255] } },
-        ],
-        [
-          { content: 'Total Paid',
-            styles: { halign: 'right', textColor: [22,163,74], fillColor: [240,253,244] } },
-          { content: `LKR${this.fmt(grandPaid)}`,
-            styles: { halign: 'right', textColor: [22,163,74], fillColor: [240,253,244] } },
-        ],
-        [
-          { content: 'Outstanding Balance',
-            styles: { halign: 'right', fontStyle: 'bold', textColor: [180,20,20], fillColor: [254,242,242] } },
-          { content: `LKR${this.fmt(grandBalance)}`,
-            styles: { halign: 'right', fontStyle: 'bold', textColor: [180,20,20], fillColor: [254,242,242] } },
-        ],
-      ],
-      startY: y, theme: 'plain',
-      styles: { fontSize: 9.5, lineWidth: 0, cellPadding: { top: 5, bottom: 5, left: 8, right: 8 } },
-      columnStyles: { 0: { cellWidth: totLblW }, 1: { cellWidth: totValW } },
-      margin: { left: totLeft, right: mR },
+      if (sIdx < sectionSummaries.length - 1) {
+        checkPageBreak(30);
+        doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.3);
+        doc.line(mL, y, rEdge, y);
+        y += 14;
+      }
     });
 
-    y = (doc as any).lastAutoTable.finalY;
+    y += 10;
+  };
 
-    // ── Footer ────────────────────────────────────────────────────────────────
-    y += 22;
-    this.drawDivider(doc, mL, rEdge, y);
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(70, 70, 70);
-    doc.text('Notes', mL, y + 15);
-    doc.setFont('helvetica', 'normal'); doc.setTextColor(80, 80, 80);
-    doc.text('This is a proforma account statement. All amounts are in Sri Lankan Rupees (LKR).', mL, y + 28);
-    doc.text('For queries contact: matheeshaflourmill@gmail.com', mL, y + 40);
+  // ── Render sections ──────────────────────────────────────────────────────────
+  renderSection(pending, 'Pending Sales',   [180, 40,  40]);
+  renderSection(paid,    'Completed Sales', [ 26, 26,  26]);
 
-    doc.save(`AccountStatement-${first.customerCode || first.customerName}.pdf`);
-  }
+  // ── Grand Totals ─────────────────────────────────────────────────────────────
+  checkPageBreak(100);
+  this.drawDivider(doc, mL, rEdge, y);
+  y += 14;
+
+  const totLblW = 130, totValW = 110;
+  const totLeft = rEdge - totLblW - totValW;
+
+  autoTable(doc, {
+    body: [
+      [
+        { content: 'Total Invoiced (All)',
+          styles: { halign: 'right', textColor: [80,80,80], fillColor: [255,255,255] } },
+        { content: `LKR${this.fmt(grandTotal)}`,
+          styles: { halign: 'right', fillColor: [255,255,255] } },
+      ],
+      [
+        { content: 'Total Paid',
+          styles: { halign: 'right', textColor: [22,163,74], fillColor: [240,253,244] } },
+        { content: `LKR${this.fmt(grandPaid)}`,
+          styles: { halign: 'right', textColor: [22,163,74], fillColor: [240,253,244] } },
+      ],
+      [
+        { content: 'Outstanding Balance',
+          styles: { halign: 'right', fontStyle: 'bold', textColor: [180,20,20], fillColor: [254,242,242] } },
+        { content: `LKR${this.fmt(grandBalance)}`,
+          styles: { halign: 'right', fontStyle: 'bold', textColor: [180,20,20], fillColor: [254,242,242] } },
+      ],
+    ],
+    startY: y, theme: 'plain',
+    styles: { fontSize: 9.5, lineWidth: 0, cellPadding: { top:5, bottom:5, left:8, right:8 } },
+    columnStyles: { 0: { cellWidth: totLblW }, 1: { cellWidth: totValW } },
+    margin: { left: totLeft, right: mR },
+  });
+  y = (doc as any).lastAutoTable.finalY;
+
+  // ── Footer ────────────────────────────────────────────────────────────────────
+  checkPageBreak(70);
+  y += 22;
+  this.drawDivider(doc, mL, rEdge, y);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(70, 70, 70);
+  doc.text('Notes', mL, y + 15);
+  doc.setFont('helvetica', 'normal'); doc.setTextColor(80, 80, 80);
+  doc.text('This is a proforma account statement. All amounts are in Sri Lankan Rupees (LKR).', mL, y + 28);
+  doc.text('For queries contact: matheeshaflourmill@gmail.com', mL, y + 40);
+
+  doc.save(`AccountStatement-${first.customerCode || first.customerName}.pdf`);
+}
+
 
   // ════════════════════════════════════════════════════════════════════════════
   // SHARED HELPERS

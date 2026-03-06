@@ -258,26 +258,25 @@ export class DashboardComponent implements OnInit {
     this.loadData(this.buildRange(type));
   }
 
-  applySingleDate(): void {
-    if (!this.singleDate) return;
-    const fmt = (d: Date) => d.toISOString().split('T')[0];
-    this.loadData({ dateFrom: fmt(this.singleDate!), dateTo: fmt(this.singleDate!) });
-    this.activePreset.set('today');
-  }
+applySingleDate(): void {
+  if (!this.singleDate) return;
+  const d = this.fmt(this.singleDate);
+  this.loadData({ dateFrom: d, dateTo: d });
+  this.activePreset.set('today');
+}
+
+applyCustomRange(): void {
+  if (!this.isCustomRangeValid()) return;
+  this.loadData({
+    dateFrom: this.fmt(this.customFromDate()!),
+    dateTo:   this.fmt(this.customToDate()!)
+  });
+  this.showCustomRange.set(false);
+  this.activePreset.set('custom');
+}
 
   toggleCustomRange(): void {
     this.showCustomRange.update(show => !show);
-  }
-
-  applyCustomRange(): void {
-    if (!this.isCustomRangeValid()) return;
-    const fmt = (d: Date) => d.toISOString().split('T')[0];
-    this.loadData({
-      dateFrom: fmt(this.customFromDate()!),
-      dateTo: fmt(this.customToDate()!)
-    });
-    this.showCustomRange.set(false);
-    this.activePreset.set('custom');
   }
 
 
@@ -291,23 +290,35 @@ export class DashboardComponent implements OnInit {
     this.setDateFilter(preset);  // ✅ Reuse new filter logic
   }
 
-  private buildRange(preset: RangePreset): DateRange {
-    const today = new Date();
-    const fmt = (d: Date) => d.toISOString().split('T')[0];
-    switch (preset) {
-      case 'today': return { dateFrom: fmt(today), dateTo: fmt(today) };
-      case 'yesterday': return { dateFrom: fmt(this.daysAgo(1)), dateTo: fmt(this.daysAgo(1)) };
-      case '7days': return { dateFrom: fmt(this.daysAgo(6)), dateTo: fmt(today) };
-      case '30days': return { dateFrom: fmt(this.daysAgo(29)), dateTo: fmt(today) };
-      default: return { dateFrom: fmt(today), dateTo: fmt(today) };
-    }
-  }
+// ✅ Use LOCAL date string, not UTC (fixes Sri Lanka UTC+5:30 offset)
+private fmt(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
-  private daysAgo(n: number): Date {
-    const d = new Date();
-    d.setDate(d.getDate() - n);
-    return d;
+private buildRange(preset: RangePreset): DateRange {
+  const today = new Date();
+  switch (preset) {
+    case 'today':
+      return { dateFrom: this.fmt(today), dateTo: this.fmt(today) };
+    case 'yesterday':
+      return { dateFrom: this.fmt(this.daysAgo(1)), dateTo: this.fmt(this.daysAgo(1)) };
+    case '7days':
+      return { dateFrom: this.fmt(this.daysAgo(6)), dateTo: this.fmt(today) };
+    case '30days':
+      return { dateFrom: this.fmt(this.daysAgo(29)), dateTo: this.fmt(today) };
+    default:
+      return { dateFrom: this.fmt(today), dateTo: this.fmt(today) };
   }
+}
+
+private daysAgo(n: number): Date {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d;
+}
 
   private loadData(range: DateRange): void {
     this.loading.set(true);

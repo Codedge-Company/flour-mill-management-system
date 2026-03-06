@@ -1,157 +1,370 @@
+<!-- sale-detail-dialog.component.html -->
 <div class="overlay" (click)="closed.emit()">
   <div class="panel" (click)="$event.stopPropagation()">
 
-    <!-- Header -->
+    <!-- ── Header ─────────────────────────────────────────────────────────── -->
     <div class="panel-header">
       <div class="header-left">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24"
-          stroke="currentColor" stroke-width="2">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-          <polyline points="14 2 14 8 20 8" />
-          <line x1="16" y1="13" x2="8" y2="13" />
-          <line x1="16" y1="17" x2="8" y2="17" />
-          <polyline points="10 9 9 9 8 9" />
-        </svg>
-        <div>
+        <div class="header-icon-wrap">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
+            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+          </svg>
+        </div>
+        <div class="header-text">
           <h3>Sale Details</h3>
           @if (sale()) {
-          <span class="sale-no-badge">{{ sale()!.saleNo }}</span>
+            <span class="sale-no-badge">{{ sale()!.saleNo }}</span>
           }
         </div>
       </div>
-      <button class="btn-icon" (click)="closed.emit()">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24"
-          stroke="currentColor" stroke-width="2">
-          <line x1="18" y1="6" x2="6" y2="18" />
-          <line x1="6" y1="6" x2="18" y2="18" />
+      <button class="btn-close" (click)="closed.emit()" aria-label="Close">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
+          viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
         </svg>
       </button>
     </div>
 
-    <!-- Body -->
+    <!-- ── Body ──────────────────────────────────────────────────────────── -->
     <div class="panel-body">
 
-      <!-- Loading -->
+      <!-- Loading skeleton -->
       @if (loading()) {
-      <div class="skeleton-wrap">
-        @for (n of [1,2,3,4]; track n) {
-        <div class="sk-block"></div>
-        }
-      </div>
+        <div class="skeleton-wrap">
+          <div class="sk-row">
+            <div class="sk-block sk-badge"></div>
+            <div class="sk-block sk-date"></div>
+          </div>
+          <div class="sk-grid">
+            @for (n of [1,2,3,4]; track n) {
+              <div class="sk-block sk-card"></div>
+            }
+          </div>
+          <div class="sk-block sk-table"></div>
+          <div class="sk-grid sk-totals">
+            @for (n of [1,2,3]; track n) {
+              <div class="sk-block sk-total-card"></div>
+            }
+          </div>
+        </div>
       }
 
       <!-- Error -->
       @if (error()) {
-      <div class="dialog-error">{{ error() }}</div>
+        <div class="dialog-error">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none"
+            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          {{ error() }}
+        </div>
       }
 
-      <!-- Content -->
+      <!-- ── Main content ──────────────────────────────────────────────── -->
       @if (!loading() && sale(); as s) {
 
-      <!-- Status + Date row -->
-      <div class="meta-row">
-        <span [class]="(s.status | statusBadge).cssClass">
-          {{ (s.status | statusBadge).label }}
-        </span>
-        <span class="meta-date">{{ formatDate(s.saleDatetime) }}</span>
-      </div>
-
-      <!-- Info grid -->
-      <div class="info-grid">
-        <div class="info-card">
-          <span class="info-label">Customer</span>
-          <span class="info-value">{{ s.customerName }}</span>
-          <span class="info-sub">{{ s.customerCode }}</span>
-        </div>
-        <div class="info-card">
-          <span class="info-label">Payment</span>
-          <span [class]="(s.paymentMethod | statusBadge).cssClass">
-            {{ (s.paymentMethod | statusBadge).label }}
+        <!-- Status + Date strip -->
+        <div class="status-strip">
+          <div class="status-left">
+            <!-- Sale status -->
+            <span [class]="getSaleStatusClass(s.status)">
+              <span class="badge-dot"></span>
+              {{ s.status }}
+            </span>
+            <!-- Payment status (for CREDIT sales) -->
+            @if (s.paymentMethod === 'CREDIT') {
+              <span [class]="getPaymentStatusClass(s.paymentStatus)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="none"
+                  viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                  @if (s.paymentStatus === 'PAID') {
+                    <polyline points="20 6 9 17 4 12"/>
+                  } @else {
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                  }
+                </svg>
+                {{ s.paymentStatus === 'PAID' ? 'Paid' : 'Payment Pending' }}
+              </span>
+            }
+          </div>
+          <span class="meta-date">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none"
+              viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            {{ formatDate(s.saleDatetime) }}
           </span>
         </div>
-        <div class="info-card">
-          <span class="info-label">Recorded By</span>
-          <span class="info-value">{{ s.createdByUserName || '—' }}</span>
-        </div>
-        <div class="info-card">
-          <span class="info-label">Items</span>
-          <span class="info-value">{{ s.items.length }} line(s)</span>
-        </div>
-      </div>
 
-      <!-- Items table -->
-      <div class="section">
-        <h4 class="section-title">Sale Items</h4>
-        <div class="items-table-wrap">
-          <table class="items-table">
-            <thead>
-              <tr>
-                <th>Pack</th>
-                <th class="num">Qty</th>
-                <th class="num">Unit Price</th>
-                <th class="num">Unit Cost</th>
-                <th class="num">Revenue</th>
-                <th class="num">Cost</th>
-                <th class="num">Profit</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (item of s.items; track item.saleItemId) {
-              <tr>
-                <td>
-                  <span class="pack-chip">
-                    {{ item.packName }}{{ item.weightKg != null ? ' - ' + item.weightKg + 'kg' : '' }}
-                  </span>
-                </td>
-                <td class="num">{{ item.qty }}</td>
-                <td class="num">{{ item.unitPriceSold | lkrCurrency }}</td>
-                <td class="num text-muted">{{ item.unitCostAtSale | lkrCurrency }}</td>
-                <td class="num font-semibold">{{ item.lineRevenue | lkrCurrency }}</td>
-                <td class="num text-muted">{{ item.lineCost | lkrCurrency }}</td>
-                <td class="num">
-                  <span [class.profit-pos]="item.lineProfit >= 0" [class.profit-neg]="item.lineProfit < 0">
-                    {{ item.lineProfit | lkrCurrency }}
-                  </span>
-                </td>
-              </tr>
+        <!-- Info grid: 4 cards -->
+        <div class="info-grid">
+
+          <div class="info-card">
+            <span class="info-label">
+              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" fill="none"
+                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+              Customer
+            </span>
+            <span class="info-value">{{ s.customerName }}</span>
+            <span class="info-sub">{{ s.customerCode }}</span>
+          </div>
+
+          <div class="info-card">
+            <span class="info-label">
+              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" fill="none"
+                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                <line x1="1" y1="10" x2="23" y2="10"/>
+              </svg>
+              Payment Method
+            </span>
+            <span [class]="getMethodBadgeClass(s.paymentMethod)">
+              {{ s.paymentMethod }}
+            </span>
+          </div>
+
+          <div class="info-card">
+            <span class="info-label">
+              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" fill="none"
+                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+              Recorded By
+            </span>
+            <span class="info-value">{{ s.createdByUserName || '—' }}</span>
+          </div>
+
+          <div class="info-card">
+            <span class="info-label">
+              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" fill="none"
+                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <line x1="8" y1="6" x2="21" y2="6"/>
+                <line x1="8" y1="12" x2="21" y2="12"/>
+                <line x1="8" y1="18" x2="21" y2="18"/>
+                <line x1="3" y1="6" x2="3.01" y2="6"/>
+                <line x1="3" y1="12" x2="3.01" y2="12"/>
+                <line x1="3" y1="18" x2="3.01" y2="18"/>
+              </svg>
+              Items
+            </span>
+            <span class="info-value">{{ s.items.length }} line{{ s.items.length !== 1 ? 's' : '' }}</span>
+          </div>
+
+        </div>
+
+        <!-- Credit payment progress (only for CREDIT sales) -->
+        @if (s.paymentMethod === 'CREDIT') {
+          <div class="credit-payment-section">
+            <div class="credit-header">
+              <h4 class="section-title">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none"
+                  viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="1" x2="12" y2="23"/>
+                  <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+                Credit Payment
+              </h4>
+              <span [class]="getPaymentStatusClass(s.paymentStatus)">
+                {{ s.paymentStatus === 'PAID' ? 'Fully Paid' : 'Pending' }}
+              </span>
+            </div>
+
+            <!-- Mini progress bar -->
+            <div class="credit-progress-wrap">
+              <div class="credit-amounts">
+                <span class="credit-paid-label">
+                  Paid: <strong>{{ (payments().reduce(sumAmt, 0)) | lkrCurrency }}</strong>
+                </span>
+                <span class="credit-total-label">
+                  Total: <strong>{{ s.totalRevenue | lkrCurrency }}</strong>
+                </span>
+              </div>
+              <div class="credit-bar">
+                <div class="credit-bar-fill"
+                  [style.width.%]="getCreditPct(s.totalRevenue)">
+                </div>
+              </div>
+              @if (getCreditBalance(s.totalRevenue) > 0) {
+                <span class="credit-balance-due">
+                  Balance due: {{ getCreditBalance(s.totalRevenue) | lkrCurrency }}
+                </span>
               }
-            </tbody>
-          </table>
-        </div>
-      </div>
+            </div>
 
-      <!-- Totals summary -->
-      <div class="totals-section">
-        <div class="totals-grid">
-          <div class="total-card revenue">
-            <span class="total-label">Total Revenue</span>
-            <span class="total-val">{{ s.totalRevenue | lkrCurrency }}</span>
+            <!-- Payments list -->
+            @if (paymentsLoading()) {
+              <div class="payments-loading">
+                <div class="mini-spinner"></div>
+                <span>Loading payments…</span>
+              </div>
+            } @else if (payments().length > 0) {
+              <div class="payments-table-wrap">
+                <table class="payments-table">
+                  <thead>
+                    <tr>
+                      <th>Ref</th>
+                      <th>Date</th>
+                      <th>Notes</th>
+                      <th class="num">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (p of payments(); track p.paymentId) {
+                      <tr>
+                        <td>
+                          <span class="pay-no-chip">{{ p.paymentNo }}</span>
+                        </td>
+                        <td class="pay-date">{{ p.paymentDate | date:'dd MMM yyyy' }}</td>
+                        <td class="pay-notes">{{ p.notes || '—' }}</td>
+                        <td class="num pay-amount">{{ p.amount | lkrCurrency }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            } @else {
+              <p class="no-payments">No payments recorded yet.</p>
+            }
           </div>
-          <div class="total-card cost">
-            <span class="total-label">Total Cost</span>
-            <span class="total-val">{{ s.totalCost | lkrCurrency }}</span>
-          </div>
-          <div class="total-card profit" [class.negative]="s.totalProfit < 0">
-            <span class="total-label">Net Profit</span>
-            <span class="total-val">{{ s.totalProfit | lkrCurrency }}</span>
-            <span class="total-margin">{{ profitMargin }}% margin</span>
+        }
+
+        <!-- ── Items table ─────────────────────────────────────────────── -->
+        <div class="section">
+          <h4 class="section-title">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none"
+              viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <path d="M16 10a4 4 0 0 1-8 0"/>
+            </svg>
+            Sale Items
+          </h4>
+          <div class="items-table-wrap">
+            <table class="items-table">
+              <thead>
+                <tr>
+                  <th>Pack</th>
+                  <th class="num">Qty</th>
+                  <th class="num">Unit Price</th>
+                  <th class="num">Unit Cost</th>
+                  <th class="num">Revenue</th>
+                  <th class="num">Profit</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of s.items; track item.saleItemId) {
+                  <tr>
+                    <td>
+                      <div class="pack-info">
+                        <span class="pack-name">{{ item.packName }}</span>
+                        @if (item.weightKg != null) {
+                          <span class="pack-weight">{{ item.weightKg }}kg</span>
+                        }
+                      </div>
+                    </td>
+                    <td class="num qty-cell">{{ item.qty }}</td>
+                    <td class="num">{{ item.unitPriceSold | lkrCurrency }}</td>
+                    <td class="num cost-cell">{{ item.unitCostAtSale | lkrCurrency }}</td>
+                    <td class="num rev-cell">{{ item.lineRevenue | lkrCurrency }}</td>
+                    <td class="num">
+                      <span [class.profit-pos]="item.lineProfit >= 0"
+                            [class.profit-neg]="item.lineProfit < 0">
+                        {{ item.lineProfit | lkrCurrency }}
+                      </span>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
           </div>
         </div>
-      </div>
+
+        <!-- ── Totals ──────────────────────────────────────────────────── -->
+        <div class="totals-section">
+          <div class="totals-grid">
+
+            <div class="total-card revenue-card">
+              <div class="total-icon rev-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
+                  viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="1" x2="12" y2="23"/>
+                  <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+              </div>
+              <span class="total-label">Total Revenue</span>
+              <span class="total-val">{{ s.totalRevenue | lkrCurrency }}</span>
+            </div>
+
+            <div class="total-card cost-card">
+              <div class="total-icon cost-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
+                  viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
+                  <circle cx="12" cy="12" r="2"/>
+                </svg>
+              </div>
+              <span class="total-label">Total Cost</span>
+              <span class="total-val cost-val">{{ s.totalCost | lkrCurrency }}</span>
+            </div>
+
+            <div class="total-card profit-card" [class.negative]="s.totalProfit < 0">
+              <div class="total-icon profit-icon" [class.neg-icon]="s.totalProfit < 0">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
+                  viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  @if (s.totalProfit >= 0) {
+                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                    <polyline points="17 6 23 6 23 12"/>
+                  } @else {
+                    <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/>
+                    <polyline points="17 18 23 18 23 12"/>
+                  }
+                </svg>
+              </div>
+              <span class="total-label">Net Profit</span>
+              <span class="total-val profit-val" [class.neg-val]="s.totalProfit < 0">
+                {{ s.totalProfit | lkrCurrency }}
+              </span>
+              <span class="total-margin">{{ profitMargin }}% margin</span>
+            </div>
+
+          </div>
+        </div>
 
       }
-    </div>
+      <!-- /main content -->
 
-    <!-- Footer -->
+    </div>
+    <!-- /panel-body -->
+
+    <!-- ── Footer ─────────────────────────────────────────────────────────── -->
     @if (!loading() && sale()) {
-    <div class="panel-footer">
-      <button class="btn btn-outline" (click)="closed.emit()">Close</button>
-      @if (sale()!.status === 'SAVED') {
-      <a [routerLink]="['/sales', saleId, 'edit']" class="btn btn-primary">
-        Edit Sale
-      </a>
-      }
-    </div>
+      <div class="panel-footer">
+        <button class="btn btn-ghost" (click)="closed.emit()">Close</button>
+        @if (sale()!.status === 'SAVED') {
+          <a [routerLink]="['/sales', saleId, 'edit']" class="btn btn-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
+              viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+            Edit Sale
+          </a>
+        }
+      </div>
     }
 
   </div>

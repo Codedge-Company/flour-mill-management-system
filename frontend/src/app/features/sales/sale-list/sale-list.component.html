@@ -2,7 +2,6 @@
 <div class="sale-list-page">
 
   <app-page-header title="Sales" subtitle="View, filter and manage all sales transactions">
-
     <a [routerLink]="['/credit-payments']" class="btn btn-outline">
       <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24"
         stroke="currentColor" stroke-width="2">
@@ -21,11 +20,11 @@
     </a>
   </app-page-header>
 
-  <!-- Success -->
+  <!-- Success toast -->
   @if (successMessage()) {
   <div class="toast-success">
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-      stroke-width="2">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24"
+      stroke="currentColor" stroke-width="2">
       <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
       <polyline points="22 4 12 14.01 9 11.01" />
     </svg>
@@ -33,7 +32,7 @@
   </div>
   }
 
-  <!-- Error -->
+  <!-- Error bar -->
   @if (error()) {
   <div class="alert-error-bar">
     {{ error() }}
@@ -41,7 +40,7 @@
   </div>
   }
 
-  <!-- Filters -->
+  <!-- ── Filters ─────────────────────────────────────────────────────────── -->
   <div class="filters-card card">
     <div class="filters-grid">
 
@@ -64,7 +63,6 @@
         </select>
       </div>
 
-      <!-- ── NEW: Payment Status filter ─────────────────────────────── -->
       <div class="form-group">
         <label class="form-label">Payment Status</label>
         <select class="form-control" [ngModel]="filterPaymentStatus()"
@@ -74,7 +72,6 @@
           <option value="PENDING">Pending (Credit)</option>
         </select>
       </div>
-      <!-- ── /NEW ───────────────────────────────────────────────────── -->
 
       <div class="form-group">
         <label class="form-label">Date From</label>
@@ -84,7 +81,8 @@
 
       <div class="form-group">
         <label class="form-label">Date To</label>
-        <input type="date" class="form-control" [ngModel]="filterDateTo()" (ngModelChange)="filterDateTo.set($event)" />
+        <input type="date" class="form-control" [ngModel]="filterDateTo()"
+          (ngModelChange)="filterDateTo.set($event)" />
       </div>
 
     </div>
@@ -94,8 +92,7 @@
       <button class="btn btn-ghost btn-sm" (click)="clearFilters()">
         <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24"
           stroke="currentColor" stroke-width="2">
-          <line x1="18" y1="6" x2="6" y2="18" />
-          <line x1="6" y1="6" x2="18" y2="18" />
+          <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
         </svg>
         Clear Filters
       </button>
@@ -103,58 +100,112 @@
       <button class="btn btn-primary btn-sm" (click)="applyFilters()">
         <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24"
           stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="8" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
         </svg>
         Apply Filters
       </button>
     </div>
   </div>
 
-  <!-- Summary strip -->
+  <!-- ── Summary strip ──────────────────────────────────────────────────── -->
   @if (!loading() && sales().length > 0) {
   <div class="summary-strip">
+
     <div class="summary-item">
-      <span class="summary-label">Results</span>
+      <span class="summary-label">
+        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" fill="none" viewBox="0 0 24 24"
+          stroke="currentColor" stroke-width="2">
+          <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+          <line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/>
+          <line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+        </svg>
+        Total Results
+      </span>
       <span class="summary-val">{{ totalElements() }} sales</span>
     </div>
+
+    <div class="summary-divider"></div>
+
     <div class="summary-item">
-      <span class="summary-label">Page Revenue</span>
+      <span class="summary-label">
+        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" fill="none" viewBox="0 0 24 24"
+          stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="1" x2="12" y2="23"/>
+          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+        </svg>
+        Total Revenue
+      </span>
       <span class="summary-val primary">{{ filteredRevenue() | lkrCurrency }}</span>
     </div>
+
+    <div class="summary-divider"></div>
+
     <div class="summary-item">
-      <span class="summary-label">Page Profit</span>
-      <span class="summary-val success">{{ filteredProfit() | lkrCurrency }}</span>
+      <span class="summary-label">
+        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" fill="none" viewBox="0 0 24 24"
+          stroke="currentColor" stroke-width="2">
+          <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+        </svg>
+        Total Cost
+      </span>
+      <span class="summary-val muted">{{ filteredCost() | lkrCurrency }}</span>
     </div>
+
+    <div class="summary-divider"></div>
+
+    <div class="summary-item">
+      <span class="summary-label">
+        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" fill="none" viewBox="0 0 24 24"
+          stroke="currentColor" stroke-width="2">
+          <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+          <polyline points="17 6 23 6 23 12"/>
+        </svg>
+        Net Profit
+      </span>
+      <span class="summary-val"
+        [class.success]="filteredProfit() >= 0"
+        [class.danger]="filteredProfit() < 0">
+        {{ filteredProfit() | lkrCurrency }}
+      </span>
+    </div>
+
+    @if (totalPages() > 1) {
+    <div class="summary-divider"></div>
+    <div class="summary-note">
+      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" fill="none" viewBox="0 0 24 24"
+        stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      Totals across all {{ totalPages() }} pages
+    </div>
+    }
+
   </div>
   }
 
-  <!-- Table -->
+  <!-- ── Table ───────────────────────────────────────────────────────────── -->
   <div class="card table-card">
+
+    <!-- Loading skeleton -->
     @if (loading()) {
     <div class="table-wrapper">
       <table>
         <thead>
           <tr>
-            <th>Sale No</th>
-            <th>Customer</th>
-            <th>Date</th>
-            <th>Payment</th>
-            <th>Pay Status</th>
-            <th class="num">Revenue</th>
-            <th class="num">Cost</th>
-            <th class="num">Profit</th>
-            <th>Status</th>
-            <th>Actions</th>
+            <th>Sale No</th><th>Customer</th><th>Date</th><th>Method</th>
+            <th>Pay Status</th><th>Credit Progress</th>
+            <th class="num">Revenue</th><th class="num">Cost</th>
+            <th class="num">Profit</th><th>Status</th><th>Actions</th>
           </tr>
         </thead>
         <tbody>
           @for (n of [1,2,3,4,5]; track n) {
           <tr>
-            @for (c of [1,2,3,4,5,6,7,8,9,10]; track c) {
-            <td>
-              <div class="sk-cell"></div>
-            </td>
+            @for (c of [1,2,3,4,5,6,7,8,9,10,11]; track c) {
+            <td><div class="sk-cell"></div></td>
             }
           </tr>
           }
@@ -162,12 +213,12 @@
       </table>
     </div>
 
+    <!-- Empty state -->
     } @else if (sales().length === 0) {
     <div class="empty-state">
       <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" fill="none" viewBox="0 0 24 24"
         stroke="currentColor" stroke-width="1.2">
-        <circle cx="9" cy="21" r="1" />
-        <circle cx="20" cy="21" r="1" />
+        <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
         <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
       </svg>
       @if (hasActiveFilters) {
@@ -179,6 +230,7 @@
       }
     </div>
 
+    <!-- Data table -->
     } @else {
     <div class="table-wrapper">
       <table>
@@ -187,8 +239,9 @@
             <th>Sale No</th>
             <th>Customer</th>
             <th>Date &amp; Time</th>
-            <th>Payment</th>
-            <th>Pay Status</th> <!-- ← NEW column -->
+            <th>Method</th>
+            <th>Pay Status</th>
+            <th>Credit Progress</th>
             <th class="num">Revenue</th>
             <th class="num">Cost</th>
             <th class="num">Profit</th>
@@ -198,12 +251,15 @@
         </thead>
         <tbody>
           @for (sale of sales(); track sale.saleId) {
-          <tr [class.row-cancelled]="sale.status === 'CANCELLED'" [class.row-pending-credit]="isPendingCredit(sale)">
+          <tr [class.row-cancelled]="sale.status === 'CANCELLED'"
+              [class.row-pending-credit]="isPendingCredit(sale)">
 
+            <!-- Sale No -->
             <td>
-              <a class="sale-no-link">{{ sale.saleNo }}</a>
+              <span class="sale-no-link" (click)="openView(sale)">{{ sale.saleNo }}</span>
             </td>
 
+            <!-- Customer -->
             <td>
               <div class="customer-cell">
                 <span class="customer-name-cell">{{ sale.customerName }}</span>
@@ -211,41 +267,72 @@
               </div>
             </td>
 
+            <!-- Date -->
             <td class="text-sm text-secondary">{{ formatDate(sale.saleDatetime) }}</td>
 
+            <!-- Payment Method -->
             <td>
               <span [class]="(sale.paymentMethod | statusBadge).cssClass">
                 {{ (sale.paymentMethod | statusBadge).label }}
               </span>
             </td>
 
-            <!-- ── NEW: Payment status badge ─────────────────────────── -->
+            <!-- Payment Status -->
             <td>
               <span [class]="(sale.paymentStatus | statusBadge).cssClass">
                 {{ (sale.paymentStatus | statusBadge).label }}
               </span>
             </td>
-            <!-- ── /NEW ──────────────────────────────────────────────── -->
 
+            <!-- Credit Progress -->
+            <td class="credit-progress-cell">
+              @if (sale.paymentMethod === 'CREDIT') {
+              <div class="credit-prog-wrap">
+                <div class="credit-prog-amounts">
+                  <span class="credit-prog-paid"
+                    [class.fully-paid]="(sale.totalPaid ?? 0) >= sale.totalRevenue">
+                    {{ sale.totalPaid ?? 0 | lkrCurrency: false }}
+                  </span>
+                  <span class="credit-prog-sep">/</span>
+                  <span class="credit-prog-total">{{ sale.totalRevenue | lkrCurrency: false }}</span>
+                </div>
+                <div class="credit-prog-bar">
+                  <div class="credit-prog-fill"
+                    [style.width.%]="getPaymentPct(sale)"
+                    [class.fill-full]="getPaymentPct(sale) >= 100">
+                  </div>
+                </div>
+                <span class="credit-prog-pct">{{ getPaymentPct(sale) }}%</span>
+              </div>
+              } @else {
+              <span class="no-credit-dash">—</span>
+              }
+            </td>
+
+            <!-- Revenue -->
             <td class="num font-semibold">{{ sale.totalRevenue | lkrCurrency }}</td>
+
+            <!-- Cost -->
             <td class="num text-secondary">{{ sale.totalCost | lkrCurrency }}</td>
 
+            <!-- Profit -->
             <td class="num">
               <span class="profit-cell" [class.negative]="sale.totalProfit < 0">
                 {{ sale.totalProfit | lkrCurrency }}
               </span>
             </td>
 
+            <!-- Sale Status -->
             <td>
               <span [class]="(sale.status | statusBadge).cssClass">
                 {{ (sale.status | statusBadge).label }}
               </span>
             </td>
 
+            <!-- Actions -->
             <td>
               <div class="row-actions">
 
-                <!-- View -->
                 <button class="btn btn-ghost btn-sm view-btn" (click)="openView(sale)" title="View details">
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24"
                     stroke="currentColor" stroke-width="2">
@@ -254,7 +341,6 @@
                   </svg>
                 </button>
 
-                <!-- Edit (SAVED only) -->
                 @if (sale.status === 'SAVED') {
                 <a [routerLink]="['/sales', sale.saleId, 'edit']" class="btn btn-ghost btn-sm edit-btn"
                   title="Edit sale">
@@ -266,9 +352,10 @@
                 </a>
                 }
 
-                <!-- Download Invoice -->
-                <button class="btn btn-ghost btn-sm invoice-btn" [class.downloading]="downloadingId() === sale.saleId"
-                  [disabled]="downloadingId() === sale.saleId" (click)="downloadInvoice(sale)" title="Download invoice">
+                <button class="btn btn-ghost btn-sm invoice-btn"
+                  [class.downloading]="downloadingId() === sale.saleId"
+                  [disabled]="downloadingId() === sale.saleId"
+                  (click)="downloadInvoice(sale)" title="Download invoice">
                   @if (downloadingId() === sale.saleId) {
                   <svg class="spin" xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
                     viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -284,19 +371,16 @@
                   }
                 </button>
 
-                <!-- Cancel (SAVED only) -->
                 @if (sale.status === 'SAVED') {
                 <button class="btn btn-ghost btn-sm danger-btn" (click)="confirmCancel(sale)" title="Cancel sale">
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24"
                     stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="10" />
-                    <line x1="15" y1="9" x2="9" y2="15" />
-                    <line x1="9" y1="9" x2="15" y2="15" />
+                    <line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
                   </svg>
                 </button>
                 }
 
-                <!-- Delete (ADMIN only) -->
                 @if (isAdmin) {
                 <button class="btn btn-ghost btn-sm delete-btn" (click)="confirmDelete(sale)" title="Delete sale">
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24"
@@ -311,39 +395,40 @@
 
               </div>
             </td>
+
           </tr>
           }
         </tbody>
       </table>
     </div>
 
-    <!-- Confirm dialogs -->
     @if (deleteTarget()) {
     <app-confirm-dialog title="Delete Sale"
       [message]="'Permanently delete sale ' + deleteTarget()!.saleNo + '? This action cannot be undone.'"
-      confirmLabel="Delete" variant="danger" [loading]="deleteLoading()" (confirmed)="onDeleteSale()"
-      (cancelled)="deleteDialog()" />
+      confirmLabel="Delete" variant="danger" [loading]="deleteLoading()"
+      (confirmed)="onDeleteSale()" (cancelled)="deleteDialog()" />
     }
-    <!-- ── /NEW ───────────────────────────────────────────────────────── -->
+
+    @if (markPaidTarget()) {
+    <app-confirm-dialog title="Mark as Paid"
+      [message]="'Mark ' + markPaidTarget()!.saleNo + ' as fully paid? This cannot be undone.'"
+      confirmLabel="Mark Paid" variant="primary" [loading]="markPaidLoading()"
+      (confirmed)="onMarkAsPaid()" (cancelled)="markPaidDialog()" />
+    }
 
     @if (viewSaleId()) {
     <app-sale-detail-dialog [saleId]="viewSaleId()!" (closed)="closeView()" />
     }
 
-    <!-- Pagination -->
     @if (totalPages() > 1) {
     <div class="pagination">
       <button class="btn btn-ghost btn-sm" [disabled]="currentPage() === 0" (click)="goToPage(0)">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24"
-          stroke="currentColor" stroke-width="2">
-          <polyline points="18 15 12 9 6 15" />
-        </svg>
+          stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15" /></svg>
       </button>
       <button class="btn btn-ghost btn-sm" [disabled]="currentPage() === 0" (click)="goToPage(currentPage() - 1)">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24"
-          stroke="currentColor" stroke-width="2">
-          <polyline points="15 18 9 12 15 6" />
-        </svg>
+          stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6" /></svg>
       </button>
       @for (p of pages; track p) {
       <button class="btn btn-sm page-btn" [class.active]="p === currentPage()" (click)="goToPage(p)">
@@ -353,16 +438,12 @@
       <button class="btn btn-ghost btn-sm" [disabled]="currentPage() === totalPages() - 1"
         (click)="goToPage(currentPage() + 1)">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24"
-          stroke="currentColor" stroke-width="2">
-          <polyline points="9 18 15 12 9 6" />
-        </svg>
+          stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6" /></svg>
       </button>
       <button class="btn btn-ghost btn-sm" [disabled]="currentPage() === totalPages() - 1"
         (click)="goToPage(totalPages() - 1)">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24"
-          stroke="currentColor" stroke-width="2">
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
+          stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9" /></svg>
       </button>
       <div class="page-info text-sm text-secondary flex items-center gap-2 ml-auto">
         <span>Page {{ currentPage() + 1 }} of {{ totalPages() }} ({{ totalElements() }} total)</span>
@@ -375,14 +456,15 @@
     </div>
     }
     }
-  </div>
 
-</div>
+  </div><!-- /.table-card -->
 
-<!-- Cancel confirm (outside card so overlay works) -->
+</div><!-- /.sale-list-page -->
+
+<!-- Cancel confirm (outside card so overlay works correctly) -->
 @if (cancelTarget()) {
 <app-confirm-dialog title="Cancel Sale"
-  [message]="'Cancel sale ' + cancelTarget()!.saleNo + '? Stock will NOT be restored automatically.'"
-  confirmLabel="Cancel Sale" variant="danger" [loading]="cancelLoading()" (confirmed)="onCancelSale()"
-  (cancelled)="cancelDialog()" />
+  [message]="'Cancel sale ' + cancelTarget()!.saleNo + '? Stock will be restored automatically.'"
+  confirmLabel="Cancel Sale" variant="danger" [loading]="cancelLoading()"
+  (confirmed)="onCancelSale()" (cancelled)="cancelDialog()" />
 }

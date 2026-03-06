@@ -8,10 +8,13 @@ import { forkJoin } from 'rxjs';
 import { SaleService } from '../../../core/services/sale.service';
 import { CustomerService } from '../../../core/services/customer.service';
 import { InventoryService } from '../../../core/services/inventory.service';
+import { Payment, AddPaymentRequest } from '../../../core/models/payment.model';
 import { Customer } from '../../../core/models/customer';
 import { InventoryItem } from '../../../core/models/inventory';
 import { SaleItemRow, PaymentMethod } from '../../../core/models/sale';
 import { LkrCurrencyPipe } from '../../../shared/pipes/lkr-currency.pipe';
+import { PaymentApiService } from '../../../core/services/payment-api.service';
+import { ApiResponse } from '../../../core/models/api-response';
 
 @Component({
   selector: 'app-edit-sale',
@@ -35,20 +38,36 @@ export class EditSaleComponent implements OnInit {
   error = signal<string | null>(null);
   stockErrors = signal<Record<number, string>>({});
 
+  // ── Payment tracking ───────────────────────────────────────────────────────
+  payments = signal<Payment[]>([]);
+  paymentsLoading = signal(false);
+  paymentError = signal<string | null>(null);
+  addingPayment = signal(false);
+  deletingPayment = signal<string | null>(null); // id being deleted
+
+  // Add-payment form fields (simple signals, no FormGroup needed)
+  newPaymentAmount = signal<number | null>(null);
+  newPaymentDate = signal<string>('');
+  newPaymentNotes = signal<string>('');
+
   saleId = '';
   saleNo = '';
+  saleTotalRevenue = signal<number>(0); // keep a copy for payment math
 
   headerForm: FormGroup;
   private nextRowId = 0;
+  protected readonly Math = Math;
 
-  readonly paymentMethods: { value: PaymentMethod; label: string }[] = [
+  readonly paymentMethods: { value: PaymentMethod; label: string; hint?: string }[] = [
     { value: 'CASH', label: 'Cash' },
     { value: 'CARD', label: 'Card' },
-    { value: 'BANK', label: 'Bank Transfer' }
+    { value: 'BANK', label: 'Bank Transfer' },
+    { value: 'CREDIT', label: 'Credit', hint: 'Payment pending' },
   ];
 
   protected readonly Object = Object;
 
+  // ── Computed totals ─────────────────────────────────────────────────────────
   totalRevenue = computed(() => this.rows().reduce((s, r) => s + r.lineRevenue, 0));
   totalCost = computed(() => this.rows().reduce((s, r) => s + r.lineCost, 0));
   totalProfit = computed(() => this.rows().reduce((s, r) => s + r.lineProfit, 0));
@@ -68,22 +87,47 @@ export class EditSaleComponent implements OnInit {
     this.getCustomer(this.headerForm.get('customerId')?.value)
   );
 
+  // ── Payment computed ────────────────────────────────────────────────────────
+  totalPaid = computed(() =>
+    this.payments().reduce((s, p) => s + p.amount, 0)
+  );
+
+  balanceDue = computed(() =>
+    Math.max(0, this.saleTotalRevenue() - this.totalPaid())
+  );
+
+  isFullyPaid = computed(() => this.balanceDue() <= 0.001);
+
+  canAddPayment = computed(() => {
+    const amt = this.newPaymentAmount();
+    return (
+      amt !== null &&
+      amt > 0 &&
+      amt <= this.balanceDue() + 0.001 &&
+      !!this.newPaymentDate() &&
+      !this.addingPayment()
+    );
+  });
+
   constructor(
     private fb: FormBuilder,
     private saleService: SaleService,
     private customerService: CustomerService,
     private inventoryService: InventoryService,
+    private paymentService: PaymentApiService,
     private router: Router,
     private route: ActivatedRoute
   ) {
     this.headerForm = this.fb.group({
       customerId: [null, Validators.required],
-      paymentMethod: ['CASH', Validators.required]
+      paymentMethod: ['CASH', Validators.required],
+      saleDate: ['', Validators.required]
     });
   }
 
   ngOnInit(): void {
     this.saleId = this.route.snapshot.paramMap.get('id') ?? '';
+    this.newPaymentDate.set(this.todayDateString());
 
     forkJoin({
       customers: this.customerService.getAll(),
@@ -98,10 +142,14 @@ export class EditSaleComponent implements OnInit {
 
         const s = sale.data;
         this.saleNo = s.saleNo;
+        this.saleTotalRevenue.set(s.totalRevenue);
 
         this.headerForm.patchValue({
           customerId: s.customerId,
-          paymentMethod: s.paymentMethod
+          paymentMethod: s.paymentMethod,
+          saleDate: s.saleDatetime
+            ? new Date(s.saleDatetime).toISOString().split('T')[0]
+            : this.todayDateString()
         });
 
         this.rows.set(s.items.map(item => {
@@ -121,30 +169,104 @@ export class EditSaleComponent implements OnInit {
         }));
 
         this.dataLoading.set(false);
+
+        // Load payments if this is a CREDIT sale
+        if (s.paymentMethod === 'CREDIT') {
+          this.loadPayments();
+        }
       },
       error: () => {
         this.error.set('Failed to load sale data.');
         this.dataLoading.set(false);
       }
     });
+
+    // Watch payment method changes — load/clear payments accordingly
+    this.headerForm.get('paymentMethod')?.valueChanges.subscribe(method => {
+      if (method === 'CREDIT') {
+        this.loadPayments();
+      } else {
+        this.payments.set([]);
+      }
+    });
   }
 
-  // ── Row management ────────────────────────────────────────────────────────
+  // ── Payment methods ─────────────────────────────────────────────────────────
+
+  loadPayments(): void {
+    this.paymentsLoading.set(true);
+    this.paymentService.getBySale(this.saleId).subscribe({
+      next: (res: ApiResponse<Payment[]>) => {
+        this.payments.set(res.data);
+        this.paymentsLoading.set(false);
+      },
+      error: () => {
+        this.paymentError.set('Failed to load payments.');
+        this.paymentsLoading.set(false);
+      }
+    });
+  }
+  onAddPayment(): void {
+    const amount = this.newPaymentAmount();
+    const date = this.newPaymentDate();
+    if (!amount || !date || !this.canAddPayment()) return;
+
+    this.addingPayment.set(true);
+    this.paymentError.set(null);
+
+    this.paymentService.addPayment({
+      saleId: this.saleId,           // ← was sale_id
+      amount,
+      paymentDate: new Date(date).toISOString(),   // ← was payment_date
+      notes: this.newPaymentNotes()
+    }).subscribe({
+      next: (res: ApiResponse<Payment>) => {
+        this.payments.update(list => [res.data, ...list]);
+        // Update total revenue tracker in case rows changed
+        this.saleTotalRevenue.set(this.totalRevenue() || this.saleTotalRevenue());
+        this.newPaymentAmount.set(null);
+        this.newPaymentNotes.set('');
+        this.newPaymentDate.set(this.todayDateString());
+        this.addingPayment.set(false);
+      },
+      error: (err: any) => {
+        this.paymentError.set(err?.error?.message ?? 'Failed to add payment.');
+        this.addingPayment.set(false);
+      }
+    });
+  }
+
+  onDeletePayment(paymentId: string): void {
+    if (!confirm('Remove this payment record?')) return;
+    this.deletingPayment.set(paymentId);
+    this.paymentService.deletePayment(paymentId).subscribe({
+      next: () => {
+        this.payments.update(list => list.filter(p => p.paymentId !== paymentId));
+        this.deletingPayment.set(null);
+      },
+      error: (err: any) => {
+        this.paymentError.set(err?.error?.message ?? 'Failed to delete payment.');
+        this.deletingPayment.set(null);
+      }
+    });
+  }
+
+  /** Fill the amount field with the full remaining balance */
+  fillBalance(): void {
+    this.newPaymentAmount.set(parseFloat(this.balanceDue().toFixed(2)));
+  }
+
+  // ── Row management ──────────────────────────────────────────────────────────
 
   addRow(): void {
     this.rows.update(rows => [
       ...rows,
       {
         id: this.nextRowId++,
-        packTypeId: null,
-        packName: '',
-        qty: 1,
-        unitPriceSold: 0,
-        unitCostAtSale: 0,
-        availableStock: 0,
-        lineRevenue: 0,
-        lineCost: 0,
-        lineProfit: 0
+        packTypeId: null, packName: '',
+        qty: 1, unitPriceSold: 0,
+        unitCostAtSale: 0, availableStock: 0,
+        lineRevenue: 0, lineCost: 0, lineProfit: 0
       }
     ]);
   }
@@ -205,9 +327,8 @@ export class EditSaleComponent implements OnInit {
     this.recomputeRow(index);
   }
 
-  // ── Template helpers — NO arrow functions, safe for Angular templates ─────
+  // ── Template helpers ────────────────────────────────────────────────────────
 
-  /** Returns packs not yet selected in other rows */
   getAvailablePacks(currentIndex: number): InventoryItem[] {
     const usedIds = this.rows()
       .filter((_, i) => i !== currentIndex)
@@ -216,34 +337,18 @@ export class EditSaleComponent implements OnInit {
     return this.packTypes().filter(p => !usedIds.includes(p.packTypeId));
   }
 
-  /**
-   * True when the row's current packTypeId is NOT in getAvailablePacks(i).
-   * Called from template instead of arrow-function @if.
-   */
   isPackMissingFromAvailable(index: number, packTypeId: string | null): boolean {
     if (!packTypeId) return false;
-    const available = this.getAvailablePacks(index);
-    for (let i = 0; i < available.length; i++) {
-      if (available[i].packTypeId === packTypeId) return false;
-    }
-    return true;
+    return !this.getAvailablePacks(index).some(p => p.packTypeId === packTypeId);
   }
 
   getCustomer(customerId: string | null): Customer | null {
     if (!customerId) return null;
-    const list = this.customers();
-    for (let i = 0; i < list.length; i++) {
-      if (list[i].customerId === customerId) return list[i];
-    }
-    return null;
+    return this.customers().find(c => c.customerId === customerId) ?? null;
   }
 
   getPaymentValue(): string {
     return this.headerForm.get('paymentMethod')?.value ?? '';
-  }
-
-  getCustomerIdValue(): string {
-    return this.headerForm.get('customerId')?.value ?? '';
   }
 
   isCustomerIdInvalid(): boolean {
@@ -251,27 +356,17 @@ export class EditSaleComponent implements OnInit {
     return !!(ctrl?.invalid && ctrl?.touched);
   }
 
-  hasStockError(index: number): boolean {
-    return !!this.stockErrors()[index];
+  hasStockError(index: number): boolean { return !!this.stockErrors()[index]; }
+  getStockError(index: number): string { return this.stockErrors()[index] ?? ''; }
+  isLowStock(row: SaleItemRow): boolean { return row.availableStock <= 10; }
+  isProfitPositive(): boolean { return this.totalProfit() >= 0; }
+  isProfitNegative(): boolean { return this.totalProfit() < 0; }
+
+  protected todayDateString(): string {
+    return new Date().toISOString().split('T')[0];
   }
 
-  getStockError(index: number): string {
-    return this.stockErrors()[index] ?? '';
-  }
-
-  isLowStock(row: SaleItemRow): boolean {
-    return row.availableStock <= 10;
-  }
-
-  isProfitPositive(): boolean {
-    return this.totalProfit() >= 0;
-  }
-
-  isProfitNegative(): boolean {
-    return this.totalProfit() < 0;
-  }
-
-  // ── Submit ────────────────────────────────────────────────────────────────
+  // ── Submit ──────────────────────────────────────────────────────────────────
 
   onSave(): void {
     if (!this.canSave()) return;
@@ -281,17 +376,18 @@ export class EditSaleComponent implements OnInit {
     const validRows = this.rows().filter(
       r => r.packTypeId !== null && r.qty > 0 && r.unitPriceSold > 0
     );
-
+    console.log('Submitting sale update', this.headerForm.value);
     this.saleService.updateSale(this.saleId, {
       customerId: this.headerForm.value.customerId,
       paymentMethod: this.headerForm.value.paymentMethod,
+      saleDate: this.headerForm.value.saleDate,
       items: validRows.map(r => ({
         packTypeId: r.packTypeId!,
         qty: r.qty,
         unitPriceSold: r.unitPriceSold
       }))
     }).subscribe({
-      next: res => {
+      next: () => {
         this.loading.set(false);
         this.router.navigate(['/sales']);
       },
