@@ -334,11 +334,11 @@
   border-radius: 999px;
   background: var(--gray-200);
   transition: background 0.3s;
+}
 
-  &--active {
-    background: var(--blue-600);
-    width: 44px;
-  }
+.step-dot--active {
+  background: var(--blue-600);
+  width: 44px;
 }
 
 /* Heading */
@@ -495,17 +495,20 @@
 }
 
 /* Field hint */
+/* ── Field hint ──────────────────────────────── */
 .field-hint {
   font-size: 12.5px;
   font-weight: 500;
   display: flex;
   align-items: center;
   gap: 5px;
-
-  .pi { font-size: 13px; }
-
-  &--err { color: var(--red-500); }
 }
+
+.field-hint .pi { font-size: 13px; }
+
+/* ✅ Flattened — no nesting */
+.field-hint--err { color: var(--red-500); }
+
 
 /* ── Primary button ──────────────────────────────────────── */
 .btn-primary {

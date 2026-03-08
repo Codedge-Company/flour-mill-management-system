@@ -11,6 +11,16 @@ export class PushNotificationService {
   private readonly VAPID_PUBLIC_KEY = environment.vapidPublicKey;
   private isBrowser: boolean;
 
+  // ── Utility: single source of truth for Notification API support ────────
+  private get isPushSupported(): boolean {
+    return (
+      this.isBrowser &&
+      typeof Notification !== 'undefined' &&    
+      'serviceWorker' in navigator &&
+      'PushManager' in window
+    );
+  }
+
   constructor(
     @Optional() private swPush: SwPush,
     private http: HttpClient,
@@ -19,7 +29,6 @@ export class PushNotificationService {
   ) {
     this.isBrowser = isPlatformBrowser(platformId);
 
-    // Handle OS notification click → navigate to correct page
     if (this.isBrowser && this.swPush?.isEnabled) {
       this.swPush.notificationClicks.subscribe(({ notification }) => {
         const url = (notification.data as any)?.url ?? '/notifications';
@@ -29,7 +38,8 @@ export class PushNotificationService {
   }
 
   requestPermissionAndSubscribe(): void {
-    if (!this.isBrowser) return;
+    // ✅ Check Notification API exists BEFORE touching it
+    if (!this.isPushSupported) return;
 
     if (!this.swPush || !this.swPush.isEnabled) {
       if (environment.production) {
@@ -38,12 +48,12 @@ export class PushNotificationService {
       return;
     }
 
+    // ✅ Safe to call now — Notification is confirmed to exist
     Notification.requestPermission().then(permission => {
       if (permission !== 'granted') return;
 
       this.swPush.requestSubscription({ serverPublicKey: this.VAPID_PUBLIC_KEY })
         .then(sub => {
-          // ✅ correct URL — /api/notifications/subscribe
           this.http.post(`${environment.apiUrl}/notifications/subscribe`, sub).subscribe({
             next: () => console.log('[Push] ✅ Subscribed to web push'),
             error: err => console.error('[Push] Subscribe failed:', err)
@@ -53,15 +63,15 @@ export class PushNotificationService {
     });
   }
 
-  // Local push — works when browser tab is open (no SW needed)
   sendLocalPush(n: {
     type: string;
     message: string;
     packName?: string;
     currentStock?: number;
   }): void {
-    if (!this.isBrowser) return;
-    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+    // ✅ Already correctly guarded
+    if (!this.isPushSupported) return;
+    if (Notification.permission !== 'granted') return;
 
     const titles: Record<string, string> = {
       LOW_STOCK:      '⚠️ Low Stock Alert',
@@ -76,8 +86,8 @@ export class PushNotificationService {
 
     new Notification(titles[n.type] ?? '🔔 Notification', {
       body,
-      icon:               '/assets/icons/icon-192x192.png',
-      badge:              '/assets/icons/badge-72x72.png',
+      icon:               '/assets/icons/icon.png',
+      badge:              '/assets/icons/badge.png',
       tag:                n.type,
       requireInteraction: n.type === 'OUT_OF_STOCK',
     });
