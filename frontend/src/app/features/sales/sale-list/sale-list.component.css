@@ -455,3 +455,11 @@
     padding: 0;
   }
 }
+.pending-credit-note {
+  color: var(--warning, #d97706);
+  font-weight: 500;
+
+  svg {
+    stroke: var(--warning, #d97706);
+  }
+}

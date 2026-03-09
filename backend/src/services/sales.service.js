@@ -181,9 +181,9 @@ const getAllPaginated = async (page = 0, size = 20, filters = {}) => {
         match.sale_datetime.$lte = new Date(filters.dateTo + 'T23:59:59.999Z');
     }
 
-    // ── Build sub-matches for immediate vs credit ─────────────────────────────
-    // Respect any existing payment_method filter instead of blindly overriding it.
     const pm = filters.paymentMethod;
+    const isPendingFilter = filters.paymentStatus === 'PENDING'; // ← NEW
+
     const immediateOnlyMatch = pm
         ? (['CASH', 'CARD', 'BANK'].includes(pm) ? match : { ...match, payment_method: '__SKIP__' })
         : { ...match, payment_method: { $in: ['CASH', 'CARD', 'BANK'] } };
@@ -192,7 +192,6 @@ const getAllPaginated = async (page = 0, size = 20, filters = {}) => {
         ? (pm === 'CREDIT' ? match : { ...match, payment_method: '__SKIP__' })
         : { ...match, payment_method: 'CREDIT' };
 
-    // ── Run page IDs, totals (split), and count in parallel ───────────────────
     const [saleIds, immediateTotalsRaw, creditTotalsRaw, total] = await Promise.all([
         Sale.find(match)
             .sort({ sale_datetime: -1 })
@@ -201,7 +200,7 @@ const getAllPaginated = async (page = 0, size = 20, filters = {}) => {
             .select('_id')
             .lean(),
 
-        // Immediate: sum directly from Sale fields
+        // Immediate: sum directly — unchanged
         Sale.aggregate([
             { $match: immediateOnlyMatch },
             {
@@ -214,7 +213,7 @@ const getAllPaginated = async (page = 0, size = 20, filters = {}) => {
             },
         ]),
 
-        // Credit: look up actual payments and apportion cost/profit via payRatio
+        // Credit: use pendingRatio OR payRatio depending on filter
         Sale.aggregate([
             { $match: creditOnlyMatch },
             {
@@ -228,6 +227,7 @@ const getAllPaginated = async (page = 0, size = 20, filters = {}) => {
             {
                 $addFields: {
                     total_paid: { $sum: '$payments.amount' },
+                    // Ratio of revenue already collected
                     payRatio: {
                         $cond: [
                             { $gt: ['$total_revenue', 0] },
@@ -235,14 +235,47 @@ const getAllPaginated = async (page = 0, size = 20, filters = {}) => {
                             0,
                         ],
                     },
+                    // Ratio of revenue NOT yet collected (outstanding)
+                    pendingRatio: {
+                        $cond: [
+                            { $gt: ['$total_revenue', 0] },
+                            {
+                                $divide: [
+                                    { $subtract: ['$total_revenue', { $sum: '$payments.amount' }] },
+                                    '$total_revenue'
+                                ]
+                            },
+                            0,
+                        ],
+                    },
                 },
             },
             {
                 $group: {
-                    _id:           null,
-                    total_revenue: { $sum: '$total_paid' },
-                    total_cost:    { $sum: { $multiply: ['$payRatio', '$total_cost']   } },
-                    total_profit:  { $sum: { $multiply: ['$payRatio', '$total_profit'] } },
+                    _id: null,
+                    // ── PENDING filter → show outstanding (unpaid) amounts ──────
+                    // ── PAID   filter → show collected (paid) amounts ───────────
+                    total_revenue: {
+                        $sum: isPendingFilter
+                            ? { $subtract: ['$total_revenue', '$total_paid'] }
+                            : '$total_paid'
+                    },
+                    total_cost: {
+                        $sum: {
+                            $multiply: [
+                                isPendingFilter ? '$pendingRatio' : '$payRatio',
+                                '$total_cost'
+                            ]
+                        }
+                    },
+                    total_profit: {
+                        $sum: {
+                            $multiply: [
+                                isPendingFilter ? '$pendingRatio' : '$payRatio',
+                                '$total_profit'
+                            ]
+                        }
+                    },
                 },
             },
         ]),
