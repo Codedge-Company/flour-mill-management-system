@@ -191,7 +191,7 @@ export class InventoryBudgetOverviewComponent implements OnInit {
   }
 
   // ── Computed ──────────────────────────────────────────────────
-  get invCosts(): number[] { return this.invItems().map(i => i.stockQty * i.threshold * i.unitCost); }
+  get invCosts(): number[] { return this.invItems().map(i => i.stockQty * i.unitCost); }
   get totalInvSpent(): number { return this.invCosts.reduce((s, c) => s + c, 0); }
   get totalExpSpent(): number { return this.expenditures().reduce((s, e) => s + e.amount, 0); }
   get totalSpent(): number { return this.totalInvSpent + this.totalExpSpent; }
