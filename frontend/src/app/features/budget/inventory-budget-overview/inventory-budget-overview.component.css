@@ -1112,3 +1112,50 @@
         grid-column: 1;
     }
 }
+/* ── ADD these rules to inventory-budget-overview.component.css ── */
+
+/* Budget saving/saved badge */
+.budget-saving-badge,
+.budget-saved-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; font-weight: 600;
+  padding: 2px 7px; border-radius: 10px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.budget-saving-badge {
+  background: #eff6ff; color: #2563eb;
+  border: 1px solid rgba(37,99,235,.2);
+}
+.budget-saved-badge {
+  background: #d1fae5; color: #059669;
+  border: 1px solid rgba(5,150,105,.2);
+}
+
+/* Budget input: save icon button inside field */
+.budget-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+}
+.budget-save-btn {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  width: 26px; height: 26px;
+  border-radius: 5px; border: 1px solid #2563eb;
+  background: #dbeafe; color: #2563eb;
+  display: grid; place-items: center;
+  cursor: pointer; transition: all .15s;
+}
+.budget-save-btn:hover { background: #2563eb; color: #fff; }
+
+/* Budget info row */
+.budget-info-row { margin-top: 4px; }
+.budget-info-text { font-size: 11px; color: #64748b; }
+.text-success { color: #059669; font-weight: 700; }
+.text-danger  { color: #e11d48; font-weight: 700; }
+
+/* Extra spinner sizes */
+.btn-spinner--xs {
+  width: 10px; height: 10px;
+  border-width: 1.5px;
+}

@@ -4,6 +4,7 @@ import { authGuard } from './core/guards/auth.guard';
 import { adminGuard } from './core/guards/admin.guard';
 import { MainLayoutComponent } from './layout/main-layout/main-layout.component';
 import { CreditPaymentsComponent } from './features/credit-payments/credit-payments.component';
+import { FlowMoneyComponent } from './features/flow-money/flow-money/flow-money.component';
 
 export const routes: Routes = [
   {
@@ -53,7 +54,8 @@ export const routes: Routes = [
           import('./features/budget/budget-management.routes').then(m => m.BudgetManagementRoutes)
       },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
-      { path: 'credit-payments', component: CreditPaymentsComponent }
+      { path: 'credit-payments', component: CreditPaymentsComponent },
+      { path: 'flow-money', component: FlowMoneyComponent }
     ]
   },
   { path: '**', redirectTo: 'dashboard' }

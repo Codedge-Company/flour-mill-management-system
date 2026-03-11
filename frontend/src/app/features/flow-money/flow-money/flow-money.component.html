@@ -1,0 +1,652 @@
+<!-- src/app/features/flow-money/flow-money.component.html -->
+<div class="bmd-root">
+
+  <!-- ══════════════════════════════════════════════════════════════════════
+       TOPBAR
+  ══════════════════════════════════════════════════════════════════════════ -->
+  <header class="bmd-topbar">
+    <div class="topbar-inner">
+
+      <!-- Brand -->
+      <div class="topbar-brand">
+        <div class="brand-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none"
+               viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <line x1="12" y1="1" x2="12" y2="23"/>
+            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="brand-title">Business Money Dashboard</h1>
+          <p class="brand-sub">Capital · Income · Expenses · Growth</p>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="topbar-controls">
+
+        <!-- Preset filters -->
+        <div class="filter-group">
+          @for (p of [
+            { key:'all',   label:'All'       },
+            { key:'today', label:'Today'     },
+            { key:'7d',    label:'7 Days'    },
+            { key:'30d',   label:'30 Days'   },
+            { key:'month', label:'This Month'}
+          ]; track p.key) {
+            <button class="filter-btn"
+                    [class.active]="activePreset() === p.key"
+                    (click)="setPreset(p.key)">
+              {{ p.label }}
+            </button>
+          }
+        </div>
+
+        <!-- Custom range -->
+        <div class="range-toggle-wrap">
+          <button class="range-toggle-btn"
+                  [class.active]="activePreset() === 'custom' || showCustomRange()"
+                  (click)="toggleCustomRange()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none"
+                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            Custom Range
+          </button>
+
+          @if (showCustomRange()) {
+            <div class="custom-range-panel">
+              <div class="range-row">
+                <p-calendar [ngModel]="dateFrom()" (ngModelChange)="dateFrom.set($event)"
+                            [appendTo]="'body'" dateFormat="yy-mm-dd"
+                            placeholder="From" [maxDate]="dateTo() || today"
+                            styleClass="p-cal-sm">
+                </p-calendar>
+                <span class="range-sep">–</span>
+                <p-calendar [ngModel]="dateTo()" (ngModelChange)="dateTo.set($event)"
+                            [appendTo]="'body'" dateFormat="yy-mm-dd"
+                            placeholder="To" [minDate]="dateFrom()" [maxDate]="today"
+                            styleClass="p-cal-sm">
+                </p-calendar>
+              </div>
+              <div class="range-actions">
+                <button class="btn btn-ghost btn-sm" (click)="showCustomRange.set(false)">
+                  Cancel
+                </button>
+                <button class="btn btn-primary btn-sm"
+                        [disabled]="!isCustomRangeValid"
+                        (click)="applyCustomRange()">
+                  Apply
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Action buttons -->
+        <div class="topbar-actions">
+          <button class="btn btn-primary" (click)="openAddCapital()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
+                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Add Capital
+          </button>
+
+          <button class="btn btn-outline btn-icon" (click)="load()"
+                  [disabled]="loading()"
+                  pTooltip="Refresh data" tooltipPosition="bottom">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none"
+                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+                 [class.spin-icon]="loading()">
+              <polyline points="23 4 23 10 17 10"/>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            </svg>
+          </button>
+        </div>
+
+      </div><!-- /topbar-controls -->
+    </div><!-- /topbar-inner -->
+  </header>
+
+  <!-- Error Banner -->
+  @if (error()) {
+    <div class="error-banner">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
+           viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      {{ error() }}
+      <button class="err-retry" (click)="load()">Retry</button>
+    </div>
+  }
+
+  <!-- ══════════════════════════════════════════════════════════════════════
+       CONTENT
+  ══════════════════════════════════════════════════════════════════════════ -->
+  <main class="bmd-content">
+
+    <!-- ── ROW 1: 6 SUMMARY CARDS ─────────────────────────────────────────── -->
+    <section class="cards-row">
+
+      <!-- 1. Initial Capital -->
+      <div class="sum-card">
+        <div class="sum-card-top">
+          <span class="sum-label">Initial Capital</span>
+          <div class="sum-icon sum-icon--violet">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
+                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+            </svg>
+          </div>
+        </div>
+        @if (loading()) {
+          <div class="skel-val"></div><div class="skel-sub"></div>
+        } @else {
+          <div class="sum-value">{{ summary()?.totalCapital ?? 0 | lkrCurrency }}</div>
+          <div class="sum-sub">{{ capitals().length }} injection{{ capitals().length !== 1 ? 's' : '' }}</div>
+        }
+      </div>
+
+      <!-- 2. Total Income -->
+      <div class="sum-card">
+        <div class="sum-card-top">
+          <span class="sum-label">Total Income</span>
+          <div class="sum-icon sum-icon--blue">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
+                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+              <polyline points="17 6 23 6 23 12"/>
+            </svg>
+          </div>
+        </div>
+        @if (loading()) {
+          <div class="skel-val"></div><div class="skel-sub"></div>
+        } @else {
+          <div class="sum-value sum-blue">{{ summary()?.totalRevenue ?? 0 | lkrCurrency }}</div>
+          <div class="sum-sub">gross revenue earned</div>
+        }
+      </div>
+
+      <!-- 3. Total Expenses -->
+      <div class="sum-card">
+        <div class="sum-card-top">
+          <span class="sum-label">Total Expenses</span>
+          <div class="sum-icon sum-icon--rose">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
+                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/>
+              <polyline points="17 18 23 18 23 12"/>
+            </svg>
+          </div>
+        </div>
+        @if (loading()) {
+          <div class="skel-val"></div><div class="skel-sub"></div>
+        } @else {
+          <div class="sum-value sum-rose">{{ summary()?.totalCost ?? 0 | lkrCurrency }}</div>
+          <div class="sum-sub">cost of goods sold</div>
+        }
+      </div>
+
+      <!-- 4. Total Profit -->
+      <div class="sum-card">
+        <div class="sum-card-top">
+          <span class="sum-label">Total Profit</span>
+          <div class="sum-icon sum-icon--emerald">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
+                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="1" x2="12" y2="23"/>
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+          </div>
+        </div>
+        @if (loading()) {
+          <div class="skel-val"></div><div class="skel-sub"></div>
+        } @else {
+          <div class="sum-value"
+               [class.sum-emerald]="totalProfit() >= 0"
+               [class.sum-rose]="totalProfit() < 0">
+            {{ totalProfit() | lkrCurrency }}
+          </div>
+          <div class="sum-sub">margin {{ profitMargin() | number:'1.1-1' }}%</div>
+        }
+      </div>
+
+      <!-- 5. Business Value (HERO) -->
+      <div class="sum-card sum-card--hero"
+           [class.positive]="businessValuePositive()"
+           [class.negative]="!businessValuePositive()">
+        <div class="sum-card-top">
+          <span class="sum-label">Business Value</span>
+          <div class="sum-icon sum-icon--blue">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
+                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+          </div>
+        </div>
+        @if (loading()) {
+          <div class="skel-val"></div><div class="skel-sub"></div>
+        } @else {
+          <div class="sum-value hero-val">{{ businessValue() | lkrCurrency }}</div>
+          <div class="sum-formula">Capital <span class="op">+</span> Profit</div>
+        }
+      </div>
+
+      <!-- 6. Total Investment -->
+      <div class="sum-card">
+        <div class="sum-card-top">
+          <span class="sum-label">Total Investment</span>
+          <div class="sum-icon sum-icon--amber">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
+                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/>
+              <line x1="12" y1="6" x2="12" y2="8"/>
+              <line x1="12" y1="16" x2="12" y2="18"/>
+            </svg>
+          </div>
+        </div>
+        @if (loading()) {
+          <div class="skel-val"></div><div class="skel-sub"></div>
+        } @else {
+          <div class="sum-value sum-amber">{{ totalInvestment() | lkrCurrency }}</div>
+          <div class="sum-formula">Capital <span class="op">+</span> Expenses</div>
+        }
+      </div>
+
+    </section>
+
+    <!-- ── ROW 2: BUSINESS GROWTH TIMELINE (full width) ───────────────────── -->
+    <section class="row-full">
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h3 class="panel-title">Business Growth Timeline</h3>
+            <p class="panel-sub">Business Value = Capital + Cumulative Profit over time</p>
+          </div>
+          @if (!loading() && timeline().length) {
+            <span class="data-pill">{{ timeline().length }} data points</span>
+          }
+        </div>
+        <div class="chart-area chart-area--lg">
+          @if (loading()) { <div class="chart-skel"></div> }
+          @else if (growthChartData()) {
+            <p-chart type="line" [data]="growthChartData()"
+                     [options]="lineChartOptions()" height="100%"></p-chart>
+          } @else {
+            <div class="empty-chart">
+              <i class="pi pi-chart-line"></i>
+              <p>No data for the selected period</p>
+            </div>
+          }
+        </div>
+      </div>
+    </section>
+
+    <!-- ── ROW 3: INCOME vs EXPENSES | PROFIT TREND ───────────────────────── -->
+    <section class="row-two-col">
+
+      <!-- Income vs Expenses Bar -->
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h3 class="panel-title">Income vs Expenses</h3>
+            <p class="panel-sub">Daily revenue vs cost of sales</p>
+          </div>
+        </div>
+        <div class="chart-area chart-area--md">
+          @if (loading()) { <div class="chart-skel"></div> }
+          @else if (incomeExpenseChartData()) {
+            <p-chart type="bar" [data]="incomeExpenseChartData()"
+                     [options]="barChartOptions()" height="100%"></p-chart>
+          } @else {
+            <div class="empty-chart"><i class="pi pi-chart-bar"></i><p>No data</p></div>
+          }
+        </div>
+      </div>
+
+      <!-- Profit Trend Area -->
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h3 class="panel-title">Profit Trend</h3>
+            <p class="panel-sub">Daily profit = Income − Expenses</p>
+          </div>
+          @if (!loading() && summary()) {
+            <span class="trend-badge"
+                  [class.trend-up]="totalProfit() >= 0"
+                  [class.trend-down]="totalProfit() < 0">
+              {{ totalProfit() >= 0 ? '↑ Profitable' : '↓ Loss-making' }}
+            </span>
+          }
+        </div>
+        <div class="chart-area chart-area--md">
+          @if (loading()) { <div class="chart-skel"></div> }
+          @else if (profitTrendData()) {
+            <p-chart type="line" [data]="profitTrendData()"
+                     [options]="lineChartOptions()" height="100%"></p-chart>
+          } @else {
+            <div class="empty-chart"><i class="pi pi-chart-line"></i><p>No data</p></div>
+          }
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ── ROW 4: COMPOSITION DOUGHNUT | DAILY SUMMARY TABLE ─────────────── -->
+    <section class="row-doughnut-table">
+
+      <!-- Composition Doughnut -->
+      <div class="panel panel--doughnut">
+        <div class="panel-head">
+          <div>
+            <h3 class="panel-title">Money Composition</h3>
+            <p class="panel-sub">Breakdown of total funds</p>
+          </div>
+        </div>
+        <div class="doughnut-area">
+          @if (loading()) { <div class="chart-skel" style="min-height:240px"></div> }
+          @else if (expenseBreakdownData()) {
+            <div class="doughnut-wrap">
+              <p-chart type="doughnut" [data]="expenseBreakdownData()"
+                       [options]="doughnutOptions" height="240px"></p-chart>
+              <div class="doughnut-center">
+                <span class="dc-val">{{ businessValue() | lkrCurrency }}</span>
+                <span class="dc-lbl">Business Value</span>
+              </div>
+            </div>
+          } @else {
+            <div class="empty-chart"><i class="pi pi-chart-pie"></i><p>No data</p></div>
+          }
+        </div>
+
+        @if (!loading() && summary()) {
+          <div class="comp-stats">
+            <div class="comp-row">
+              <span class="comp-dot comp-dot--blue"></span>
+              <span class="comp-label">Capital Invested</span>
+              <span class="comp-val">{{ summary()!.totalCapital | lkrCurrency }}</span>
+            </div>
+            <div class="comp-row">
+              <span class="comp-dot comp-dot--rose"></span>
+              <span class="comp-label">Cost of Sales</span>
+              <span class="comp-val">{{ summary()!.totalCost | lkrCurrency }}</span>
+            </div>
+            <div class="comp-row">
+              <span class="comp-dot comp-dot--emerald"></span>
+              <span class="comp-label">Profit Retained</span>
+              <span class="comp-val" [class.neg]="totalProfit() < 0">
+                {{ totalProfit() | lkrCurrency }}
+              </span>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Daily Summary Table -->
+      <div class="panel panel--table">
+        <div class="panel-head">
+          <div>
+            <h3 class="panel-title">Daily Summary</h3>
+            <p class="panel-sub">{{ tableRows().length }} entries · newest first</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          @if (loading()) {
+            <div style="padding:12px;display:flex;flex-direction:column;gap:8px">
+              @for (i of [1,2,3,4,5]; track i) {
+                <p-skeleton height="38px" borderRadius="6px"></p-skeleton>
+              }
+            </div>
+          } @else if (tableRows().length === 0) {
+            <div class="empty-chart">
+              <i class="pi pi-table"></i>
+              <p>No data for this period</p>
+            </div>
+          } @else {
+            <table class="sum-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th class="num">Income</th>
+                  <th class="num">Expenses</th>
+                  <th class="num">Profit</th>
+                  <th class="num">Business Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of tableRows(); track row.date) {
+                  <tr>
+                    <td class="date-cell">{{ row.date | date:'MMM d, y' }}</td>
+                    <td class="num blue-cell">{{ row.dailyRevenue | lkrCurrency }}</td>
+                    <td class="num rose-cell">{{ row.dailyCost | lkrCurrency }}</td>
+                    <td class="num"
+                        [class.emerald-cell]="row.dailyProfit >= 0"
+                        [class.rose-cell]="row.dailyProfit < 0">
+                      {{ row.dailyProfit | lkrCurrency }}
+                    </td>
+                    <td class="num bv-cell">{{ row.businessValue | lkrCurrency }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ── CAPITAL INJECTIONS ─────────────────────────────────────────────── -->
+    <section class="row-full">
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h3 class="panel-title">Capital Injections</h3>
+            <p class="panel-sub">
+              {{ capitals().length }} entr{{ capitals().length === 1 ? 'y' : 'ies' }} ·
+              total {{ summary()?.totalCapital ?? 0 | lkrCurrency }}
+            </p>
+          </div>
+          <button class="btn btn-outline btn-sm" (click)="openAddCapital()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none"
+                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Add Capital
+          </button>
+        </div>
+
+        @if (loading()) {
+          <div class="cap-grid">
+            @for (i of [1,2,3,4]; track i) {
+              <p-skeleton height="54px" borderRadius="8px"></p-skeleton>
+            }
+          </div>
+        } @else if (capitals().length === 0) {
+          <div class="empty-chart" style="min-height:120px">
+            <i class="pi pi-wallet"></i>
+            <p>No capital entries yet</p>
+            <button class="btn btn-primary btn-sm" (click)="openAddCapital()">
+              Add First Capital
+            </button>
+          </div>
+        } @else {
+          <div class="cap-grid">
+            @for (entry of capitals(); track entry._id) {
+              <div class="cap-card">
+                <div class="cap-card-date">{{ entry.capital_date | date:'MMM d, y' }}</div>
+                <div class="cap-card-body">
+                  <span class="cap-card-label">{{ entry.label || 'Capital Injection' }}</span>
+                  @if (entry.note) {
+                    <span class="cap-card-note">{{ entry.note }}</span>
+                  }
+                </div>
+                <div class="cap-card-amount">{{ entry.amount | lkrCurrency }}</div>
+                <button class="cap-del-btn" (click)="confirmDelete(entry)"
+                        pTooltip="Delete entry" tooltipPosition="left">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none"
+                       viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"/>
+                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                    <path d="M10 11v6M14 11v6"/>
+                    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                  </svg>
+                </button>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     ADD CAPITAL MODAL
+══════════════════════════════════════════════════════════════════════════════ -->
+@if (showAddCapital()) {
+  <div class="modal-backdrop" (click)="showAddCapital.set(false)"></div>
+
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+
+    <!-- Header -->
+    <div class="modal-header">
+      <div class="modal-header-left">
+        <div class="modal-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none"
+               viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <line x1="12" y1="1" x2="12" y2="23"/>
+            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+        </div>
+        <div>
+          <h2 class="modal-title" id="modal-title">Add Capital Injection</h2>
+          <p class="modal-subtitle">Record a new capital investment into the business</p>
+        </div>
+      </div>
+      <button class="modal-close-btn" (click)="showAddCapital.set(false)" aria-label="Close dialog">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
+             viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="modal-body">
+
+      <!-- Amount -->
+      <div class="form-field">
+        <label class="field-label" for="cap-amount">
+          Amount <span class="req">*</span>
+        </label>
+        <div class="input-prefix-wrap">
+          <span class="input-prefix">LKR</span>
+          <p-inputNumber inputId="cap-amount"
+                         [ngModel]="capitalAmount()"
+                         (ngModelChange)="capitalAmount.set($event)"
+                         mode="decimal"
+                         [minFractionDigits]="2"
+                         [maxFractionDigits]="2"
+                         [min]="1"
+                         placeholder="0.00"
+                         styleClass="input-with-prefix">
+          </p-inputNumber>
+        </div>
+      </div>
+
+      <!-- Label -->
+      <div class="form-field">
+        <label class="field-label" for="cap-label">Label</label>
+        <input id="cap-label"
+               pInputText type="text"
+               [ngModel]="capitalLabel()"
+               (ngModelChange)="capitalLabel.set($event)"
+               placeholder="e.g. Initial investment, Partner funding…"
+               class="form-input" />
+      </div>
+
+      <!-- Date -->
+      <div class="form-field">
+        <label class="field-label">Date <span class="req">*</span></label>
+        <p-calendar [ngModel]="capitalDate()"
+                    (ngModelChange)="capitalDate.set($event)"
+                    [appendTo]="'body'"
+                    dateFormat="dd M yy"
+                    [maxDate]="today"
+                    [showIcon]="true"
+                    styleClass="form-calendar w-full">
+        </p-calendar>
+      </div>
+
+      <!-- Note -->
+      <div class="form-field">
+        <label class="field-label" for="cap-note">
+          Note <span class="field-opt">(optional)</span>
+        </label>
+        <textarea id="cap-note"
+                  pInputTextarea
+                  [ngModel]="capitalNote()"
+                  (ngModelChange)="capitalNote.set($event)"
+                  placeholder="Any context about this capital injection…"
+                  rows="3"
+                  class="form-textarea resize-none">
+        </textarea>
+      </div>
+
+      <!-- Live preview -->
+      @if ((capitalAmount() ?? 0) > 0) {
+        <div class="preview-chip">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none"
+               viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+          Adding <strong>LKR {{ capitalAmount()! | number:'1.2-2' }}</strong>
+          on {{ capitalDate() | date:'MMM d, y' }}
+        </div>
+      }
+
+    </div><!-- /modal-body -->
+
+    <!-- Footer -->
+    <div class="modal-footer">
+      <button class="btn btn-outline" (click)="showAddCapital.set(false)">
+        Cancel
+      </button>
+      <button class="btn btn-primary"
+              [disabled]="!canSaveCapital || savingCapital()"
+              (click)="saveCapital()">
+        @if (savingCapital()) {
+          <svg class="spin-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14"
+               fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+          </svg>
+          Saving…
+        } @else {
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
+               viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Save Capital
+        }
+      </button>
+    </div>
+
+  </div><!-- /modal-card -->
+}
+
+<p-confirmDialog styleClass="fm-confirm"></p-confirmDialog>

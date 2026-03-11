@@ -15,5 +15,7 @@ router.use('/notifications', require('./notification.routes'));
 router.use('/dashboard', require('./dashboard.routes'));
 router.use('/payments', require('./payment.routes'));
 router.use('/expenditures', require('./expenditure.routes'));
+router.use('/capital', require('./capital.routes'));
+router.use('/budget', require('./budget.routes'));
 
 module.exports = router;
