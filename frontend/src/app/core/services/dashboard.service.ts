@@ -10,12 +10,12 @@ import { DashboardData, DateRange } from '../models/dashboard';
 export class DashboardService {
   private readonly apiUrl = `${environment.apiUrl}/dashboard`;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   getData(range: DateRange): Observable<ApiResponse<DashboardData>> {
-    const params = new HttpParams()
-      .set('dateFrom', range.dateFrom)
-      .set('dateTo',   range.dateTo);
+    let params = new HttpParams();
+    if (range.dateFrom) params = params.set('dateFrom', range.dateFrom);
+    if (range.dateTo) params = params.set('dateTo', range.dateTo);
 
     return this.http.get<any>(this.apiUrl, { params }).pipe(
       map(raw => ({
@@ -23,20 +23,20 @@ export class DashboardService {
         data: {
           summary: {
             totalRevenue: raw.summary?.total_revenue ?? 0,
-            totalCost:    raw.summary?.total_cost    ?? 0,
-            totalProfit:  raw.summary?.total_profit  ?? 0,
-            totalSales:   raw.summary?.total_sales   ?? 0,
+            totalCost: raw.summary?.total_cost ?? 0,
+            totalProfit: raw.summary?.total_profit ?? 0,
+            totalSales: raw.summary?.total_sales ?? 0,
           },
           dailyMetrics: (raw.daily_metrics ?? []).map((m: any) => ({
-            date:    m.date,
+            date: m.date,
             revenue: m.revenue ?? 0,
-            cost:    m.cost    ?? 0,
-            profit:  m.profit  ?? 0,
+            cost: m.cost ?? 0,
+            profit: m.profit ?? 0,
           })),
           customerPerformance: (raw.customer_performance ?? []).map((c: any) => ({
             customerName: c.customer_name ?? '',
-            revenue:      c.revenue       ?? 0,
-            salesCount:   c.sales_count   ?? 0,
+            revenue: c.revenue ?? 0,
+            salesCount: c.sales_count ?? 0,
           })),
         }
       }))
@@ -50,8 +50,8 @@ export class DashboardService {
   // ── Local date helper (avoids UTC offset shifting the date) ──────────────
   // Use this everywhere you format a Date → 'YYYY-MM-DD' for API calls
   static fmtLocal(d: Date): string {
-    const y  = d.getFullYear();
-    const m  = String(d.getMonth() + 1).padStart(2, '0');
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
     const dd = String(d.getDate()).padStart(2, '0');
     return `${y}-${m}-${dd}`;
   }

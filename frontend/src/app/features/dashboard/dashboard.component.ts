@@ -29,9 +29,19 @@ import { CustomerPerformanceChartComponent }
 import { LowStockAlertPanelComponent }
   from './components/low-stock-alert-panel/low-stock-alert-panel.component';
 import { LkrCurrencyPipe } from '../../shared/pipes/lkr-currency.pipe';
+import { SaleService } from '../../core/services/sale.service';
+import { SaleFilters } from '../../core/models/sale';
 
 // ── TYPE DEFINITION ─────────────────────────────────────────────────────────
-type RangePreset = 'today' | 'yesterday' | '7days' | '30days' | 'custom';
+type RangePreset = 'all' | 'today' | 'yesterday' | '7days' | '30days' | 'custom';
+// ── WEIGHT SUMMARY ──────────────────────────────────────────────────────────
+export interface PackWeightSummary {
+  packTypeId: string;
+  packName: string;
+  weightKg: number;
+  qty: number;
+  totalWeight: number;
+}
 
 @Component({
   selector: 'app-dashboard',
@@ -56,7 +66,7 @@ export class DashboardComponent implements OnInit {
   error = signal<string | null>(null);
   lowStockItems = signal<InventoryItem[]>([]);
   inventoryLoading = signal(true);
-  activePreset = signal<RangePreset>('today');  // ✅ DEFAULT TODAY
+  activePreset = signal<RangePreset>('all');  // ✅ DEFAULT TODAY
   showCustom = signal(false);
   showCustomRange = signal(false);  // ✅ NEW Custom dropdown toggle
 
@@ -180,7 +190,25 @@ export class DashboardComponent implements OnInit {
     if (!cp?.length) return '—';
     return cp.reduce((top, c) => c.revenue > top.revenue ? c : top, cp[0]).customerName;
   });
+  inventoryWeightByPack = computed<PackWeightSummary[]>(() =>
+    this.allInventoryItems()
+      .map(i => ({
+        packTypeId: i.packTypeId,
+        packName: i.packName,
+        weightKg: i.weightKg,
+        qty: i.stockQty,
+        totalWeight: +(i.weightKg * i.stockQty).toFixed(2),
+      }))
+      .sort((a, b) => a.weightKg - b.weightKg)
+  );
 
+  totalSoldWeight = computed(() =>
+    +this.soldWeightByPack().reduce((s, p) => s + p.totalWeight, 0).toFixed(2)
+  );
+
+  totalInventoryWeight = computed(() =>
+    +this.inventoryWeightByPack().reduce((s, p) => s + p.totalWeight, 0).toFixed(2)
+  );
   // ── Sparkline Charts ───────────────────────────────────────────────────────
   sparkRevenue: any = {};
   sparkCost: any = {};
@@ -224,16 +252,19 @@ export class DashboardComponent implements OnInit {
     { key: '30days', label: '30 Days' },
     { key: 'custom', label: 'Custom' },
   ];
-
+  allInventoryItems = signal<InventoryItem[]>([]);
+  soldWeightByPack = signal<PackWeightSummary[]>([]);
+  weightLoading = signal(true);
   constructor(
     private dashboardService: DashboardService,
     private inventoryService: InventoryService,
     private notificationService: NotificationService,
+    private saleService: SaleService,
   ) { }
 
   // ── LIFECYCLE ──────────────────────────────────────────────────────────────
   ngOnInit(): void {
-    this.setDateFilter('today');  // ✅ DEFAULT TODAY
+    this.setDateFilter('all');  // ✅ DEFAULT TODAY
     this.loadInventory();
     this.notificationService.getUnreadCount().subscribe();
   }
@@ -251,6 +282,7 @@ export class DashboardComponent implements OnInit {
       case 'yesterday':
         this.singleDate = this.daysAgo(1);
         break;
+      case 'all':
       default:
         this.singleDate = null;
     }
@@ -258,22 +290,22 @@ export class DashboardComponent implements OnInit {
     this.loadData(this.buildRange(type));
   }
 
-applySingleDate(): void {
-  if (!this.singleDate) return;
-  const d = this.fmt(this.singleDate);
-  this.loadData({ dateFrom: d, dateTo: d });
-  this.activePreset.set('today');
-}
+  applySingleDate(): void {
+    if (!this.singleDate) return;
+    const d = this.fmt(this.singleDate);
+    this.loadData({ dateFrom: d, dateTo: d });
+    this.activePreset.set('custom');
+  }
 
-applyCustomRange(): void {
-  if (!this.isCustomRangeValid()) return;
-  this.loadData({
-    dateFrom: this.fmt(this.customFromDate()!),
-    dateTo:   this.fmt(this.customToDate()!)
-  });
-  this.showCustomRange.set(false);
-  this.activePreset.set('custom');
-}
+  applyCustomRange(): void {
+    if (!this.isCustomRangeValid()) return;
+    this.loadData({
+      dateFrom: this.fmt(this.customFromDate()!),
+      dateTo: this.fmt(this.customToDate()!)
+    });
+    this.showCustomRange.set(false);
+    this.activePreset.set('custom');
+  }
 
   toggleCustomRange(): void {
     this.showCustomRange.update(show => !show);
@@ -290,41 +322,49 @@ applyCustomRange(): void {
     this.setDateFilter(preset);  // ✅ Reuse new filter logic
   }
 
-// ✅ Use LOCAL date string, not UTC (fixes Sri Lanka UTC+5:30 offset)
-private fmt(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-private buildRange(preset: RangePreset): DateRange {
-  const today = new Date();
-  switch (preset) {
-    case 'today':
-      return { dateFrom: this.fmt(today), dateTo: this.fmt(today) };
-    case 'yesterday':
-      return { dateFrom: this.fmt(this.daysAgo(1)), dateTo: this.fmt(this.daysAgo(1)) };
-    case '7days':
-      return { dateFrom: this.fmt(this.daysAgo(6)), dateTo: this.fmt(today) };
-    case '30days':
-      return { dateFrom: this.fmt(this.daysAgo(29)), dateTo: this.fmt(today) };
-    default:
-      return { dateFrom: this.fmt(today), dateTo: this.fmt(today) };
+  // ✅ Use LOCAL date string, not UTC (fixes Sri Lanka UTC+5:30 offset)
+  private fmt(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
   }
-}
 
-private daysAgo(n: number): Date {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d;
-}
+  private buildRange(preset: RangePreset): DateRange {
+    const today = new Date();
+    switch (preset) {
+      case 'all':
+        return { dateFrom: null as any, dateTo: null as any };
+      case 'today':
+        return { dateFrom: this.fmt(today), dateTo: this.fmt(today) };
+      case 'yesterday':
+        return { dateFrom: this.fmt(this.daysAgo(1)), dateTo: this.fmt(this.daysAgo(1)) };
+      case '7days':
+        return { dateFrom: this.fmt(this.daysAgo(6)), dateTo: this.fmt(today) };
+      case '30days':
+        return { dateFrom: this.fmt(this.daysAgo(29)), dateTo: this.fmt(today) };
+      default:
+        return { dateFrom: null as any, dateTo: null as any };
+    }
+  }
+
+  private daysAgo(n: number): Date {
+    const d = new Date();
+    d.setDate(d.getDate() - n);
+    return d;
+  }
 
   private loadData(range: DateRange): void {
     this.loading.set(true);
     this.error.set(null);
 
-    this.dashboardService.getData(range).subscribe({
+
+    const safeRange: DateRange = {
+      dateFrom: range.dateFrom || null as any,
+      dateTo: range.dateTo || null as any,
+    };
+
+    this.dashboardService.getData(safeRange).subscribe({
       next: (res) => {
         this.data.set(res.data);
         this.buildSparklines(res.data.dailyMetrics ?? []);
@@ -336,11 +376,14 @@ private daysAgo(n: number): Date {
         this.loading.set(false);
       },
     });
+
+    this.loadSoldWeights(safeRange);
   }
 
   private loadInventory(): void {
     this.inventoryService.getAll().subscribe({
       next: res => {
+        this.allInventoryItems.set(res.data);
         this.lowStockItems.set(res.data.filter(i => i.isLowStock));
         this.inventoryLoading.set(false);
       },
@@ -356,8 +399,46 @@ private daysAgo(n: number): Date {
     }
     this.loadInventory();
   }
+  private loadSoldWeights(range: DateRange): void {
+    this.weightLoading.set(true);
 
+    const filters: SaleFilters = { status: 'SAVED' };
+    if (range.dateFrom) filters.dateFrom = range.dateFrom;
+    if (range.dateTo) filters.dateTo = range.dateTo;
 
+    this.saleService.getSales(filters, 0, 10000).subscribe({
+      next: res => {
+        const map = new Map<string, PackWeightSummary>();
+
+        (res.data.content as any[]).forEach(sale => {
+          (sale.items ?? []).forEach((item: any) => {
+            const kg = item.weightKg ?? 0;
+            if (!kg) return;
+
+            const existing = map.get(item.packTypeId);
+            if (existing) {
+              existing.qty += item.qty;
+              existing.totalWeight = +(existing.totalWeight + kg * item.qty).toFixed(2);
+            } else {
+              map.set(item.packTypeId, {
+                packTypeId: item.packTypeId,
+                packName: item.packName,
+                weightKg: kg,
+                qty: item.qty,
+                totalWeight: +(kg * item.qty).toFixed(2),
+              });
+            }
+          });
+        });
+
+        this.soldWeightByPack.set(
+          Array.from(map.values()).sort((a, b) => a.weightKg - b.weightKg)
+        );
+        this.weightLoading.set(false);
+      },
+      error: () => this.weightLoading.set(false),
+    });
+  }
   // ── Sparkline builders ──────────────────────────────────────────────────────
   private buildSparklines(metrics: DailyMetric[]): void {
     const labels = metrics.map(m => m.date);

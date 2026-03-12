@@ -23,6 +23,9 @@
 
       <!-- Quick Date Filters -->
       <div class="quick-filters">
+        <button class="filter-btn" [class.active]="activePreset() === 'all'" (click)="setDateFilter('all')">
+          All
+        </button>
         <button class="filter-btn" [class.active]="activePreset() === 'today'" (click)="setDateFilter('today')">
           Today
         </button>
@@ -131,8 +134,7 @@
           <span class="kpi-value">{{ summary()?.totalCost ?? 0 | lkrCurrency }}</span>
           @if (hasSufficientData() && costDelta() !== 0) {
           <span class="kpi-delta" [ngClass]="{ 'delta--up': costDelta() >= 0, 'delta--down': costDelta() < 0 }">
-            <i class="pi" [class.pi-arrow-up-right]="costDelta() >= 0"
-              [class.pi-arrow-down-left]="costDelta() < 0"></i>
+            <i class="pi" [class.pi-arrow-up-right]="costDelta() >= 0" [class.pi-arrow-down-left]="costDelta() < 0"></i>
             {{ costDelta() | number:'1.1-1' }}%
           </span>
           }
@@ -328,7 +330,131 @@
       </div><!-- /.right-col -->
 
     </section>
+    <!-- WEIGHT OVERVIEW ────────────────────────────────────────────────────── -->
+    <section class="weight-grid">
 
+      <!-- Sold Weight Panel -->
+      <div class="panel weight-panel">
+        <div class="panel-head">
+          <div>
+            <h3 class="panel-title">
+              <i class="pi pi-box weight-icon weight-icon--blue"></i>
+              Sold Pack Weight
+            </h3>
+            <p class="panel-sub">Total weight dispatched · current period</p>
+          </div>
+          @if (!weightLoading() && totalSoldWeight() > 0) {
+          <div class="weight-total-badge weight-total-badge--blue">
+            {{ totalSoldWeight() | number:'1.1-1' }} KG
+          </div>
+          }
+        </div>
+
+        @if (weightLoading()) {
+        <div class="weight-skeleton">
+          @for (_ of [1,2,3]; track $index) {
+          <div class="skel skel-row"></div>
+          }
+        </div>
+        } @else if (soldWeightByPack().length === 0) {
+        <div class="weight-empty">
+          <i class="pi pi-inbox"></i>
+          <span>No sales in this period</span>
+        </div>
+        } @else {
+        <div class="weight-table">
+          <!-- Header -->
+          <div class="wt-row wt-row--head">
+            <span>Pack</span>
+            <span>Unit</span>
+            <span>Qty Sold</span>
+            <span>Total Weight</span>
+          </div>
+          <!-- Rows -->
+          @for (row of soldWeightByPack(); track row.packTypeId) {
+          <div class="wt-row">
+            <span class="wt-name">{{ row.packName }}</span>
+            <span class="wt-unit">{{ row.weightKg }} KG</span>
+            <span class="wt-qty">× {{ row.qty | number }}</span>
+            <span class="wt-total wt-total--blue">
+              {{ row.totalWeight | number:'1.1-1' }} KG
+            </span>
+          </div>
+          }
+          <!-- Total -->
+          <div class="wt-row wt-row--total">
+            <span class="wt-total-label" [attr.colspan]="3">Grand Total</span>
+            <span></span>
+            <span></span>
+            <span class="wt-grand wt-grand--blue">{{ totalSoldWeight() | number:'1.1-1' }} KG</span>
+          </div>
+        </div>
+        }
+      </div>
+
+      <!-- Inventory Weight Panel -->
+      <div class="panel weight-panel">
+        <div class="panel-head">
+          <div>
+            <h3 class="panel-title">
+              <i class="pi pi-warehouse weight-icon weight-icon--emerald"></i>
+              Inventory Weight
+            </h3>
+            <p class="panel-sub">Current stock on hand by pack type</p>
+          </div>
+          @if (!inventoryLoading() && totalInventoryWeight() > 0) {
+          <div class="weight-total-badge weight-total-badge--emerald">
+            {{ totalInventoryWeight() | number:'1.1-1' }} KG
+          </div>
+          }
+        </div>
+
+        @if (inventoryLoading()) {
+        <div class="weight-skeleton">
+          @for (_ of [1,2,3]; track $index) {
+          <div class="skel skel-row"></div>
+          }
+        </div>
+        } @else if (inventoryWeightByPack().length === 0) {
+        <div class="weight-empty">
+          <i class="pi pi-inbox"></i>
+          <span>No inventory data available</span>
+        </div>
+        } @else {
+        <div class="weight-table">
+          <!-- Header -->
+          <div class="wt-row wt-row--head">
+            <span>Pack</span>
+            <span>Unit</span>
+            <span>In Stock</span>
+            <span>Total Weight</span>
+          </div>
+          <!-- Rows -->
+          @for (row of inventoryWeightByPack(); track row.packTypeId) {
+          <div class="wt-row" [class.wt-row--lowstock]="row.qty === 0">
+            <span class="wt-name">{{ row.packName }}</span>
+            <span class="wt-unit">{{ row.weightKg }} KG</span>
+            <span class="wt-qty" [class.wt-qty--zero]="row.qty === 0">
+              {{ row.qty | number }}
+              @if (row.qty === 0) { <i class="pi pi-exclamation-triangle"></i> }
+            </span>
+            <span class="wt-total wt-total--emerald">
+              {{ row.totalWeight | number:'1.1-1' }} KG
+            </span>
+          </div>
+          }
+          <!-- Total -->
+          <div class="wt-row wt-row--total">
+            <span class="wt-total-label">Grand Total</span>
+            <span></span>
+            <span></span>
+            <span class="wt-grand wt-grand--emerald">{{ totalInventoryWeight() | number:'1.1-1' }} KG</span>
+          </div>
+        </div>
+        }
+      </div>
+
+    </section>
     <!-- BOTTOM GRID — Customer Performance full width ──────────────────────── -->
     <section class="bottom-grid">
       <div class="panel panel--customer">

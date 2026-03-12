@@ -3,12 +3,11 @@ const Sale    = require('../models/Sale');
 const Payment = require('../models/Payment');
 
 // ── Date boundary helper ───────────────────────────────────────────────────
-// Builds { $gte, $lt } from YYYY-MM-DD strings, treating them as UTC days.
-// Using $lt startOfNextDay avoids any T23:59:59 edge-case gaps.
 const buildDateFilter = (dateFrom, dateTo) => {
-  const from        = new Date(dateFrom + 'T00:00:00.000Z');
-  const toNextDay   = new Date(dateTo   + 'T00:00:00.000Z');
-  toNextDay.setUTCDate(toNextDay.getUTCDate() + 1);   // +1 day → exclusive upper bound
+  if (!dateFrom || !dateTo) return null;
+  const from      = new Date(dateFrom + 'T00:00:00.000Z');
+  const toNextDay = new Date(dateTo   + 'T00:00:00.000Z');
+  toNextDay.setUTCDate(toNextDay.getUTCDate() + 1);
   return { $gte: from, $lt: toNextDay };
 };
 
@@ -16,49 +15,20 @@ const buildDateFilter = (dateFrom, dateTo) => {
 const getData = async (dateFrom, dateTo) => {
   const dateFilter = buildDateFilter(dateFrom, dateTo);
 
-  // ── 1. Immediate sales (CASH / CARD / BANK) ──────────────────────────────
+  // ── Reusable match objects ────────────────────────────────────────────────
   const immediateMatch = {
     status:         'SAVED',
     payment_method: { $in: ['CASH', 'CARD', 'BANK'] },
-    sale_datetime:  dateFilter,
+    ...(dateFilter && { sale_datetime: dateFilter }),
   };
 
-  // ── 2. Credit payments received in this date range ───────────────────────
-  const creditPaymentsPipeline = [
-    { $match: { payment_date: dateFilter } },
-    {
-      $lookup: {
-        from:         'sales',
-        localField:   'sale_id',
-        foreignField: '_id',
-        as:           'sale',
-      },
-    },
-    { $unwind: '$sale' },
-    { $match: { 'sale.status': 'SAVED', 'sale.payment_method': 'CREDIT' } },
-    {
-      $addFields: {
-        payRatio: {
-          $cond: [
-            { $gt: ['$sale.total_revenue', 0] },
-            { $divide: ['$amount', '$sale.total_revenue'] },
-            0,
-          ],
-        },
-      },
-    },
-    {
-      $group: {
-        _id:     null,
-        revenue: { $sum: '$amount' },
-        cost:    { $sum: { $multiply: ['$payRatio', '$sale.total_cost']   } },
-        profit:  { $sum: { $multiply: ['$payRatio', '$sale.total_profit'] } },
-      },
-    },
-  ];
+  const paymentMatch = {
+    ...(dateFilter && { payment_date: dateFilter }),
+  };
 
-  // ── 3. Summary ─────────────────────────────────────────────────────────
+  // ── 1. Summary ────────────────────────────────────────────────────────────
   const [immediateSummary, creditPayments, creditCount] = await Promise.all([
+
     Sale.aggregate([
       { $match: immediateMatch },
       {
@@ -71,23 +41,41 @@ const getData = async (dateFrom, dateTo) => {
         },
       },
     ]),
-    Payment.aggregate(creditPaymentsPipeline),
+
     Payment.aggregate([
-      { $match: { payment_date: dateFilter } },
-      {
-        $lookup: {
-          from: 'sales', localField: 'sale_id',
-          foreignField: '_id', as: 'sale',
-        },
-      },
+      { $match: paymentMatch },
+      { $lookup: { from: 'sales', localField: 'sale_id', foreignField: '_id', as: 'sale' } },
       { $unwind: '$sale' },
       { $match: { 'sale.status': 'SAVED', 'sale.payment_method': 'CREDIT' } },
-      { $group: { _id: '$sale_id' } },   // distinct credit sales paid in range
+      {
+        $addFields: {
+          payRatio: {
+            $cond: [{ $gt: ['$sale.total_revenue', 0] }, { $divide: ['$amount', '$sale.total_revenue'] }, 0],
+          },
+        },
+      },
+      {
+        $group: {
+          _id:     null,
+          revenue: { $sum: '$amount' },
+          cost:    { $sum: { $multiply: ['$payRatio', '$sale.total_cost']   } },
+          profit:  { $sum: { $multiply: ['$payRatio', '$sale.total_profit'] } },
+        },
+      },
+    ]),
+
+    Payment.aggregate([
+      { $match: paymentMatch },
+      { $lookup: { from: 'sales', localField: 'sale_id', foreignField: '_id', as: 'sale' } },
+      { $unwind: '$sale' },
+      { $match: { 'sale.status': 'SAVED', 'sale.payment_method': 'CREDIT' } },
+      { $group: { _id: '$sale_id' } },
       { $count: 'count' },
     ]),
+
   ]);
 
-  const cp = creditPayments[0]  ?? { revenue: 0, cost: 0, profit: 0 };
+  const cp = creditPayments[0]   ?? { revenue: 0, cost: 0, profit: 0 };
   const is = immediateSummary[0] ?? { total_revenue: 0, total_cost: 0, total_profit: 0, total_sales: 0 };
 
   const summary = {
@@ -97,8 +85,9 @@ const getData = async (dateFrom, dateTo) => {
     total_sales:   is.total_sales   + (creditCount[0]?.count ?? 0),
   };
 
-  // ── 4. Daily Metrics ──────────────────────────────────────────────────────
+  // ── 2. Daily Metrics ──────────────────────────────────────────────────────
   const [immediateDailyRaw, creditDailyRaw] = await Promise.all([
+
     Sale.aggregate([
       { $match: immediateMatch },
       {
@@ -110,24 +99,16 @@ const getData = async (dateFrom, dateTo) => {
         },
       },
     ]),
+
     Payment.aggregate([
-      { $match: { payment_date: dateFilter } },
-      {
-        $lookup: {
-          from: 'sales', localField: 'sale_id',
-          foreignField: '_id', as: 'sale',
-        },
-      },
+      { $match: paymentMatch },
+      { $lookup: { from: 'sales', localField: 'sale_id', foreignField: '_id', as: 'sale' } },
       { $unwind: '$sale' },
       { $match: { 'sale.status': 'SAVED', 'sale.payment_method': 'CREDIT' } },
       {
         $addFields: {
           payRatio: {
-            $cond: [
-              { $gt: ['$sale.total_revenue', 0] },
-              { $divide: ['$amount', '$sale.total_revenue'] },
-              0,
-            ],
+            $cond: [{ $gt: ['$sale.total_revenue', 0] }, { $divide: ['$amount', '$sale.total_revenue'] }, 0],
           },
         },
       },
@@ -140,9 +121,9 @@ const getData = async (dateFrom, dateTo) => {
         },
       },
     ]),
+
   ]);
 
-  // Merge into single daily map
   const dailyMap = {};
   for (const d of immediateDailyRaw) {
     dailyMap[d._id] = { date: d._id, revenue: d.revenue, cost: d.cost, profit: d.profit };
@@ -156,69 +137,37 @@ const getData = async (dateFrom, dateTo) => {
       dailyMap[d._id] = { date: d._id, revenue: d.revenue, cost: d.cost, profit: d.profit };
     }
   }
-  const dailyMetrics = Object.values(dailyMap)
-    .sort((a, b) => a.date.localeCompare(b.date));
+  const dailyMetrics = Object.values(dailyMap).sort((a, b) => a.date.localeCompare(b.date));
 
-  // ── 5. Top Customers ──────────────────────────────────────────────────────
+  // ── 3. Customer Performance ───────────────────────────────────────────────
   const [immediateCustomers, creditCustomers] = await Promise.all([
+
     Sale.aggregate([
       { $match: immediateMatch },
-      {
-        $group: {
-          _id:         '$customer_id',
-          revenue:     { $sum: '$total_revenue' },
-          sales_count: { $sum: 1 },
-        },
-      },
-      {
-        $lookup: {
-          from: 'customers', localField: '_id',
-          foreignField: '_id', as: 'customer',
-        },
-      },
-      {
-        $project: {
-          customer_name: { $arrayElemAt: ['$customer.name', 0] },
-          revenue:      1,
-          sales_count:  1,
-        },
-      },
+      { $group: { _id: '$customer_id', revenue: { $sum: '$total_revenue' }, sales_count: { $sum: 1 } } },
+      { $lookup: { from: 'customers', localField: '_id', foreignField: '_id', as: 'customer' } },
+      { $project: { customer_name: { $arrayElemAt: ['$customer.name', 0] }, revenue: 1, sales_count: 1 } },
     ]),
+
     Payment.aggregate([
-      { $match: { payment_date: dateFilter } },
-      {
-        $lookup: {
-          from: 'sales', localField: 'sale_id',
-          foreignField: '_id', as: 'sale',
-        },
-      },
+      { $match: paymentMatch },
+      { $lookup: { from: 'sales', localField: 'sale_id', foreignField: '_id', as: 'sale' } },
       { $unwind: '$sale' },
       { $match: { 'sale.status': 'SAVED', 'sale.payment_method': 'CREDIT' } },
       {
         $group: {
           _id:         '$sale.customer_id',
           revenue:     { $sum: '$amount' },
-          sales_count: { $addToSet: '$sale_id' },  // distinct sales
+          sales_count: { $addToSet: '$sale_id' },
         },
       },
       { $addFields: { sales_count: { $size: '$sales_count' } } },
-      {
-        $lookup: {
-          from: 'customers', localField: '_id',
-          foreignField: '_id', as: 'customer',
-        },
-      },
-      {
-        $project: {
-          customer_name: { $arrayElemAt: ['$customer.name', 0] },
-          revenue:      1,
-          sales_count:  1,
-        },
-      },
+      { $lookup: { from: 'customers', localField: '_id', foreignField: '_id', as: 'customer' } },
+      { $project: { customer_name: { $arrayElemAt: ['$customer.name', 0] }, revenue: 1, sales_count: 1 } },
     ]),
+
   ]);
 
-  // Merge customer maps
   const custMap = {};
   for (const c of [...immediateCustomers, ...creditCustomers]) {
     const key = c._id?.toString();
@@ -227,11 +176,7 @@ const getData = async (dateFrom, dateTo) => {
       custMap[key].revenue     += c.revenue;
       custMap[key].sales_count += c.sales_count;
     } else {
-      custMap[key] = {
-        customer_name: c.customer_name,
-        revenue:       c.revenue,
-        sales_count:   c.sales_count,
-      };
+      custMap[key] = { customer_name: c.customer_name, revenue: c.revenue, sales_count: c.sales_count };
     }
   }
   const customerPerformance = Object.values(custMap)
@@ -245,12 +190,11 @@ const getData = async (dateFrom, dateTo) => {
 const getSummary = async () => {
   const now = new Date();
 
-  // Use UTC-safe boundaries so they match stored UTC dates consistently
   const startOfDay   = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 
   const calcPeriod = async (since) => {
-    const dateFilter = { $gte: since };   // open-ended upper bound = "up to now"
+    const dateFilter = { $gte: since };
 
     const [[immediate], [credit]] = await Promise.all([
       Sale.aggregate([
@@ -272,22 +216,13 @@ const getSummary = async () => {
       ]),
       Payment.aggregate([
         { $match: { payment_date: dateFilter } },
-        {
-          $lookup: {
-            from: 'sales', localField: 'sale_id',
-            foreignField: '_id', as: 'sale',
-          },
-        },
+        { $lookup: { from: 'sales', localField: 'sale_id', foreignField: '_id', as: 'sale' } },
         { $unwind: '$sale' },
         { $match: { 'sale.status': 'SAVED', 'sale.payment_method': 'CREDIT' } },
         {
           $addFields: {
             payRatio: {
-              $cond: [
-                { $gt: ['$sale.total_revenue', 0] },
-                { $divide: ['$amount', '$sale.total_revenue'] },
-                0,
-              ],
+              $cond: [{ $gt: ['$sale.total_revenue', 0] }, { $divide: ['$amount', '$sale.total_revenue'] }, 0],
             },
           },
         },
