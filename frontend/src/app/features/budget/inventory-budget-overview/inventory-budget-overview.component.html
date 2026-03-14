@@ -1,540 +1,853 @@
 <!-- inventory-budget-overview.component.html -->
-<div class="budget-panel">
+<div class="bpo-root">
 
-  <!-- ══ Header ═══════════════════════════════════════════════════ -->
-  <div class="budget-header">
-    <div class="budget-header-left">
-      <div class="budget-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"
-          stroke="currentColor" stroke-width="1.8">
-          <line x1="12" y1="1" x2="12" y2="23" />
-          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-        </svg>
+  <!-- ══ TOPBAR ══════════════════════════════════════════════════════ -->
+  <header class="bpo-topbar">
+    <div class="topbar-inner">
+      <div class="topbar-brand">
+        <div class="brand-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none"
+            viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="brand-title">Budget Passbook</h1>
+          <p class="brand-sub">
+            {{ budgetEntries().length }} investment{{ budgetEntries().length !== 1 ? 's' : '' }}
+            &nbsp;·&nbsp;
+            {{ paidSales().length }} sale{{ paidSales().length !== 1 ? 's' : '' }}
+            &nbsp;·&nbsp;
+            {{ expenditures().length }} withdrawal{{ expenditures().length !== 1 ? 's' : '' }}
+            @if (pendingCreditSales.length > 0) {
+              &nbsp;·&nbsp;
+              <span class="brand-sub-credit">{{ pendingCreditSales.length }} credit pending</span>
+            }
+          </p>
+        </div>
       </div>
-      <div>
-        <h2 class="budget-title">Budget Overview</h2>
-        <p class="budget-subtitle">Inventory + additional expenditures vs capital</p>
+
+      <div class="topbar-actions">
+        <button class="btn btn-outline btn-icon" (click)="loadAll()" title="Refresh data">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none"
+            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <polyline points="23 4 23 10 17 10"/>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+          </svg>
+        </button>
+        <button class="btn btn-outline" (click)="openAddExpForm()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
+            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <line x1="5" y1="12" x2="19" y2="12"/>
+            <polyline points="12 5 19 12 12 19"/>
+          </svg>
+          <span class="btn-text">Add Withdrawal</span>
+        </button>
+        <button class="btn btn-primary" (click)="openAddBudgetForm()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
+            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          <span class="btn-text">Add Investment</span>
+        </button>
       </div>
     </div>
-    <!-- REPLACE the budget-input-group section in your HTML with this: -->
+  </header>
 
-    <div class="budget-header-right">
-      <div class="budget-input-group">
-        <label class="budget-input-label">
-          Total Budget (LKR)
-          @if (savingBudget()) {
-          <span class="budget-saving-badge">
-            <span class="btn-spinner btn-spinner--xs"></span> Saving…
-          </span>
-          } @else if (totalBudget() > 0) {
-          <span class="budget-saved-badge">
-            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="none" viewBox="0 0 24 24"
-              stroke="currentColor" stroke-width="3">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-              <polyline points="22 4 12 14.01 9 11.01" />
-            </svg>
-            Saved
-          </span>
-          }
-        </label>
-        <div class="budget-input-wrap">
-          <span class="budget-input-prefix">LKR</span>
-          <input class="budget-input" type="number" [value]="budgetInputValue" (input)="onBudgetInput($event)"
-            (blur)="onBudgetBlur()" (keydown)="onBudgetKeydown($event)" min="0" step="100000"
-            placeholder="Enter total budget…" />
-          @if (budgetChanged) {
-          <button class="budget-save-btn" (click)="saveBudgetToDb()" title="Save budget">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24"
-              stroke="currentColor" stroke-width="2.5">
-              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-              <polyline points="17 21 17 13 7 13 7 21" />
-              <polyline points="7 3 7 8 15 8" />
-            </svg>
-          </button>
-          }
-        </div>
-        @if (totalBudget() > 0) {
-        <div class="budget-info-row">
-          <span class="budget-info-text">
-            Balance:
-            <strong [class.text-success]="balance >= 0" [class.text-danger]="balance < 0">
-              {{ balance | lkrCurrency }}
-            </strong>
-            · {{ spentPercent | number:'1.1-1' }}% used
-          </span>
-        </div>
-        }
-      </div>
-
-      <button class="btn btn-primary" (click)="openAddForm()">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24"
-          stroke="currentColor" stroke-width="2.5">
-          <line x1="12" y1="5" x2="12" y2="19" />
-          <line x1="5" y1="12" x2="19" y2="12" />
-        </svg>
-        Add Expenditure
-      </button>
-    </div>
-  </div>
-
-  <!-- ══ Notifications ════════════════════════════════════════════ -->
+  <!-- ══ TOASTS ═══════════════════════════════════════════════════════ -->
   @if (successMsg()) {
-  <div class="alert alert-success">
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-      stroke-width="2">
-      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-      <polyline points="22 4 12 14.01 9 11.01" />
+  <div class="toast toast--success" role="status">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
+      viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+      <polyline points="20 6 9 17 4 12"/>
     </svg>
     {{ successMsg() }}
   </div>
   }
   @if (errorMsg()) {
-  <div class="alert alert-error">
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-      stroke-width="2">
-      <circle cx="12" cy="12" r="10" />
-      <line x1="12" y1="8" x2="12" y2="12" />
-      <line x1="12" y1="16" x2="12.01" y2="16" />
+  <div class="toast toast--error" role="alert">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
+      viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+      <circle cx="12" cy="12" r="10"/>
+      <line x1="12" y1="8" x2="12" y2="12"/>
+      <line x1="12" y1="16" x2="12.01" y2="16"/>
     </svg>
     {{ errorMsg() }}
   </div>
   }
 
-  <!-- ══ Loading ══════════════════════════════════════════════════ -->
-  @if (loading()) {
-  <div class="budget-loading">
-    <div class="spinner"></div>
-    <span>Loading data…</span>
-  </div>
-  }
+  <!-- ══ MAIN ══════════════════════════════════════════════════════════ -->
+  <main class="bpo-content">
 
-  @if (!loading() && hasData) {
+    @if (loading()) {
+    <div class="page-loader">
+      <div class="page-loader__ring"></div>
+      <span>Loading passbook…</span>
+    </div>
+    }
 
-  <!-- Summary Cards -->
-  <div class="summary-row">
-    <div class="summary-card summary-card--total">
-      <span class="summary-label">Total Budget</span>
-<span class="summary-value">{{ totalBudget() | lkrCurrency }}</span>
-    </div>
-    <div class="summary-card summary-card--inv">
-      <span class="summary-label">Inventory Cost</span>
-      <span class="summary-value">{{ totalInvSpent | lkrCurrency }}</span>
-<span class="summary-pct">{{ (totalInvSpent / totalBudget() * 100) | number:'1.1-1' }}% of budget</span>
-    </div>
-    <div class="summary-card summary-card--exp">
-      <span class="summary-label">Other Expenses</span>
-      <span class="summary-value">{{ totalExpSpent | lkrCurrency }}</span>
-      <span class="summary-pct">{{ expenditures().length }} item{{ expenditures().length !== 1 ? 's' : ''
-        }}</span>
-    </div>
-    <div class="summary-card summary-card--spent">
-      <span class="summary-label">Total Spent</span>
-      <span class="summary-value">{{ totalSpent | lkrCurrency }}</span>
-      <span class="summary-pct">{{ spentPercent | number:'1.1-1' }}% of budget</span>
-    </div>
-    <div class="summary-card summary-card--balance" [class.overbudget]="balance < 0">
-      <span class="summary-label">Balance</span>
-      <span class="summary-value">{{ balance | lkrCurrency }}</span>
-      <span class="summary-pct" [class.text-danger]="balance < 0">
-        {{ balance < 0 ? 'Over budget!' : 'Remaining' }} </span>
-    </div>
-  </div>
+    @if (!loading() && hasData) {
 
-  <!-- Progress Bar -->
-  <div class="budget-progress-section">
-    <div class="budget-progress-track">
-      <div class="budget-progress-fill" [class.budget-progress-fill--over]="totalSpent > totalBudget()"
-        [style.width.%]="spentPercent">
-      </div>
-    </div>
-    <div class="budget-progress-labels">
-      <span>LKR 0</span>
-      <span class="budget-progress-mid">{{ spentPercent | number:'1.1-1' }}% used</span>
-      <span>{{ totalBudget() | lkrCurrency }}</span>
-    </div>
-  </div>
+    <!-- ── ROW 1: SUMMARY CARDS ─────────────────────────────────────── -->
+    <section class="cards-row">
 
-  <!-- ── Table LEFT | Chart RIGHT ──────────────────────────── -->
-  <div class="main-content-row">
-
-    <!-- LEFT: Tables -->
-    <div class="tables-side">
-
-      <!-- Inventory breakdown -->
-      <div class="section-heading">
-        <span class="section-dot" style="background:#3b82f6"></span>
-        Inventory Breakdown
-      </div>
-      <div class="breakdown-table">
-        <div class="breakdown-header">
-          <span>Pack Type</span>
-          <span>Stock × Cost</span>
-          <span>Amount</span>
-          <span>Share</span>
-        </div>
-        @for (row of invBreakdownRows; track row.packTypeId; let i = $index) {
-        <div class="breakdown-row">
-          <div class="breakdown-name">
-            <span class="breakdown-dot" style="background:#3b82f6" [style.opacity]="0.5 + i * 0.12"></span>
-            <div>
-              <span class="breakdown-packname">{{ row.packName }}</span>
-              <span class="breakdown-weight">{{ row.weightKg }}kg</span>
-            </div>
-          </div>
-          <div class="breakdown-formula">
-            <span class="formula-num">{{ row.stockQty }}</span>
-            <span class="formula-op">×</span>
-            <span class="formula-num">{{ row.unitCost | lkrCurrency }}</span>
-          </div>
-          <div class="breakdown-amount">{{ row.cost | lkrCurrency }}</div>
-          <div class="breakdown-share">
-            <div class="share-bar-track">
-              <div class="share-bar-fill" [style.width.%]="row.sharePct" style="background:#3b82f6"></div>
-            </div>
-            <span class="share-pct">{{ row.sharePct | number:'1.1-1' }}%</span>
+      <!-- Capital Invested -->
+      <div class="sum-card">
+        <div class="sum-card-top">
+          <span class="sum-label">Capital Invested</span>
+          <div class="sum-icon sum-icon--violet">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="1" x2="12" y2="23"/>
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
           </div>
         </div>
-        }
-        <div class="breakdown-subtotal">
-          <span>Inventory Total</span><span></span>
-          <span>{{ totalInvSpent | lkrCurrency }}</span>
-          <span>{{ (totalInvSpent / totalSpent * 100) | number:'1.1-1' }}%</span>
+        <div class="sum-value">{{ totalBudgetCapital | lkrCurrency }}</div>
+        <div class="sum-sub">{{ budgetEntries().length }} entr{{ budgetEntries().length !== 1 ? 'ies' : 'y' }}</div>
+      </div>
+
+      <!-- Sales Income -->
+      <div class="sum-card">
+        <div class="sum-card-top">
+          <span class="sum-label">Sales Income</span>
+          <div class="sum-icon sum-icon--emerald">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <path d="M16 10a4 4 0 0 1-8 0"/>
+            </svg>
+          </div>
+        </div>
+        <div class="sum-value sum-emerald">{{ totalSalesIncome | lkrCurrency }}</div>
+        <div class="sum-sub">{{ paidSales().length }} sale{{ paidSales().length !== 1 ? 's' : '' }} with payments</div>
+      </div>
+
+      <!-- Total Income (hero) -->
+      <div class="sum-card sum-card--hero">
+        <div class="sum-card-top">
+          <span class="sum-label">Total Income</span>
+          <div class="sum-icon sum-icon--white">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+              <polyline points="17 6 23 6 23 12"/>
+            </svg>
+          </div>
+        </div>
+        <div class="sum-value hero-val">{{ totalIncome | lkrCurrency }}</div>
+        <div class="sum-formula">Capital <span class="op">+</span> Sales</div>
+      </div>
+
+      <!-- Credit to Receive -->
+      <div class="sum-card sum-card--credit">
+        <div class="sum-card-top">
+          <span class="sum-label">Credit to Receive</span>
+          <div class="sum-icon sum-icon--white">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="1" y="4" width="22" height="16" rx="2"/>
+              <line x1="1" y1="10" x2="23" y2="10"/>
+            </svg>
+          </div>
+        </div>
+        <div class="sum-value hero-val">{{ totalCreditPending | lkrCurrency }}</div>
+        <div class="sum-formula">
+          {{ pendingCreditSales.length }} pending
+          @if (oldestCreditDays > 0) { · oldest {{ oldestCreditDays }}d }
         </div>
       </div>
 
-      <!-- Expenditures table -->
-      <div class="section-heading" style="margin-top:18px">
-        <span class="section-dot" style="background:#f59e0b"></span>
-        Other Expenditures
-        <button class="btn btn-sm btn-outline" style="margin-left:auto" (click)="openAddForm()">
-          + Add
-        </button>
+      <!-- Expenditures -->
+      <div class="sum-card">
+        <div class="sum-card-top">
+          <span class="sum-label">Expenditures</span>
+          <div class="sum-icon sum-icon--rose">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+            </svg>
+          </div>
+        </div>
+        <div class="sum-value sum-rose">{{ totalExpSpent | lkrCurrency }}</div>
+        <div class="sum-sub">{{ spentPercent | number:'1.1-1' }}% of income</div>
       </div>
 
-      @if (expenditures().length === 0) {
-      <div class="exp-empty">
-        No expenditures added yet.
-        <button class="link-btn" (click)="openAddForm()">Add one now</button>
-      </div>
-      } @else {
-      <div class="breakdown-table">
-        <div class="breakdown-header exp-header">
-          <span>Icon</span>
-          <span>Date</span>
-          <span>Description</span>
-          <span>Amount</span>
-          <span>Share</span>
-          <span></span>
-        </div>
-        @for (exp of expenditures(); track exp._id; let i = $index) {
-        <div class="breakdown-row exp-row">
-          <!-- matched icon preview -->
-          <div class="exp-icon-cell">
-            <div class="exp-icon-badge" [style.background]="expColors[i % expColors.length] + '18'"
-              [style.borderColor]="expColors[i % expColors.length] + '44'">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
-                [style.stroke]="expColors[i % expColors.length]" stroke-width="1.8" stroke-linecap="round"
-                stroke-linejoin="round">
-                @for (p of getIconForDesc(exp.description).paths; track p) {
-                <path [attr.d]="p" />
-                }
-              </svg>
-            </div>
-          </div>
-          <div class="exp-date">{{ formatDate(exp.date) }}</div>
-          <div class="breakdown-name">
-            <span class="breakdown-dot" [style.background]="expColors[i % expColors.length]"></span>
-            <span class="breakdown-packname">{{ exp.description }}</span>
-          </div>
-          <div class="breakdown-amount">{{ exp.amount | lkrCurrency }}</div>
-          <div class="breakdown-share">
-            <div class="share-bar-track">
-              <div class="share-bar-fill" [style.width.%]="(exp.amount / totalSpent) * 100"
-                [style.background]="expColors[i % expColors.length]">
-              </div>
-            </div>
-            <span class="share-pct">{{ (exp.amount / totalSpent * 100) | number:'1.1-1' }}%</span>
-          </div>
-          <div class="exp-actions">
-            <button class="btn-icon btn-icon--edit" title="Edit" (click)="openEditForm(exp)">
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24"
-                stroke="currentColor" stroke-width="2">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-              </svg>
-            </button>
-            <button class="btn-icon btn-icon--delete" title="Delete" [disabled]="deleting() === exp._id"
-              (click)="deleteExpenditure(exp._id)">
-              @if (deleting() === exp._id) {
-              <span class="btn-spinner btn-spinner--sm"></span>
-              } @else {
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24"
-                stroke="currentColor" stroke-width="2">
-                <polyline points="3 6 5 6 21 6" />
-                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                <path d="M10 11v6M14 11v6" />
-                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-              </svg>
-              }
-            </button>
+      <!-- Cash in Hand -->
+      <div class="sum-card" [class.sum-card--positive]="balance >= 0" [class.sum-card--negative]="balance < 0">
+        <div class="sum-card-top">
+          <span class="sum-label">Cash in Hand</span>
+          <div class="sum-icon" [class.sum-icon--emerald]="balance >= 0" [class.sum-icon--rose]="balance < 0">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="7" width="20" height="14" rx="2"/>
+              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+            </svg>
           </div>
         </div>
-        }
-        <div class="breakdown-subtotal exp-subtotal">
-          <span></span>
-          <span>Expenditure Total</span>
-          <span></span>
-          <span>{{ totalExpSpent | lkrCurrency }}</span>
-          <span>{{ (totalExpSpent / totalSpent * 100) | number:'1.1-1' }}%</span>
-          <span></span>
+        <div class="sum-value" [class.sum-emerald]="balance >= 0" [class.sum-rose]="balance < 0">
+          {{ balance | lkrCurrency }}
+        </div>
+        <div class="sum-sub" [class.sum-sub--rose]="balance < 0">
+          {{ balance < 0 ? 'Over budget' : 'Available' }}
         </div>
       </div>
-      }
 
-      <div class="grand-total-row">
-        <span class="grand-label">Grand Total</span>
-        <span class="grand-value">{{ totalSpent | lkrCurrency }}</span>
-        <span class="grand-balance" [class.over]="balance < 0">
-          Balance: {{ balance | lkrCurrency }}
+    </section>
+
+    <!-- ── UTILISATION BAR ───────────────────────────────────────────── -->
+    <div class="panel util-panel">
+      <div class="util-row">
+        <div class="util-info">
+          <span class="util-label">Budget Utilisation</span>
+          <span class="util-detail">{{ totalExpSpent | lkrCurrency }} spent of {{ totalIncome | lkrCurrency }}</span>
+        </div>
+        <span class="util-pct" [class.util-pct--over]="balance < 0">
+          {{ spentPercent | number:'1.1-1' }}%
         </span>
       </div>
+      <div class="util-track">
+        <div class="util-fill"
+          [style.width.%]="totalIncome > 0 ? (totalExpSpent / totalIncome * 100) : 0"
+          [class.util-fill--over]="balance < 0">
+        </div>
+      </div>
+      @if (pendingCreditSales.length > 0) {
+      <div class="util-row" style="margin-top:10px">
+        <div class="util-info">
+          <span class="util-label" style="color:var(--c-violet)">Credit Outstanding</span>
+          <span class="util-detail">{{ totalCreditPending | lkrCurrency }} across {{ pendingCreditSales.length }} credit sales</span>
+        </div>
+        <span class="util-pct" style="color:var(--c-violet)">
+          {{ creditPendingPercent | number:'1.1-1' }}%
+        </span>
+      </div>
+      <div class="util-track">
+        <div class="util-fill util-fill--credit" [style.width.%]="creditPendingPercent"></div>
+      </div>
+      }
     </div>
 
-    <!-- RIGHT: Chart -->
-    <div class="chart-side">
-      <div class="chart-type-bar">
-        <button class="chart-type-btn" [class.active]="chartType === 'donut'" (click)="chartType = 'donut'">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10" />
-            <circle cx="12" cy="12" r="4" />
+    <!-- ── CHARTS ROW ────────────────────────────────────────────────── -->
+    <section class="row-two-col">
+
+      <!-- Income Sources Donut -->
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h3 class="panel-title">Income Sources</h3>
+            <p class="panel-sub">Capital invested vs cost recovered from sales</p>
+          </div>
+          <span class="data-pill">{{ totalIncome | lkrCurrency }}</span>
+        </div>
+        @if (incomeChartEntries.length === 0) {
+        <div class="empty-chart">
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.25">
+            <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/>
           </svg>
-          Donut
-        </button>
-        <button class="chart-type-btn" [class.active]="chartType === 'pie'" (click)="chartType = 'pie'">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2">
-            <path d="M21.21 15.89A10 10 0 1 1 8 2.83" />
-            <path d="M22 12A10 10 0 0 0 12 2v10z" />
+          <p>No income recorded yet</p>
+        </div>
+        } @else {
+        <div class="donut-layout">
+          <svg viewBox="0 0 280 280" class="donut-svg">
+            @for (s of incomeSlices; track s.label; let i = $index) {
+            <path [attr.d]="s.path" [attr.fill]="s.color"
+              class="donut-path"
+              [class.donut-path--active]="hoveredIncomeSlice === i"
+              (mouseenter)="hoveredIncomeSlice = i"
+              (mouseleave)="hoveredIncomeSlice = null"
+              (touchstart)="hoveredIncomeSlice = i"
+              (touchend)="hoveredIncomeSlice = null">
+              <title>{{ s.label }}: {{ s.value | lkrCurrency }} ({{ s.pct | number:'1.1-1' }}%)</title>
+            </path>
+            }
+            <text x="140" y="130" class="dc-label">Total Income</text>
+            <text x="140" y="151" class="dc-value">{{ totalIncome | lkrCurrency }}</text>
           </svg>
-          Pie
-        </button>
-        <button class="chart-type-btn" [class.active]="chartType === 'bar'" (click)="chartType = 'bar'">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2">
-            <rect x="3" y="12" width="4" height="9" />
-            <rect x="10" y="7" width="4" height="14" />
-            <rect x="17" y="3" width="4" height="18" />
-          </svg>
-          Bar
-        </button>
+          <div class="donut-legend">
+            @for (e of incomeChartEntries; track e.label; let i = $index) {
+            <div class="dl-row"
+              [class.dl-row--active]="hoveredIncomeSlice === i"
+              (mouseenter)="hoveredIncomeSlice = i"
+              (mouseleave)="hoveredIncomeSlice = null">
+              <span class="dl-swatch" [style.background]="e.color"></span>
+              <span class="dl-name">{{ e.label }}</span>
+              <span class="dl-amount">{{ e.value | lkrCurrency }}</span>
+              <span class="dl-pct" [style.color]="e.color">{{ e.pct | number:'1.0-0' }}%</span>
+            </div>
+            }
+          </div>
+        </div>
+        }
       </div>
 
-      <!-- ══ DONUT — Monefy-style with floating icons ═══════ -->
-      @if (chartType === 'donut') {
-      <!-- viewBox 500×500; donut centred at 250,250; icons orbit at r≈220 -->
-      <svg class="big-chart monefy-chart" viewBox="0 0 500 500">
-
-        <!-- connector lines: slice edge → icon bubble -->
-        @for (fi of floatingIcons; track fi.label) {
-        <line [attr.x1]="fi.lx1" [attr.y1]="fi.ly1" [attr.x2]="fi.lx2" [attr.y2]="fi.ly2" [attr.stroke]="fi.color"
-          stroke-width="1.2" stroke-dasharray="4 3" opacity="0.55" />
-        }
-
-        <!-- donut slices -->
-        @for (s of donutSlices; track s.label; let i = $index) {
-        <path [attr.d]="s.path" [attr.fill]="s.color" class="donut-slice" [class.slice-hovered]="hoveredSlice === i"
-          (mouseenter)="hoveredSlice = i" (mouseleave)="hoveredSlice = null">
-          <title>{{ s.label }}: {{ s.value | lkrCurrency }} ({{ s.pct | number:'1.1-1' }}%)</title>
-        </path>
-        }
-
-        <!-- centre text — anchored to 250,250 -->
-        <text x="250" y="232" class="chart-center-label">Budget</text>
-     <text x="250" y="256" class="chart-center-budget">{{ totalBudget() | lkrCurrency }}</text>
-        <text x="250" y="276" class="chart-center-balance" [attr.fill]="balance < 0 ? '#ef4444' : '#10b981'">
-          {{ balance | lkrCurrency }}
-        </text>
-
-        <!-- floating icon bubbles (spread via collision-avoidance) -->
-        @for (fi of floatingIcons; track fi.label; let i = $index) {
-        <g class="float-icon-group" [class.float-hovered]="hoveredSlice === i" (mouseenter)="hoveredSlice = i"
-          (mouseleave)="hoveredSlice = null">
-
-          <!-- bubble -->
-          <circle [attr.cx]="fi.x" [attr.cy]="fi.y" r="22" [attr.fill]="fi.color + '1a'" [attr.stroke]="fi.color"
-            stroke-width="1.8" />
-
-          <!-- icon centred in bubble (18×18 inside r=22 bubble) -->
-          <svg [attr.x]="fi.x - 9" [attr.y]="fi.y - 9" width="18" height="18" viewBox="0 0 24 24" fill="none"
-            [attr.stroke]="fi.color" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            @for (p of fi.paths; track p) {
-            <path [attr.d]="p" /> }
+      <!-- Expenditure Breakdown -->
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h3 class="panel-title">Expenditures</h3>
+            <p class="panel-sub">Withdrawal breakdown by category</p>
+          </div>
+          <div class="chart-toggle">
+            <button [class.active]="expChartType === 'donut'" (click)="expChartType = 'donut'">
+              <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5">
+                <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/>
+              </svg>
+              Donut
+            </button>
+            <button [class.active]="expChartType === 'bar'" (click)="expChartType = 'bar'">
+              <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5">
+                <rect x="3" y="12" width="4" height="9"/><rect x="10" y="7" width="4" height="14"/>
+                <rect x="17" y="3" width="4" height="18"/>
+              </svg>
+              Bar
+            </button>
+          </div>
+        </div>
+        @if (chartEntries.length === 0) {
+        <div class="empty-chart">
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.25">
+            <rect x="3" y="12" width="4" height="9"/><rect x="10" y="7" width="4" height="14"/>
+            <rect x="17" y="3" width="4" height="18"/>
           </svg>
-
-          <!-- % label below bubble -->
-          <text [attr.x]="fi.x" [attr.y]="fi.y + 33" class="float-icon-pct" [attr.fill]="fi.color">
-            {{ fi.pct | number:'1.0-0' }}%
-          </text>
-        </g>
+          <p>No expenditures yet</p>
+        </div>
+        } @else {
+        @if (expChartType === 'donut') {
+        <div class="donut-layout">
+          <svg viewBox="0 0 280 280" class="donut-svg">
+            @for (s of expSlices; track s.label; let i = $index) {
+            <path [attr.d]="s.path" [attr.fill]="s.color"
+              class="donut-path"
+              [class.donut-path--active]="hoveredExpSlice === i"
+              (mouseenter)="hoveredExpSlice = i"
+              (mouseleave)="hoveredExpSlice = null">
+              <title>{{ s.label }}: {{ s.value | lkrCurrency }} ({{ s.pct | number:'1.1-1' }}%)</title>
+            </path>
+            }
+            <text x="140" y="130" class="dc-label">Total Spent</text>
+            <text x="140" y="151" class="dc-value dc-value--rose">{{ totalExpSpent | lkrCurrency }}</text>
+          </svg>
+          <div class="donut-legend">
+            @for (e of chartEntries; track e.label; let i = $index) {
+            <div class="dl-row"
+              [class.dl-row--active]="hoveredExpSlice === i"
+              (mouseenter)="hoveredExpSlice = i"
+              (mouseleave)="hoveredExpSlice = null">
+              <span class="dl-swatch" [style.background]="e.color"></span>
+              <span class="dl-name">{{ e.label }}</span>
+              <span class="dl-amount">{{ e.value | lkrCurrency }}</span>
+              <span class="dl-pct" [style.color]="e.color">{{ e.pct | number:'1.0-0' }}%</span>
+            </div>
+            }
+          </div>
+        </div>
         }
-      </svg>
-      }
-
-      <!-- Pie -->
-      @if (chartType === 'pie') {
-      <svg class="big-chart" viewBox="0 0 300 300">
-        @for (s of pieSlices; track s.label; let i = $index) {
-        <path [attr.d]="s.path" [attr.fill]="s.color" class="donut-slice" [class.slice-hovered]="hoveredSlice === i"
-          (mouseenter)="hoveredSlice = i" (mouseleave)="hoveredSlice = null">
-          <title>{{ s.label }}: {{ s.value | lkrCurrency }} ({{ s.pct | number:'1.1-1' }}%)</title>
-        </path>
+        @if (expChartType === 'bar') {
+        <div class="bar-layout">
+          <svg viewBox="0 0 300 210" class="bar-svg">
+            <line x1="20" y1="176" x2="280" y2="176" stroke="#e8eaed" stroke-width="1"/>
+            @for (b of expBars; track b.label; let i = $index) {
+            <g class="bar-group"
+              [class.bar-group--active]="hoveredExpSlice === i"
+              (mouseenter)="hoveredExpSlice = i"
+              (mouseleave)="hoveredExpSlice = null">
+              <rect [attr.x]="b.x" [attr.y]="b.y" [attr.width]="b.w" [attr.height]="b.h"
+                [attr.fill]="b.color" rx="3">
+                <title>{{ b.label }}: {{ b.value | lkrCurrency }}</title>
+              </rect>
+              <text [attr.x]="b.x + b.w / 2" [attr.y]="b.y - 5" class="bar-pct">{{ b.pct | number:'1.0-0' }}%</text>
+              <text [attr.x]="b.x + b.w / 2" [attr.y]="188" class="bar-name">{{ b.shortName }}</text>
+            </g>
+            }
+          </svg>
+          <div class="donut-legend">
+            @for (e of chartEntries; track e.label; let i = $index) {
+            <div class="dl-row"
+              [class.dl-row--active]="hoveredExpSlice === i"
+              (mouseenter)="hoveredExpSlice = i"
+              (mouseleave)="hoveredExpSlice = null">
+              <span class="dl-swatch" [style.background]="e.color"></span>
+              <span class="dl-name">{{ e.label }}</span>
+              <span class="dl-amount">{{ e.value | lkrCurrency }}</span>
+              <span class="dl-pct" [style.color]="e.color">{{ e.pct | number:'1.0-0' }}%</span>
+            </div>
+            }
+          </div>
+        </div>
         }
-        @for (lbl of pieLabels; track lbl.label) {
-        <text [attr.x]="lbl.x" [attr.y]="lbl.y" class="pie-label">
-          {{ lbl.pct | number:'1.0-0' }}%
-        </text>
         }
-      </svg>
-      }
+      </div>
 
-      <!-- Bar -->
-      @if (chartType === 'bar') {
-      <svg class="big-chart" viewBox="0 0 300 260">
-        @for (b of barSlices; track b.label; let i = $index) {
-        <rect [attr.x]="b.x" [attr.y]="b.y" [attr.width]="b.w" [attr.height]="b.h" [attr.fill]="b.color"
-          class="bar-rect" rx="4" [class.slice-hovered]="hoveredSlice === i" (mouseenter)="hoveredSlice = i"
-          (mouseleave)="hoveredSlice = null">
-          <title>{{ b.label }}: {{ b.value | lkrCurrency }} ({{ b.pct | number:'1.1-1' }}%)</title>
-        </rect>
-        <!-- icon above bar -->
-        <svg [attr.x]="b.x + b.w/2 - 8" [attr.y]="b.y - 22" width="16" height="16" viewBox="0 0 24 24" fill="none"
-          [attr.stroke]="b.color" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          @for (p of b.iconPaths; track p) {
-          <path [attr.d]="p" /> }
+    </section>
+
+    <!-- ── CREDIT RECEIVABLES ────────────────────────────────────────── -->
+    @if (pendingCreditSales.length > 0) {
+    <section class="panel credit-section">
+      <div class="panel-head">
+        <div>
+          <h3 class="panel-title credit-title">Credit Receivables</h3>
+          <p class="panel-sub">Outstanding payments from credit sales</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span class="credit-count-badge">{{ pendingCreditSales.length }} pending</span>
+          <span class="data-pill data-pill--violet">{{ totalCreditPending | lkrCurrency }} to receive</span>
+        </div>
+      </div>
+
+      <!-- Desktop table -->
+      <div class="credit-table-wrap">
+        <table class="credit-table">
+          <thead>
+            <tr>
+              <th class="cth">Sale #</th>
+              <th class="cth">Customer</th>
+              <th class="cth">Date</th>
+              <th class="cth">Age</th>
+              <th class="cth cth--num">Total Sale</th>
+              <th class="cth cth--num">Received</th>
+              <th class="cth cth--num">Outstanding</th>
+              <th class="cth">Progress</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (sale of pendingCreditSales; track sale.saleId) {
+            <tr class="credit-tr">
+              <td class="ctd"><span class="credit-sale-no">#{{ sale.saleNo }}</span></td>
+              <td class="ctd"><span class="credit-customer">{{ sale.customerName || '—' }}</span></td>
+              <td class="ctd ctd--date">{{ formatDate(sale.saleDatetime) }}</td>
+              <td class="ctd">
+                <span class="credit-age"
+                  [class.credit-age--warn]="creditDaysAgo(sale) >= 14"
+                  [class.credit-age--over]="creditDaysAgo(sale) >= 30">
+                  {{ creditDaysAgo(sale) }}d
+                </span>
+              </td>
+              <td class="ctd ctd--num">
+                <span class="amount amount--blue">{{ sale.totalRevenue | lkrCurrency }}</span>
+              </td>
+              <td class="ctd ctd--num">
+                @if ((sale.totalPaid ?? 0) > 0) {
+                  <span class="amount amount--emerald">{{ sale.totalPaid | lkrCurrency }}</span>
+                } @else {
+                  <span class="dash">—</span>
+                }
+              </td>
+              <td class="ctd ctd--num">
+                <!-- totalRevenue is number; totalPaid is number|null -->
+                <span class="amount amount--violet">
+                  {{ sale.totalRevenue - (sale.totalPaid ?? 0) | lkrCurrency }}
+                </span>
+              </td>
+              <td class="ctd">
+                <div class="credit-prog-wrap">
+                  <div class="credit-prog-track">
+                    <div class="credit-prog-fill"
+                      [style.width.%]="sale.totalRevenue > 0
+                        ? ((sale.totalPaid ?? 0) / sale.totalRevenue) * 100 : 0">
+                    </div>
+                  </div>
+                  <span class="credit-prog-label">
+                    {{ sale.totalRevenue > 0
+                        ? (((sale.totalPaid ?? 0) / sale.totalRevenue) * 100 | number:'1.0-0')
+                        : '0' }}%
+                  </span>
+                </div>
+              </td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Mobile credit cards -->
+      <div class="credit-mobile">
+        @for (sale of pendingCreditSales; track sale.saleId) {
+        <div class="credit-m-card">
+          <div class="credit-m-card__top">
+            <div>
+              <span class="credit-sale-no">#{{ sale.saleNo }}</span>
+              <span class="credit-customer" style="margin-left:8px">{{ sale.customerName || '—' }}</span>
+            </div>
+            <span class="amount amount--violet">
+              {{ sale.totalRevenue - (sale.totalPaid ?? 0) | lkrCurrency }}
+            </span>
+          </div>
+          <div class="credit-prog-track" style="margin:8px 0 4px">
+            <div class="credit-prog-fill"
+              [style.width.%]="sale.totalRevenue > 0
+                ? ((sale.totalPaid ?? 0) / sale.totalRevenue) * 100 : 0">
+            </div>
+          </div>
+          <div class="credit-m-card__footer">
+            <span style="font-size:11px;color:var(--c-text-muted)">{{ formatDate(sale.saleDatetime) }}</span>
+            <span class="credit-age"
+              [class.credit-age--warn]="creditDaysAgo(sale) >= 14"
+              [class.credit-age--over]="creditDaysAgo(sale) >= 30">
+              {{ creditDaysAgo(sale) }}d ago
+            </span>
+            <span style="font-size:11px;color:var(--c-text-muted);margin-left:auto">
+              {{ (sale.totalPaid ?? 0) | lkrCurrency }} of {{ sale.totalRevenue | lkrCurrency }}
+            </span>
+          </div>
+        </div>
+        }
+      </div>
+
+      <!-- Credit footer total -->
+      <div class="credit-footer">
+        <span class="credit-footer-label">Total Outstanding Credit</span>
+        <span class="credit-footer-amount">{{ totalCreditPending | lkrCurrency }}</span>
+      </div>
+    </section>
+    }
+
+    <!-- ── ACCOUNT LEDGER ────────────────────────────────────────────── -->
+    <section class="panel ledger-panel">
+
+      <div class="panel-head">
+        <div style="display:flex;align-items:center;gap:10px">
+          <h3 class="panel-title">Account Ledger</h3>
+          <span class="ledger-count">{{ ledgerRows.length }} transactions</span>
+        </div>
+        <span style="font-size:12px;color:var(--c-text-muted)">{{ todayFormatted }}</span>
+      </div>
+
+      <!-- Desktop table -->
+      <div class="table-wrap">
+        <table class="ledger-table">
+          <thead>
+            <tr>
+              <th class="lth lth--date">Date</th>
+              <th class="lth">Particulars</th>
+              <th class="lth lth--num">Income</th>
+              <th class="lth lth--num">Withdrawals</th>
+              @if (ledgerRows | hasCredit) {
+              <th class="lth lth--num lth--credit">Credit Due</th>
+              }
+              <th class="lth lth--num lth--balance">Balance</th>
+              <th class="lth lth--actions"></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of ledgerRows; track row.id) {
+            <tr class="ltr"
+              [class.ltr--budget]="row.type === 'budget'"
+              [class.ltr--sale]="row.type === 'sale'"
+              [class.ltr--credit]="row.type === 'credit'"
+              [class.ltr--exp]="row.type === 'expenditure'">
+
+              <td class="ltd ltd--date">{{ formatDate(row.date) }}</td>
+
+              <td class="ltd">
+                <div class="part-cell">
+                  <div class="part-icon" [style.--c]="row.color">
+                    @if (row.iconPaths?.length) {
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none"
+                      [style.stroke]="row.color" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round">
+                      @for (p of row.iconPaths; track p) { <path [attr.d]="p"/> }
+                    </svg>
+                    }
+                  </div>
+                  <div class="part-body">
+                    <span class="part-name"
+                      [class.part-name--budget]="row.type === 'budget'"
+                      [class.part-name--sale]="row.type === 'sale'"
+                      [class.part-name--credit]="row.type === 'credit'">
+                      {{ row.particulars }}
+                    </span>
+                    @if (row.particularsDetail) {
+                    <span class="part-detail">{{ row.particularsDetail }}</span>
+                    }
+                  </div>
+                </div>
+              </td>
+
+              <td class="ltd ltd--num">
+                @if (row.income > 0) {
+                <span class="amount"
+                  [class.amount--blue]="row.type === 'budget'"
+                  [class.amount--emerald]="row.type === 'sale' || row.type === 'credit'">
+                  {{ row.income | lkrCurrency }}
+                </span>
+                } @else { <span class="dash">—</span> }
+              </td>
+
+              <td class="ltd ltd--num">
+                @if (row.withdrawals > 0) {
+                <span class="amount amount--rose">{{ row.withdrawals | lkrCurrency }}</span>
+                } @else { <span class="dash">—</span> }
+              </td>
+
+              @if (ledgerRows | hasCredit) {
+              <td class="ltd ltd--num">
+                @if (row.creditDue > 0) {
+                <span class="amount amount--violet">{{ row.creditDue | lkrCurrency }}</span>
+                } @else { <span class="dash">—</span> }
+              </td>
+              }
+
+              <td class="ltd ltd--num ltd--balance">
+                <span class="running" [class.running--neg]="row.balance < 0">
+                  {{ row.balance | lkrCurrency }}
+                </span>
+              </td>
+
+              <td class="ltd ltd--actions">
+                @if (row.isEditable && row.originalId) {
+                <div class="row-actions">
+                  <button class="row-btn row-btn--edit"
+                    (click)="openEditRowById(row.originalId, row.type === 'budget' ? 'budget' : 'expenditure')"
+                    title="Edit">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                  </button>
+                  <button class="row-btn row-btn--del"
+                    [disabled]="deleting() === row.originalId"
+                    (click)="row.type === 'budget' ? deleteBudgetEntry(row.originalId) : deleteExpenditure(row.originalId)"
+                    title="Delete">
+                    @if (deleting() === row.originalId) {
+                    <span class="mini-spin"></span>
+                    } @else {
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="3 6 5 6 21 6"/>
+                      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                      <path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                    </svg>
+                    }
+                  </button>
+                </div>
+                }
+              </td>
+
+            </tr>
+            }
+            @if (ledgerRows.length === 0) {
+            <tr><td [attr.colspan]="(ledgerRows | hasCredit) ? 7 : 6" class="ledger-empty">
+              No transactions yet. Add an investment to begin.
+            </td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Mobile card list -->
+      <div class="ledger-mobile">
+        @for (row of ledgerRows; track row.id) {
+        <div class="m-row"
+          [class.m-row--budget]="row.type === 'budget'"
+          [class.m-row--sale]="row.type === 'sale'"
+          [class.m-row--credit]="row.type === 'credit'"
+          [class.m-row--exp]="row.type === 'expenditure'">
+          <div class="m-row__top">
+            <div class="part-cell">
+              <div class="part-icon" [style.--c]="row.color">
+                @if (row.iconPaths?.length) {
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none"
+                  [style.stroke]="row.color" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  @for (p of row.iconPaths; track p) { <path [attr.d]="p"/> }
+                </svg>
+                }
+              </div>
+              <div class="part-body">
+                <span class="part-name"
+                  [class.part-name--budget]="row.type === 'budget'"
+                  [class.part-name--sale]="row.type === 'sale'"
+                  [class.part-name--credit]="row.type === 'credit'">
+                  {{ row.particulars }}
+                </span>
+                @if (row.particularsDetail) {
+                <span class="part-detail">{{ row.particularsDetail }}</span>
+                }
+              </div>
+            </div>
+            <div class="m-row__amounts">
+              @if (row.income > 0) {
+              <span class="amount"
+                [class.amount--blue]="row.type === 'budget'"
+                [class.amount--emerald]="row.type === 'sale' || row.type === 'credit'">
+                +{{ row.income | lkrCurrency }}
+              </span>
+              }
+              @if (row.withdrawals > 0) {
+              <span class="amount amount--rose">−{{ row.withdrawals | lkrCurrency }}</span>
+              }
+              @if (row.creditDue > 0) {
+              <span class="amount amount--violet" style="font-size:11px">Due: {{ row.creditDue | lkrCurrency }}</span>
+              }
+            </div>
+          </div>
+          <div class="m-row__footer">
+            <span class="m-row__date">{{ formatDate(row.date) }}</span>
+            <span class="running" [class.running--neg]="row.balance < 0">
+              {{ row.balance | lkrCurrency }}
+            </span>
+            @if (row.isEditable && row.originalId) {
+            <div class="row-actions">
+              <button class="row-btn row-btn--edit"
+                (click)="openEditRowById(row.originalId, row.type === 'budget' ? 'budget' : 'expenditure')">
+                <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </button>
+              <button class="row-btn row-btn--del"
+                [disabled]="deleting() === row.originalId"
+                (click)="row.type === 'budget' ? deleteBudgetEntry(row.originalId) : deleteExpenditure(row.originalId)">
+                <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"/>
+                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                  <path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                </svg>
+              </button>
+            </div>
+            }
+          </div>
+        </div>
+        }
+        @if (ledgerRows.length === 0) {
+        <div class="ledger-empty" style="padding:32px 16px">No transactions yet.</div>
+        }
+      </div>
+
+      <!-- Cash in Hand footer -->
+      <div class="cih" [class.cih--over]="balance < 0">
+        <div class="cih__left">
+          <div class="cih__icon">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="7" width="20" height="14" rx="2"/>
+              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+            </svg>
+          </div>
+          <div>
+            <p class="cih__title">Cash in Hand</p>
+            <p class="cih__sub">
+              @if (balance < 0) {
+                Overspent by {{ balance * -1 | lkrCurrency }}
+              } @else {
+                Capital {{ totalBudgetCapital | lkrCurrency }}
+                &nbsp;+&nbsp; Sales {{ totalSalesIncome | lkrCurrency }}
+                @if (totalCreditPending > 0) {
+                  &nbsp;· <span class="cih__credit-note">+ {{ totalCreditPending | lkrCurrency }} credit pending</span>
+                }
+              }
+            </p>
+          </div>
+        </div>
+        <div class="cih__amount-wrap">
+          <span class="cih__currency">LKR</span>
+          <span class="cih__amount" [class.cih__amount--neg]="balance < 0">
+            {{ balance | lkrCurrency }}
+          </span>
+        </div>
+      </div>
+
+    </section>
+    }
+
+    @if (!loading() && !hasData) {
+    <div class="page-empty">
+      <div class="page-empty__icon">
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+          <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
         </svg>
-        <text [attr.x]="b.x + b.w/2" [attr.y]="b.y - 25" class="bar-label-top">
-          {{ b.pct | number:'1.0-0' }}%
-        </text>
-        <text [attr.x]="b.x + b.w/2" [attr.y]="242" class="bar-label-bottom">
-          {{ b.shortName }}
-        </text>
-        }
-        <line x1="24" y1="225" x2="290" y2="225" stroke="#e5e7eb" stroke-width="1" />
-      </svg>
-      }
-
-      <!-- Legend for pie / donut -->
-      @if (chartType !== 'bar') {
-      <div class="chart-legend">
-        @for (e of chartEntries; track e.label; let i = $index) {
-        <div class="legend-item" [class.legend-item--active]="hoveredSlice === i" (mouseenter)="hoveredSlice = i"
-          (mouseleave)="hoveredSlice = null">
-          <!-- matched icon in legend -->
-          <div class="legend-icon-wrap" [style.background]="e.color + '18'" [style.borderColor]="e.color + '55'">
-            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" [style.stroke]="e.color" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round">
-              @for (p of e.iconPaths; track p) {
-              <path [attr.d]="p" /> }
-            </svg>
-          </div>
-          <span class="legend-label">{{ e.label }}</span>
-          <span class="legend-amount">{{ e.value | lkrCurrency }}</span>
-          <span class="legend-pct">{{ e.pct | number:'1.1-1' }}%</span>
-        </div>
-        }
       </div>
-      } @else {
-      <div class="chart-legend">
-        @for (e of chartEntries; track e.label; let i = $index) {
-        <div class="legend-item" [class.legend-item--active]="hoveredSlice === i" (mouseenter)="hoveredSlice = i"
-          (mouseleave)="hoveredSlice = null">
-          <div class="legend-icon-wrap" [style.background]="e.color + '18'" [style.borderColor]="e.color + '55'">
-            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" [style.stroke]="e.color" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round">
-              @for (p of e.iconPaths; track p) {
-              <path [attr.d]="p" /> }
-            </svg>
-          </div>
-          <span class="legend-label">{{ e.label }}</span>
-          <span class="legend-amount">{{ e.value | lkrCurrency }}</span>
-        </div>
-        }
-      </div>
-      }
+      <h3>No transactions yet</h3>
+      <p>Record your first capital investment to start tracking.</p>
+      <button class="btn btn-primary" (click)="openAddBudgetForm()">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Add First Investment
+      </button>
     </div>
-  </div>
-  }
+    }
 
-  @if (!loading() && !hasData) {
-  <div class="budget-empty">No inventory or expenditure data found.</div>
-  }
+  </main>
 </div>
 
-<!-- ══ Modal Dialog ═══════════════════════════════════════════════ -->
+<!-- ══ MODAL ════════════════════════════════════════════════════════ -->
 @if (showForm) {
 <div class="modal-backdrop" (click)="cancelForm()"></div>
-<div class="modal-dialog" role="dialog" aria-modal="true">
+<div class="modal-card" role="dialog" aria-modal="true">
 
-  <div class="modal-header">
+  <div class="modal-header"
+    [class.modal-header--invest]="formMode === 'budget'"
+    [class.modal-header--withdraw]="formMode === 'expenditure'">
     <div class="modal-header-left">
-      <!-- live icon preview in modal header -->
-      <div class="modal-icon-live" [style.background]="getIconForDesc(form.description).color + '18'"
-        [style.borderColor]="getIconForDesc(form.description).color + '55'">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
-          [style.stroke]="getIconForDesc(form.description).color" stroke-width="1.8" stroke-linecap="round"
-          stroke-linejoin="round">
-          @for (p of getIconForDesc(form.description).paths; track p) {
-          <path [attr.d]="p" />
-          }
+      <div class="modal-icon"
+        [class.modal-icon--invest]="formMode === 'budget'"
+        [class.modal-icon--withdraw]="formMode === 'expenditure'">
+        @if (formMode === 'budget') {
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8">
+          <line x1="12" y1="1" x2="12" y2="23"/>
+          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
         </svg>
+        } @else {
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+          [style.stroke]="getIconForDesc(form.description).color"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          @for (p of getIconForDesc(form.description).paths; track p) { <path [attr.d]="p"/> }
+        </svg>
+        }
       </div>
       <div>
-        <h3 class="modal-title">{{ editingId ? 'Edit Expenditure' : 'Add Expenditure' }}</h3>
+        <h2 class="modal-title">
+          {{ formMode === 'budget'
+            ? (editingId ? 'Edit Investment' : 'Add Investment')
+            : (editingId ? 'Edit Withdrawal' : 'Add Withdrawal') }}
+        </h2>
         <p class="modal-subtitle">
-          Category detected:
-          <strong [style.color]="getIconForDesc(form.description).color">
-            {{ getIconForDesc(form.description).label }}
-          </strong>
+          @if (formMode === 'budget') { Capital investment or top-up }
+          @else {
+            Category:
+            <strong [style.color]="getIconForDesc(form.description).color">
+              {{ getIconForDesc(form.description).label }}
+            </strong>
+          }
         </p>
       </div>
     </div>
-    <button class="modal-close" (click)="cancelForm()" title="Close">
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24"
-        stroke="currentColor" stroke-width="2.5">
-        <line x1="18" y1="6" x2="6" y2="18" />
-        <line x1="6" y1="6" x2="18" y2="18" />
+    <button class="modal-close-btn" (click)="cancelForm()" aria-label="Close">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
       </svg>
     </button>
   </div>
 
   <div class="modal-body">
     <div class="form-grid">
-      <div class="form-group form-group--full">
-        <label class="form-label">Description <span class="req">*</span></label>
-        <input class="form-input" type="text" placeholder="e.g. Transport, Food, Fuel, Repairs…"
+      <div class="form-field form-field--span">
+        <label class="field-label">
+          {{ formMode === 'budget' ? 'Label' : 'Description' }}
+          <span class="req">*</span>
+        </label>
+        <input class="form-input" type="text"
+          [placeholder]="formMode === 'budget' ? 'e.g. Initial Capital, Top-up March…' : 'e.g. Transport, Fuel, Repairs…'"
           [(ngModel)]="form.description" maxlength="120" autofocus />
       </div>
-      <div class="form-group">
-        <label class="form-label">Amount <span class="req">*</span></label>
+      <div class="form-field">
+        <label class="field-label">Amount <span class="req">*</span></label>
         <div class="input-prefix-wrap">
           <span class="input-prefix">LKR</span>
-          <input class="form-input" type="number" placeholder="0.00" [(ngModel)]="form.amount" min="1" step="0.01" />
+          <input class="form-input" type="number" placeholder="0.00"
+            [(ngModel)]="form.amount" min="1" step="0.01" />
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Date <span class="req">*</span></label>
+      <div class="form-field">
+        <label class="field-label">Date <span class="req">*</span></label>
         <input class="form-input" type="date" [(ngModel)]="form.date" />
       </div>
     </div>
-
     @if (formError) {
-    <div class="form-error">
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24"
-        stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="10" />
-        <line x1="12" y1="8" x2="12" y2="12" />
-        <line x1="12" y1="16" x2="12.01" y2="16" />
+    <div class="form-err">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
       </svg>
       {{ formError }}
     </div>
@@ -543,19 +856,19 @@
 
   <div class="modal-footer">
     <button class="btn btn-outline" (click)="cancelForm()">Cancel</button>
-    <button class="btn btn-primary" (click)="saveExpenditure()" [disabled]="saving()">
+    <button class="btn"
+      [class.btn-primary]="formMode === 'budget'"
+      [class.btn-danger]="formMode === 'expenditure'"
+      (click)="saveForm()" [disabled]="saving()">
       @if (saving()) {
-      <span class="btn-spinner"></span> Saving…
-      } @else {
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24"
-        stroke="currentColor" stroke-width="2.5">
-        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-        <polyline points="17 21 17 13 7 13 7 21" />
-        <polyline points="7 3 7 8 15 8" />
-      </svg>
-      {{ editingId ? 'Update Expenditure' : 'Save Expenditure' }}
+        <svg class="spin-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+        </svg>
+        Saving…
       }
+      @else { {{ editingId ? 'Update' : (formMode === 'budget' ? 'Save Investment' : 'Save Withdrawal') }} }
     </button>
   </div>
+
 </div>
 }

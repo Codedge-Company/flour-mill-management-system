@@ -17,5 +17,6 @@ router.use('/payments', require('./payment.routes'));
 router.use('/expenditures', require('./expenditure.routes'));
 router.use('/capital', require('./capital.routes'));
 router.use('/budget', require('./budget.routes'));
+router.use('/budget-entries', require('./budgetEntry.routes')); 
 
 module.exports = router;
