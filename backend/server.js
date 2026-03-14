@@ -13,7 +13,8 @@ const server = http.createServer(app);
 const allowedOrigins = [
   'http://localhost:4200',
   'http://127.0.0.1:4200',
-  'https://flour-mill-management-system-nine.vercel.app'  // ✅ your Vercel URL
+  'https://flour-mill-management-system-nine.vercel.app',
+  'https://www.matheeshaflourmill.lk'
 ];
 
 const io = new Server(server, {
