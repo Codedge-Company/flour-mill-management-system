@@ -29,22 +29,25 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
   styleUrl: './inventory-list.component.css',
 })
 export class InventoryListComponent implements OnInit {
-  items          = signal<InventoryItem[]>([]);
-  loading        = signal(true);
-  error          = signal<string | null>(null);
+  items = signal<InventoryItem[]>([]);
+  loading = signal(true);
+  error = signal<string | null>(null);
   successMessage = signal<string | null>(null);
 
   // ── Dialog state ────────────────────────────────────────────────
-  selectedItem       = signal<InventoryItem | null>(null);
-  showAddStock       = signal(false);
-  showUpdateCost     = signal(false);
-  showCostHistory    = signal(false);
-  showThreshold      = signal(false);
+  selectedItem = signal<InventoryItem | null>(null);
+  showAddStock = signal(false);
+  showUpdateCost = signal(false);
+  showCostHistory = signal(false);
+  showThreshold = signal(false);
   showCreatePackType = signal(false);
-  deleteTarget       = signal<InventoryItem | null>(null);
-  deleteLoading      = signal(false);
+  deleteTarget = signal<InventoryItem | null>(null);
+  deleteLoading = signal(false);
+  editingPackId = signal<string | null>(null);
+  editingNameValue = signal<string>('');
+  saveNameLoading = signal(false);
 
-  constructor(private inventoryService: InventoryService) {}
+  constructor(private inventoryService: InventoryService) { }
 
   ngOnInit(): void {
     this.load();
@@ -105,6 +108,7 @@ export class InventoryListComponent implements OnInit {
     this.showCreatePackType.set(false);
     this.deleteTarget.set(null);
     this.selectedItem.set(null);
+    this.cancelEdit(); 
   }
 
   // ── Success handlers ──────────────────────────────────────────────
@@ -143,7 +147,7 @@ export class InventoryListComponent implements OnInit {
   // ── Helpers ───────────────────────────────────────────────────────
   getStockStatus(item: InventoryItem): 'ok' | 'low' | 'out' {
     if (item.stockQty === 0) return 'out';
-    if (item.isLowStock)     return 'low';
+    if (item.isLowStock) return 'low';
     return 'ok';
   }
 
@@ -177,4 +181,36 @@ export class InventoryListComponent implements OnInit {
     this.successMessage.set(msg);
     setTimeout(() => this.successMessage.set(null), 3500);
   }
+  startEditName(item: InventoryItem): void {
+  this.editingPackId.set(item.packTypeId);
+  this.editingNameValue.set(item.packName);
+}
+
+cancelEdit(): void {
+  this.editingPackId.set(null);
+  this.editingNameValue.set('');
+}
+
+savePackName(item: InventoryItem): void {
+  const newName = this.editingNameValue().trim();
+  if (!newName || newName === item.packName) {
+    this.cancelEdit();
+    return;
+  }
+
+  this.saveNameLoading.set(true);
+
+  this.inventoryService.updatePackName(item.packTypeId, newName).subscribe({
+    next: () => {
+      this.saveNameLoading.set(false);
+      this.cancelEdit();
+      this.showSuccess(`Pack name updated to "${newName}".`);
+      this.load();
+    },
+    error: err => {
+      this.saveNameLoading.set(false);
+      this.error.set(err?.error?.message ?? 'Failed to update pack name.');
+    },
+  });
+}
 }

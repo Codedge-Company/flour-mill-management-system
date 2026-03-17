@@ -750,3 +750,125 @@
     padding: 32px 24px;
   }
 }
+/* ── Inline Pack Name Edit ───────────────────────────────────────── */
+.pack-name-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.pack-name-display {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.pack-name-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pack-name-input {
+  font-size: 14px;
+  font-weight: 700;
+  padding: 4px 9px;
+  border: 1.5px solid var(--primary, #2563eb);
+  border-radius: 7px;
+  background: var(--surface, #fff);
+  color: var(--text-primary, #0f172a);
+  outline: none;
+  width: 130px;
+  min-width: 0;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  transition: border-color 0.15s, box-shadow 0.15s;
+  font-family: inherit;
+}
+
+.pack-name-input:focus {
+  border-color: #1d4ed8;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+}
+
+/* ── Icon Buttons ─────────────────────────────────────────────────── */
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.btn-icon:active {
+  transform: scale(0.9);
+}
+
+/* Edit pencil — hidden until card is hovered */
+.btn-icon-edit {
+  background: transparent;
+  color: var(--text-muted, #94a3b8);
+  opacity: 0;
+  transition: opacity 0.18s, background 0.15s, color 0.15s;
+}
+
+.inv-card:hover .btn-icon-edit {
+  opacity: 1;
+}
+
+.btn-icon-edit:hover {
+  background: #eff6ff;
+  color: var(--primary, #2563eb);
+}
+
+/* Confirm (✓) */
+.btn-icon-confirm {
+  background: #dcfce7;
+  color: #16a34a;
+  border: 1px solid #86efac;
+}
+.btn-icon-confirm:hover {
+  background: #bbf7d0;
+  color: #15803d;
+}
+
+/* Cancel (✕) */
+.btn-icon-cancel {
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+}
+.btn-icon-cancel:hover {
+  background: #fecaca;
+  color: #b91c1c;
+}
+
+/* ── Mobile ───────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  /* Always show the edit icon on touch devices (no hover) */
+  .btn-icon-edit {
+    opacity: 1;
+  }
+
+  .pack-name-input {
+    width: 110px;
+    font-size: 13px;
+    padding: 4px 8px;
+  }
+
+  .btn-icon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .pack-name-edit-row {
+    gap: 5px;
+  }
+}

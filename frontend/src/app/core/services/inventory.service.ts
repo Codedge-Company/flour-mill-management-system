@@ -154,5 +154,9 @@ private mapItem = (raw: any): InventoryItem => ({
       updatedByUserName: h.updated_by_user_name ?? h.updatedByUserName ?? null
     };
   };
-
+ updatePackName(packTypeId: string, packName: string): Observable<ApiResponse<InventoryItem>> {
+  return this.http.patch<any>(`${this.packUrl}/${packTypeId}`, { pack_name: packName }).pipe(
+    map(res => ({ success: true, data: this.mapItem(res.data ?? res) }))
+  );
+}
 }

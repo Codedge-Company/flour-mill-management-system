@@ -83,5 +83,14 @@ const remove = async (id) => {
     CustomerPriceRule.deleteMany({ pack_type_id: id })
   ]);
 };
+const updateName = async (id, pack_name) => {
+  const pt = await PackType.findByIdAndUpdate(
+    id,
+    { pack_name: pack_name.trim().toUpperCase() },
+    { new: true, runValidators: true }
+  ).lean();
 
-module.exports = { getAll, getById, create, update, remove };
+  if (!pt) throw Object.assign(new Error('Pack type not found'), { statusCode: 404 });
+  return pt;
+};
+module.exports = { getAll, getById, create, update, updateName, remove };

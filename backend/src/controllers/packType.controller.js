@@ -16,6 +16,16 @@ exports.createPackType  = async (req, res, next) => {
     next(e);
   }
 };
+exports.updatePackName = async (req, res, next) => {
+  try {
+    const { pack_name } = req.body;
+    if (!pack_name?.trim())
+      return res.status(400).json({ success: false, message: 'pack_name is required' });
 
+    const updated = await packTypeService.updateName(req.params.pack_type_id, pack_name.trim());
+
+    res.json({ success: true, data: updated });
+  } catch (e) { next(e); }
+};
 exports.updatePackType  = async (req, res, next) => { try { res.json({ success: true, data: await packTypeService.update(req.params.id, req.body) }); } catch (e) { next(e); } };
 exports.deletePackType  = async (req, res, next) => { try { await packTypeService.remove(req.params.id); res.json({ success: true, message: 'Pack type deleted' }); } catch (e) { next(e); } };

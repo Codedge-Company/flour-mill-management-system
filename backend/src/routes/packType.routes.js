@@ -11,5 +11,6 @@ router.get('/:id', packTypeController.getPackTypeById);
 router.post('/', authorizeRole('ADMIN'), packTypeController.createPackType);
 router.put('/:id', authorizeRole('ADMIN'), packTypeController.updatePackType);
 router.delete('/:id', authorizeRole('ADMIN'), packTypeController.deletePackType);
+router.patch('/:pack_type_id', authorizeRole('ADMIN'), packTypeController.updatePackName);
 
 module.exports = router;
