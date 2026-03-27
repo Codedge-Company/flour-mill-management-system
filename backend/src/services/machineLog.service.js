@@ -89,13 +89,13 @@ async function recordStop(logId, sessionNumber) {
   const partnerName  = log.partner?.[NAME_FIELD]  || 'Unknown';
 
   try {
-    await notifyMachineStop({
-      date:          log.date,
-      operator:      operatorName,
-      partner:       partnerName,
-      sessionNumber,
-      stopTime:      session.stopTime,
-    });
+    // await notifyMachineStop({
+    //   date:          log.date,
+    //   operator:      operatorName,
+    //   partner:       partnerName,
+    //   sessionNumber,
+    //   stopTime:      session.stopTime,
+    // });
     session.stopNotified = true;
   } catch (err) {
     console.error('[MachineLog] WhatsApp stop notification failed:', err.message);

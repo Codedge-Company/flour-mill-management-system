@@ -1,63 +1,139 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
-const qrcodeTerminal = require('qrcode-terminal');
-const QRCode = require('qrcode');
- 
+const qrcode = require('qrcode-terminal');
+const QRCode  = require('qrcode');
+
 const TO = process.env.NOTIFY_WHATSAPP_TO || '94779337369';
- 
-const CHROME_PATH =
-  process.env.PUPPETEER_EXECUTABLE_PATH ||
-  '/opt/render/project/src/backend/chrome/linux-147.0.7727.24/chrome-linux64/chrome';
- 
-let latestQrText = null;
-let latestQrDataUrl = null;
-let whatsappReady = false;
- 
-const client = new Client({
-  authStrategy: new LocalAuth(),
-  puppeteer: {
-    headless: true,
-    executablePath: CHROME_PATH,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  }
-});
- 
-client.on('qr', async (qr) => {
-  try {
-    latestQrText = qr;
-    latestQrDataUrl = await QRCode.toDataURL(qr);
-    whatsappReady = false;
- 
-    console.log('[WhatsApp] QR generated');
-    qrcodeTerminal.generate(qr, { small: true }); // works locally
-  } catch (err) {
-    console.error('[WhatsApp] Failed to generate QR image:', err.message);
-  }
-});
- 
-client.on('ready', () => {
-  whatsappReady = true;
-  latestQrText = null;
-  latestQrDataUrl = null;
-  console.log('[WhatsApp] Client is ready!');
-});
- 
-client.on('auth_failure', () => {
-  console.error('[WhatsApp] Authentication failed. Delete .wwebjs_auth/ and re-scan.');
-});
- 
-client.initialize();
- 
-async function sendWhatsApp(message) {
-  const chatId = `${TO}@c.us`;
-  await client.sendMessage(chatId, message);
+
+// ── State ──────────────────────────────────────────────────────────────────
+let client   = null;
+let qrData   = { qrImage: null, ready: false };
+let starting = false;
+
+// ── Memory-optimised Puppeteer args ───────────────────────────────────────
+const PUPPETEER_ARGS = [
+  '--no-sandbox',
+  '--disable-setuid-sandbox',
+  '--disable-dev-shm-usage',          // critical on Render / low-RAM servers
+  '--disable-accelerated-2d-canvas',
+  '--disable-gpu',
+  '--no-first-run',
+  '--no-zygote',
+  '--single-process',                 // biggest RAM saver — one process only
+  '--disable-extensions',
+  '--disable-background-networking',
+  '--disable-default-apps',
+  '--mute-audio',
+  '--disable-sync',
+];
+
+// ── Lazy init — called only when needed ───────────────────────────────────
+function initWhatsApp() {
+  if (client || starting) return;   // don't double-init
+  starting = true;
+
+  console.log('[WhatsApp] Initialising client...');
+
+  client = new Client({
+    authStrategy: new LocalAuth(),
+    puppeteer: {
+      headless: true,
+      args: PUPPETEER_ARGS,
+      // If you set PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true in Render env,
+      // point to the system Chrome:
+      ...(process.env.PUPPETEER_EXECUTABLE_PATH && {
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
+      }),
+    },
+  });
+
+  client.on('qr', async (qr) => {
+    console.log('[WhatsApp] QR received — scan in browser at /whatsapp/qr');
+    qrcode.generate(qr, { small: true });
+    try {
+      qrData = { qrImage: await QRCode.toDataURL(qr), ready: false };
+    } catch (e) {
+      console.error('[WhatsApp] QR image gen failed:', e.message);
+    }
+  });
+
+  client.on('ready', () => {
+    console.log('[WhatsApp] Client is ready ✅');
+    qrData = { qrImage: null, ready: true };
+  });
+
+  client.on('auth_failure', () => {
+    console.error('[WhatsApp] Auth failed — delete .wwebjs_auth/ and re-scan.');
+    client    = null;
+    starting  = false;
+    qrData    = { qrImage: null, ready: false };
+  });
+
+  client.on('disconnected', (reason) => {
+    console.warn('[WhatsApp] Disconnected:', reason);
+    client    = null;
+    starting  = false;
+    qrData    = { qrImage: null, ready: false };
+  });
+
+  client.initialize();
 }
- 
+
+// ── Called by /whatsapp/qr route ──────────────────────────────────────────
 function getWhatsAppQr() {
-  return {
-    ready: whatsappReady,
-    qrText: latestQrText,
-    qrImage: latestQrDataUrl
-  };
+  initWhatsApp();   // starts Chrome only on first call to this route
+  return qrData;
 }
- 
-module.exports = { client, sendWhatsApp, getWhatsAppQr };
+
+// ── Internal sender ───────────────────────────────────────────────────────
+async function sendWhatsApp(message) {
+  if (!client || !qrData.ready) {
+    console.warn('[WhatsApp] Client not ready — message skipped.');
+    return;   // fail silently so it never crashes your main app
+  }
+  try {
+    await client.sendMessage(`${TO}@c.us`, message);
+    console.log('[WhatsApp] Sent to', TO);
+  } catch (err) {
+    console.error('[WhatsApp] Send failed:', err.message);
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function formatTime(date) {
+  return new Date(date).toLocaleTimeString('en-LK', {
+    hour: '2-digit', minute: '2-digit', hour12: true,
+    timeZone: 'Asia/Colombo',
+  });
+}
+
+function formatDate(date) {
+  return new Date(date).toLocaleDateString('en-LK', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    timeZone: 'Asia/Colombo',
+  });
+}
+
+// ── Notification functions ─────────────────────────────────────────────────
+async function notifyMachineStart({ date, operator, partner, sessionNumber, startTime }) {
+  const sessionLabel = sessionNumber === 1 ? '1st' : sessionNumber === 2 ? '2nd' : '3rd';
+  return sendWhatsApp(
+    `🟢 *Machine Started* — ${sessionLabel} Session\n` +
+    `📅 Date: ${formatDate(date)}\n` +
+    `👷 Operator: ${operator}\n` +
+    `🤝 Partner: ${partner}\n` +
+    `🕐 Start Time: ${formatTime(startTime)}`
+  );
+}
+
+async function notifyMachineStop({ date, operator, partner, sessionNumber, stopTime }) {
+  const sessionLabel = sessionNumber === 1 ? '1st' : sessionNumber === 2 ? '2nd' : '3rd';
+  return sendWhatsApp(
+    `🔴 *Machine Stopped* — ${sessionLabel} Session\n` +
+    `📅 Date: ${formatDate(date)}\n` +
+    `👷 Operator: ${operator}\n` +
+    `🤝 Partner: ${partner}\n` +
+    `🕐 Stop Time: ${formatTime(stopTime)}`
+  );
+}
+
+module.exports = { notifyMachineStart, notifyMachineStop, getWhatsAppQr };
