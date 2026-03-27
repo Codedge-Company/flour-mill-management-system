@@ -61,4 +61,6 @@ temp/
 # ===============================
 *.pid
 *.seed
-*.lock
+*.lockchrome/
+.wwebjs_auth/
+.wwebjs_cache/
