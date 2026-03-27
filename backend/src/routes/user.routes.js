@@ -8,7 +8,7 @@ const { authorizeRole } = require('../middlewares/role.middleware');
 // ======================
 // Public to authenticated users (no role restriction)
 // ======================
-router.get('/by-roles', authenticate, userController.getUsersByRoles);
+router.get('/by-roles', userController.getUsersByRoles);
 router.get('/', userController.getAllUsers);
 
 // ======================

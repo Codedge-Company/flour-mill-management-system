@@ -357,12 +357,16 @@ const saveApprovedRequest = async (requestId, creatingUser) => {
 
 // ── Queries ───────────────────────────────────────────────────────────────
 
-const getMyRequests = (userId) =>
-  SaleRequest.find({ requested_by: userId })
+const getMyRequests = (userId) => {
+  // If no userId provided, return ALL requests
+  const query = userId ? { requested_by: userId } : {};
+
+  return SaleRequest.find(query)
     .sort({ createdAt: -1 })
     .populate('requested_by sales_person_id reviewed_by', 'full_name username')
     .populate('customer_id', 'name customer_code')
     .populate('items.pack_type_id', 'pack_name weight_kg');
+};
 
 const getPendingRequests = () =>
   SaleRequest.find({ status: 'PENDING' })

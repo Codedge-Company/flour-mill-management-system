@@ -399,3 +399,23 @@
 .mo-efficiency__val--red{ color: #dc2626; font-size: 1.1rem; }
 
 .mo-stock-footer { margin-top: 1.25rem; }
+.mo-stock-saved {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: 8px;
+  color: #16a34a;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 12px;
+  animation: fadeIn 0.3s ease;
+}
+
+.mo-stock-saved svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}

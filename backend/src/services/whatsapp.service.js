@@ -139,6 +139,14 @@ async function sendWhatsApp(message) {
     console.log('[WhatsApp] Sent to', TO);
   } catch (err) {
     console.error('[WhatsApp] Send failed:', err.message);
+    // If frame detached, reset so reconnect can trigger
+    if (err.message.includes('detached Frame') || err.message.includes('Session closed')) {
+      console.warn('[WhatsApp] Stale client detected — resetting...');
+      client   = null;
+      starting = false;
+      qrData   = { qrImage: null, ready: false };
+      setTimeout(() => initWhatsApp(), 5000);
+    }
   }
 }
 

@@ -1,53 +1,53 @@
-// sales-operator.component.ts
-import { Component, OnInit, OnDestroy, signal, computed } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, computed, Inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { Subscription, interval } from 'rxjs';
 
-import { AuthService }        from '../../../core/services/auth.service';
-import { CustomerService }    from '../../../core/services/customer.service';
-import { InventoryService }   from '../../../core/services/inventory.service';
+import { AuthService } from '../../../core/services/auth.service';
+import { CustomerService } from '../../../core/services/customer.service';
+import { InventoryService } from '../../../core/services/inventory.service';
 import { UserService, UserResponse } from '../../../core/services/user.service';
 import { SaleRequestService, SaleRequest, CreateSaleRequestPayload } from '../../../core/services/sale-request.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { Customer }           from '../../../core/models/customer';
-import { InventoryItem }      from '../../../core/models/inventory';
+import { Customer } from '../../../core/models/customer';
+import { InventoryItem } from '../../../core/models/inventory';
 
 interface ItemRow {
-  id:             number;
-  packTypeId:     string | null;
-  packName:       string;
-  qty:            number;
-  unitPriceSold:  number;
+  id: number;
+  packTypeId: string | null;
+  packName: string;
+  qty: number;
+  unitPriceSold: number;
   availableStock: number;
-  lineRevenue:    number;
+  lineRevenue: number;
 }
 
 @Component({
   selector: 'app-sales-operator',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule],
   templateUrl: './sales-operator.component.html',
-  styleUrl:    './sales-operator.component.css',
+  styleUrl: './sales-operator.component.css',
 })
 export class SalesOperatorComponent implements OnInit, OnDestroy {
 
   // ── Live clock ────────────────────────────────────────────────────────────
   nowDate = signal(new Date());
-  nowDateStr   = computed(() => this.toDateStr(this.nowDate()));
-  nowTimeStr   = computed(() => this.toTimeStr(this.nowDate()));
+  nowDateStr = computed(() => this.toDateStr(this.nowDate()));
+  nowTimeStr = computed(() => this.toTimeStr(this.nowDate()));
   private clockSub?: Subscription;
 
   // ── Data ──────────────────────────────────────────────────────────────────
-  customers   = signal<Customer[]>([]);
-  packTypes   = signal<InventoryItem[]>([]);
-  users       = signal<UserResponse[]>([]);
+  customers = signal<Customer[]>([]);
+  packTypes = signal<InventoryItem[]>([]);
+  users = signal<UserResponse[]>([]);
   dataLoading = signal(true);
 
   // ── Customer search ───────────────────────────────────────────────────────
   customerSearchText = signal('');
-  customerDropOpen   = signal(false);
+  customerDropOpen = signal(false);
   selectedCustomerId = signal<string | null>(null);
 
   filteredCustomers = computed(() => {
@@ -63,9 +63,9 @@ export class SalesOperatorComponent implements OnInit, OnDestroy {
   );
 
   // ── Form state ────────────────────────────────────────────────────────────
-  salesPersonId    = signal<string>('');
-  paymentMethod    = signal<'CASH' | 'CREDIT'>('CASH');
-  rows             = signal<ItemRow[]>([]);
+  salesPersonId = signal<string>('');
+  paymentMethod = signal<'CASH' | 'CREDIT'>('CASH');
+  rows = signal<ItemRow[]>([]);
   private nextRowId = 0;
 
   // ── Totals ────────────────────────────────────────────────────────────────
@@ -83,29 +83,33 @@ export class SalesOperatorComponent implements OnInit, OnDestroy {
   submitSuccess = signal<string | null>(null);
 
   // ── My Requests table ─────────────────────────────────────────────────────
-  myRequests    = signal<SaleRequest[]>([]);
+  myRequests = signal<SaleRequest[]>([]);
   requestsLoading = signal(false);
-  savingId      = signal<string | null>(null);
-  saveError     = signal<string | null>(null);
+  savingId = signal<string | null>(null);
+  saveError = signal<string | null>(null);
   expandedReqId = signal<string | null>(null);
-
-  // ── Reject note dialog (for operator to see reason) ───────────────────────
-  rejectedReq   = signal<SaleRequest | null>(null);
 
   private statusSub?: Subscription;
 
   constructor(
-    public  authService:        AuthService,
-    private router:             Router,
-    private customerService:    CustomerService,
-    private inventoryService:   InventoryService,
-    private userService:        UserService,
+    public authService: AuthService,
+    private router: Router,
+    private customerService: CustomerService,
+    private inventoryService: InventoryService,
+    private userService: UserService,
     private saleRequestService: SaleRequestService,
-    private notificationSvc:    NotificationService,
-  ) {}
+    private notificationSvc: NotificationService,
+    @Inject(PLATFORM_ID) private platformId: Object
+  ) { }
 
   ngOnInit(): void {
-    // Tick clock every second
+    console.log('=== SalesOperatorComponent - ngOnInit called ===');
+
+    if (!isPlatformBrowser(this.platformId)) {
+      this.dataLoading.set(false);
+      return;
+    }
+
     this.clockSub = interval(1000).subscribe(() => this.nowDate.set(new Date()));
 
     this.loadData();
@@ -118,53 +122,61 @@ export class SalesOperatorComponent implements OnInit, OnDestroy {
   }
 
   // ── Data loading ──────────────────────────────────────────────────────────
-
   private loadData(): void {
     this.dataLoading.set(true);
     let done = 0;
-    const check = () => { if (++done === 3) this.dataLoading.set(false); };
+    const total = 3;
+    const check = () => { if (++done >= total) this.dataLoading.set(false); };
 
-    this.customerService.getAll().subscribe({ next: r => { this.customers.set(r.data); check(); }, error: () => check() });
+    this.customerService.getAll().subscribe({
+      next: r => { this.customers.set(r.data ?? []); check(); },
+      error: () => { this.customers.set([]); check(); },
+    });
 
     this.inventoryService.getAll().subscribe({
       next: r => {
-        this.packTypes.set(r.data.filter(p => p.stockQty > 0));
+        this.packTypes.set((r.data ?? []).filter((p: any) => p.stockQty > 0));
         check();
-        this.addRow(); // first row after packs loaded
+        if (this.rows().length === 0) this.addRow();
       },
-      error: () => check(),
+      error: () => { check(); },
     });
 
-    this.userService.getAllUsers().subscribe({ next: u => { this.users.set(u); check(); }, error: () => check() });
+    this.userService.getAllUsers().subscribe({
+      next: u => { this.users.set(u ?? []); check(); },
+      error: () => { this.users.set([]); check(); },
+    });
   }
 
   loadMyRequests(): void {
     this.requestsLoading.set(true);
     this.saleRequestService.getMyRequests().subscribe({
-      next:  reqs => { this.myRequests.set(reqs); this.requestsLoading.set(false); },
-      error: ()   => this.requestsLoading.set(false),
+      next: reqs => { this.myRequests.set(reqs); this.requestsLoading.set(false); },
+      error: () => this.requestsLoading.set(false),
     });
   }
 
-  // ── Socket: listen for status updates ─────────────────────────────────────
+  // ── Socket ────────────────────────────────────────────────────────────────
   private listenForStatusUpdates(): void {
-    // Tap into the notification service socket
-    const socket = (this.notificationSvc as any).socket;
-    if (!socket) return;
+    try {
+      const socket = (this.notificationSvc as any).socket;
+      if (!socket) return;
 
-    socket.on('saleRequestStatusUpdate', (data: { requestId: string; status: string; note: string | null }) => {
-      this.myRequests.update(list =>
-        list.map(r => r._id === data.requestId ? { ...r, status: data.status as any, review_note: data.note } : r)
-      );
-      if (data.status === 'APPROVED') {
-        this.submitSuccess.set('✅ Your request was approved! You can now save the sale.');
-        setTimeout(() => this.submitSuccess.set(null), 6000);
-      }
-    });
+      socket.on('saleRequestStatusUpdate', (data: { requestId: string; status: string; note: string | null }) => {
+        this.myRequests.update(list =>
+          list.map(r => r._id === data.requestId ? { ...r, status: data.status as any, review_note: data.note } : r)
+        );
+        if (data.status === 'APPROVED') {
+          this.submitSuccess.set('✅ Your request was approved! The sale has been recorded.');
+          setTimeout(() => this.submitSuccess.set(null), 6000);
+        }
+      });
+    } catch (e) {
+      console.warn('[SalesOperator] Socket not available:', e);
+    }
   }
 
-  // ── Customer search ───────────────────────────────────────────────────────
-
+  // ── Customer Search Methods (These were missing!) ────────────────────────
   onCustomerSearch(e: Event): void {
     const v = (e.target as HTMLInputElement).value;
     this.customerSearchText.set(v);
@@ -182,12 +194,16 @@ export class SalesOperatorComponent implements OnInit, OnDestroy {
     setTimeout(() => this.customerDropOpen.set(false), 200);
   }
 
-  // ── Item rows ─────────────────────────────────────────────────────────────
-
+  // ── Item Rows ─────────────────────────────────────────────────────────────
   addRow(): void {
     this.rows.update(rs => [...rs, {
-      id: this.nextRowId++, packTypeId: null, packName: '',
-      qty: 1, unitPriceSold: 0, availableStock: 0, lineRevenue: 0,
+      id: this.nextRowId++,
+      packTypeId: null,
+      packName: '',
+      qty: 1,
+      unitPriceSold: 0,
+      availableStock: 0,
+      lineRevenue: 0,
     }]);
   }
 
@@ -200,15 +216,29 @@ export class SalesOperatorComponent implements OnInit, OnDestroy {
     const pack = this.packTypes().find(p => p.packTypeId === packTypeId);
     if (!pack) return;
 
-    // Try to get customer-specific price
     const custId = this.selectedCustomerId();
     if (custId) {
       this.customerService.getEffectivePrice(custId, packTypeId).subscribe({
-        next: res => this.updateRow(i, { packTypeId, packName: pack.packName, unitPriceSold: res.unitSellPrice, availableStock: pack.stockQty }),
-        error: ()  => this.updateRow(i, { packTypeId, packName: pack.packName, unitPriceSold: 0, availableStock: pack.stockQty }),
+        next: res => this.updateRow(i, { 
+          packTypeId, 
+          packName: pack.packName, 
+          unitPriceSold: res.unitSellPrice, 
+          availableStock: pack.stockQty 
+        }),
+        error: () => this.updateRow(i, { 
+          packTypeId, 
+          packName: pack.packName, 
+          unitPriceSold: 0, 
+          availableStock: pack.stockQty 
+        }),
       });
     } else {
-      this.updateRow(i, { packTypeId, packName: pack.packName, unitPriceSold: 0, availableStock: pack.stockQty });
+      this.updateRow(i, { 
+        packTypeId, 
+        packName: pack.packName, 
+        unitPriceSold: 0, 
+        availableStock: pack.stockQty 
+      });
     }
   }
 
@@ -247,8 +277,7 @@ export class SalesOperatorComponent implements OnInit, OnDestroy {
     return row.qty > row.availableStock ? `Only ${row.availableStock} available` : '';
   }
 
-  // ── Submit request ────────────────────────────────────────────────────────
-
+  // ── Submit & Other Methods ────────────────────────────────────────────────
   submitRequest(): void {
     if (!this.canSubmit()) return;
     this.submitting.set(true);
@@ -257,12 +286,12 @@ export class SalesOperatorComponent implements OnInit, OnDestroy {
     const validRows = this.rows().filter(r => r.packTypeId && r.qty >= 1 && r.unitPriceSold >= 0.01);
 
     const payload: CreateSaleRequestPayload = {
-      customer_id:     this.selectedCustomerId()!,
-      payment_method:  this.paymentMethod(),
+      customer_id: this.selectedCustomerId()!,
+      payment_method: this.paymentMethod(),
       sales_person_id: this.salesPersonId(),
       items: validRows.map(r => ({
-        pack_type_id:    r.packTypeId!,
-        qty:             r.qty,
+        pack_type_id: r.packTypeId!,
+        qty: r.qty,
         unit_price_sold: r.unitPriceSold,
       })),
     };
@@ -292,8 +321,6 @@ export class SalesOperatorComponent implements OnInit, OnDestroy {
     this.addRow();
   }
 
-  // ── Save approved request ─────────────────────────────────────────────────
-
   saveApprovedRequest(req: SaleRequest): void {
     this.savingId.set(req._id);
     this.saveError.set(null);
@@ -312,8 +339,6 @@ export class SalesOperatorComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
-
   toggleExpand(reqId: string): void {
     this.expandedReqId.set(this.expandedReqId() === reqId ? null : reqId);
   }
@@ -324,7 +349,12 @@ export class SalesOperatorComponent implements OnInit, OnDestroy {
   }
 
   statusClass(status: string): string {
-    return ({ PENDING: 'badge-pending', APPROVED: 'badge-approved', REJECTED: 'badge-rejected', SAVED: 'badge-saved' } as any)[status] ?? '';
+    return ({ 
+      PENDING: 'badge-pending', 
+      APPROVED: 'badge-approved', 
+      REJECTED: 'badge-rejected', 
+      SAVED: 'badge-saved' 
+    } as any)[status] ?? '';
   }
 
   logout(): void {
@@ -341,10 +371,19 @@ export class SalesOperatorComponent implements OnInit, OnDestroy {
   }
 
   formatReqDate(iso: string): string {
-    return new Date(iso).toLocaleString('en-LK', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return new Date(iso).toLocaleString('en-LK', { 
+      day: '2-digit', 
+      month: 'short', 
+      year: 'numeric', 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
   }
 
   formatLKR(n: number): string {
-    return `LKR ${Number(n).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `LKR ${Number(n).toLocaleString('en-LK', { 
+      minimumFractionDigits: 2, 
+      maximumFractionDigits: 2 
+    })}`;
   }
 }

@@ -12,7 +12,9 @@ exports.create = async (req, res, next) => {
 // GET /api/sale-requests/my
 exports.getMyRequests = async (req, res, next) => {
   try {
-    const data = await saleRequestService.getMyRequests(req.user._id);
+    // Pass userId only if a user is authenticated, otherwise fetch all
+    const userId = req.user?._id || null;
+    const data = await saleRequestService.getMyRequests(userId);
     res.json({ success: true, data });
   } catch (e) { next(e); }
 };
