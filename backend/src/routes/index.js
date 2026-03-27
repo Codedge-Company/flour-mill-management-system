@@ -19,4 +19,5 @@ router.use('/capital', require('./capital.routes'));
 router.use('/budget', require('./budget.routes'));
 router.use('/budget-entries', require('./budgetEntry.routes')); 
 router.use('/machine-logs', require('./machineLog.routes')); 
+router.use('/sale-requests', require('./saleRequest.routes'));
 module.exports = router;

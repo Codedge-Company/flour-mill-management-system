@@ -1,6 +1,8 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
-const qrcode = require('qrcode-terminal');
+const qrcode  = require('qrcode-terminal');
 const QRCode  = require('qrcode');
+const fs      = require('fs');
+const path    = require('path');
 
 const TO = process.env.NOTIFY_WHATSAPP_TO || '94779337369';
 
@@ -13,12 +15,12 @@ let starting = false;
 const PUPPETEER_ARGS = [
   '--no-sandbox',
   '--disable-setuid-sandbox',
-  '--disable-dev-shm-usage',          // critical on Render / low-RAM servers
+  '--disable-dev-shm-usage',
   '--disable-accelerated-2d-canvas',
   '--disable-gpu',
   '--no-first-run',
   '--no-zygote',
-  '--single-process',                 // biggest RAM saver — one process only
+  '--single-process',
   '--disable-extensions',
   '--disable-background-networking',
   '--disable-default-apps',
@@ -26,23 +28,65 @@ const PUPPETEER_ARGS = [
   '--disable-sync',
 ];
 
+// ── Dynamically resolve installed Chrome executable ───────────────────────
+function resolveChromePath() {
+  // 1. Explicit env var always wins (set this in Render dashboard)
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+    console.log('[WhatsApp] Using Chrome from env:', process.env.PUPPETEER_EXECUTABLE_PATH);
+    return process.env.PUPPETEER_EXECUTABLE_PATH;
+  }
+
+  // 2. Auto-discover from the chrome/ cache dir created by postinstall
+  try {
+    const cacheDir = path.join(process.cwd(), 'chrome');
+    if (!fs.existsSync(cacheDir)) {
+      console.warn('[WhatsApp] chrome/ cache dir not found — falling back to bundled Chromium');
+      return undefined;
+    }
+
+    // Walk: chrome/<platform>-<buildId>/chrome-<platform>/chrome[.exe]
+    for (const platformDir of fs.readdirSync(cacheDir)) {
+      const inner = path.join(cacheDir, platformDir);
+      if (!fs.statSync(inner).isDirectory()) continue;
+
+      for (const browserDir of fs.readdirSync(inner)) {
+        const candidates = [
+          path.join(inner, browserDir, 'chrome'),        // Linux
+          path.join(inner, browserDir, 'chrome.exe'),    // Windows
+          path.join(inner, browserDir, 'Google Chrome for Testing.app',
+            'Contents', 'MacOS', 'Google Chrome for Testing'), // macOS
+        ];
+        for (const candidate of candidates) {
+          if (fs.existsSync(candidate)) {
+            console.log('[WhatsApp] Auto-discovered Chrome at:', candidate);
+            return candidate;
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[WhatsApp] Chrome auto-discovery failed:', e.message);
+  }
+
+  console.warn('[WhatsApp] No Chrome found — will use whatsapp-web.js bundled Chromium');
+  return undefined;
+}
+
 // ── Lazy init — called only when needed ───────────────────────────────────
 function initWhatsApp() {
-  if (client || starting) return;   // don't double-init
+  if (client || starting) return;
   starting = true;
 
   console.log('[WhatsApp] Initialising client...');
+
+  const executablePath = resolveChromePath();
 
   client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
       headless: true,
       args: PUPPETEER_ARGS,
-      // If you set PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true in Render env,
-      // point to the system Chrome:
-      ...(process.env.PUPPETEER_EXECUTABLE_PATH && {
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
-      }),
+      ...(executablePath && { executablePath }),
     },
   });
 
@@ -63,16 +107,16 @@ function initWhatsApp() {
 
   client.on('auth_failure', () => {
     console.error('[WhatsApp] Auth failed — delete .wwebjs_auth/ and re-scan.');
-    client    = null;
-    starting  = false;
-    qrData    = { qrImage: null, ready: false };
+    client   = null;
+    starting = false;
+    qrData   = { qrImage: null, ready: false };
   });
 
   client.on('disconnected', (reason) => {
     console.warn('[WhatsApp] Disconnected:', reason);
-    client    = null;
-    starting  = false;
-    qrData    = { qrImage: null, ready: false };
+    client   = null;
+    starting = false;
+    qrData   = { qrImage: null, ready: false };
   });
 
   client.initialize();
@@ -80,7 +124,7 @@ function initWhatsApp() {
 
 // ── Called by /whatsapp/qr route ──────────────────────────────────────────
 function getWhatsAppQr() {
-  initWhatsApp();   // starts Chrome only on first call to this route
+  initWhatsApp();
   return qrData;
 }
 
@@ -88,7 +132,7 @@ function getWhatsAppQr() {
 async function sendWhatsApp(message) {
   if (!client || !qrData.ready) {
     console.warn('[WhatsApp] Client not ready — message skipped.');
-    return;   // fail silently so it never crashes your main app
+    return;
   }
   try {
     await client.sendMessage(`${TO}@c.us`, message);
@@ -113,7 +157,7 @@ function formatDate(date) {
   });
 }
 
-// ── Notification functions ─────────────────────────────────────────────────
+// ── Notification functions ────────────────────────────────────────────────
 async function notifyMachineStart({ date, operator, partner, sessionNumber, startTime }) {
   const sessionLabel = sessionNumber === 1 ? '1st' : sessionNumber === 2 ? '2nd' : '3rd';
   return sendWhatsApp(
@@ -135,5 +179,6 @@ async function notifyMachineStop({ date, operator, partner, sessionNumber, stopT
     `🕐 Stop Time: ${formatTime(stopTime)}`
   );
 }
+initWhatsApp();
 
-module.exports = { notifyMachineStart, notifyMachineStop, getWhatsAppQr };
+module.exports = { notifyMachineStart, notifyMachineStop, getWhatsAppQr,sendWhatsApp };

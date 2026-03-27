@@ -14,13 +14,18 @@ export const salesRoutes: Routes = [
       import('./new-sale/new-sale.component').then(m => m.NewSaleComponent)
   },
   {
+    path: 'requests',
+    loadComponent: () => import('./sale-requests/sale-requests.component')
+      .then(m => m.SaleRequestsComponent)
+  },
+  {
     path: ':id',
     loadComponent: () =>
       import('./sale-detail/sale-detail-dialog.component').then(m => m.SaleDetailDialogComponent)
   },
-   {
+  {
     path: ':id/edit',
     loadComponent: () =>
       import('./edit-sale/edit-sale.component').then(m => m.EditSaleComponent)
-  },
+  }
 ];

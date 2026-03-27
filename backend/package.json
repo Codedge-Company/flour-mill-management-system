@@ -9,6 +9,7 @@
     "postinstall": "npx @puppeteer/browsers install chrome@stable"
   },
   "dependencies": {
+    "@puppeteer/browsers": "^2.13.0",
     "@socket.io/admin-ui": "^0.5.1",
     "axios": "^1.13.6",
     "bcryptjs": "^2.4.3",

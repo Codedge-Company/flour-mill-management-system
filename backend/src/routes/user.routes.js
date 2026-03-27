@@ -9,13 +9,13 @@ const { authorizeRole } = require('../middlewares/role.middleware');
 // Public to authenticated users (no role restriction)
 // ======================
 router.get('/by-roles', authenticate, userController.getUsersByRoles);
+router.get('/', userController.getAllUsers);
 
 // ======================
 // Admin-only routes
 // ======================
 router.use(authenticate, authorizeRole('ADMIN'));   // This applies to all routes below
 
-router.get('/', userController.getAllUsers);
 router.get('/:id', userController.getUserById);
 router.post('/', userController.createUser);
 router.put('/:id', userController.updateUser);
