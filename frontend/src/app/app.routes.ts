@@ -13,6 +13,12 @@ export const routes: Routes = [
       import('./features/auth/auth.routes').then(m => m.authRoutes)
   },
   {
+    path: 'portal',
+    loadChildren: () =>
+      import('./features/operator-portal/operator-portal.routes')
+        .then(m => m.OPERATOR_PORTAL_ROUTES)
+  },
+  {
     path: '',
     component: MainLayoutComponent,
     canActivate: [authGuard],

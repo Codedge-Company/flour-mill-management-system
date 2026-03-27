@@ -32,5 +32,10 @@ const remove = async (id) => {
     const user = await User.findByIdAndDelete(id);
     if (!user) throw Object.assign(new Error('User not found'), { statusCode: 404 });
 };
-
-module.exports = { getAll, getById, create, update, remove };
+const getByRoles = (roles) => {
+    const roleArray = Array.isArray(roles) ? roles : roles.split(',');
+    return User.find({ role: { $in: roleArray } })
+        .select('-password_hash')
+        .sort({ full_name: 1 });
+};
+module.exports = { getAll, getById, create, update, remove, getByRoles };

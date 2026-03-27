@@ -1,10 +1,19 @@
 const express = require('express');
 const router = express.Router();
+
 const userController = require('../controllers/user.controller');
 const { authenticate } = require('../middlewares/auth.middleware');
 const { authorizeRole } = require('../middlewares/role.middleware');
 
-router.use(authenticate, authorizeRole('ADMIN'));
+// ======================
+// Public to authenticated users (no role restriction)
+// ======================
+router.get('/by-roles', authenticate, userController.getUsersByRoles);
+
+// ======================
+// Admin-only routes
+// ======================
+router.use(authenticate, authorizeRole('ADMIN'));   // This applies to all routes below
 
 router.get('/', userController.getAllUsers);
 router.get('/:id', userController.getUserById);

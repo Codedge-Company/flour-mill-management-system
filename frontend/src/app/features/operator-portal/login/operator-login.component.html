@@ -1,0 +1,49 @@
+<div class="op-login-page">
+    <div class="op-login-card">
+
+        <div class="op-login-logo">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none"
+                viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path d="M12 2a5 5 0 1 1 0 10A5 5 0 0 1 12 2z" />
+                <path d="M4 20a8 8 0 0 1 16 0" />
+            </svg>
+        </div>
+
+        <h1 class="op-login-title">Sign In</h1>
+        <p class="op-login-sub">Enter your credentials to continue</p>
+
+        @if (error()) {
+        <div class="op-error">{{ error() }}</div>
+        }
+
+        <form [formGroup]="form" (ngSubmit)="onLogin()" novalidate>
+
+            <div class="op-field">
+                <label>Username</label>
+                <input formControlName="username" type="text" placeholder="your.username"
+                    class="op-input" [class.op-input-error]="form.get('username')?.invalid && form.get('username')?.touched" />
+                @if (form.get('username')?.invalid && form.get('username')?.touched) {
+                <span class="op-field-error">Username is required</span>
+                }
+            </div>
+
+            <div class="op-field">
+                <label>Password</label>
+                <input formControlName="password" type="password" placeholder="••••••••"
+                    class="op-input" [class.op-input-error]="form.get('password')?.invalid && form.get('password')?.touched" />
+                @if (form.get('password')?.invalid && form.get('password')?.touched) {
+                <span class="op-field-error">Password is required</span>
+                }
+            </div>
+
+            <button type="submit" class="op-btn-submit" [disabled]="loading()">
+                @if (loading()) {
+                <span class="spinner"></span> Signing in...
+                } @else {
+                Sign In
+                }
+            </button>
+
+        </form>
+    </div>
+</div>

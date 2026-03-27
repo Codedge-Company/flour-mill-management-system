@@ -588,3 +588,12 @@
 .row-editing {
   background: #fffbeb !important;
 }
+.role-machine-operator {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.role-packing-operator {
+    background-color: #ede9fe;
+    color: #5b21b6;
+}

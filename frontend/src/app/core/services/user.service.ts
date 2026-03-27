@@ -9,7 +9,8 @@ export interface CreateUserDto {
   full_name: string;
   username: string;
   password: string;
-  role: 'SALES' | 'ADMIN';
+  role: 'ADMIN' | 'SALES' | 'MACHINE_OPERATOR' | 'PACKING_OPERATOR';
+
 }
 
 export interface UpdateUserDto {
@@ -18,13 +19,13 @@ export interface UpdateUserDto {
   password?: string;
   role?: 'SALES' | 'ADMIN';
 }
-
 export interface UserResponse {
-  id: string;
-  full_name: string;
-  username: string;
-  role: 'SALES' | 'ADMIN';
-  created_at: string;
+    _id: string;     
+    id: string;
+    full_name: string;
+    username: string;
+    role: 'ADMIN' | 'SALES' | 'MACHINE_OPERATOR' | 'PACKING_OPERATOR';
+    created_at: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -80,4 +81,13 @@ export class UserService {
     else if (error.status === 0) errorMessage = 'Cannot connect to server. Is the backend running?';
     return throwError(() => new Error(errorMessage));
   }
+
+getUsersByRoles(roles: UserResponse['role'][]): Observable<UserResponse[]> {
+    return this.http
+        .get<{ success: boolean; data: UserResponse[] }>(
+            `${this.apiUrl}/by-roles?roles=${roles.join(',')}`,  // ✅ /by-roles not /?roles
+            { headers: this.authHeaders }
+        )
+        .pipe(map(res => res.data), catchError(this.handleError));
+}
 }

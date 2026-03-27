@@ -1,0 +1,201 @@
+/* ── Reset & Base ─────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Page ─────────────────────────────────────────────────── */
+.op-login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f0f2f5;
+  padding: 16px;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+/* ── Card ─────────────────────────────────────────────────── */
+.op-login-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 40px 36px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* ── Logo ─────────────────────────────────────────────────── */
+.op-login-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  background: #eff6ff;
+  border-radius: 50%;
+  margin: 0 auto 24px;
+  color: #2563eb;
+}
+
+.op-login-logo svg {
+  width: 32px;
+  height: 32px;
+}
+
+/* ── Title ────────────────────────────────────────────────── */
+.op-login-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #111827;
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+.op-login-sub {
+  font-size: 0.9rem;
+  color: #6b7280;
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+/* ── Error Banner ─────────────────────────────────────────── */
+.op-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  font-size: 0.85rem;
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+/* ── Field ────────────────────────────────────────────────── */
+.op-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.op-field label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+/* ── Input ────────────────────────────────────────────────── */
+.op-input {
+  width: 100%;
+  padding: 11px 14px;
+  font-size: 0.95rem;
+  color: #111827;
+  background: #f9fafb;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 10px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+.op-input::placeholder {
+  color: #9ca3af;
+}
+
+.op-input:focus {
+  border-color: #2563eb;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.op-input-error {
+  border-color: #ef4444 !important;
+  background: #fff5f5;
+}
+
+.op-input-error:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12) !important;
+}
+
+/* ── Field Error Text ─────────────────────────────────────── */
+.op-field-error {
+  font-size: 0.78rem;
+  color: #ef4444;
+  margin-top: 2px;
+}
+
+/* ── Submit Button ────────────────────────────────────────── */
+.op-btn-submit {
+  width: 100%;
+  padding: 12px;
+  margin-top: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: #2563eb;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.2s, opacity 0.2s, transform 0.1s;
+}
+
+.op-btn-submit:hover:not(:disabled) {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.op-btn-submit:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.op-btn-submit:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* ── Spinner ──────────────────────────────────────────────── */
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Responsive ───────────────────────────────────────────── */
+
+/* Small phones (≤360px) */
+@media (max-width: 360px) {
+  .op-login-card {
+    padding: 28px 20px;
+  }
+
+  .op-login-title {
+    font-size: 1.35rem;
+  }
+}
+
+/* Tablets and up (≥768px) */
+@media (min-width: 768px) {
+  .op-login-card {
+    padding: 48px 44px;
+  }
+}
+
+/* Large screens (≥1024px) */
+@media (min-width: 1024px) {
+  .op-login-page {
+    background: linear-gradient(135deg, #eff6ff 0%, #f0f2f5 100%);
+  }
+}

@@ -128,13 +128,13 @@
                     }
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label">Role</label>
-                    <select formControlName="role" class="form-input form-select">
-                        <option value="SALES">Sales</option>
-                        <option value="ADMIN">Admin</option>
-                    </select>
-                </div>
+                <select formControlName="role" class="form-input form-select">
+                    <option value="SALES">Sales</option>
+                    <option value="ADMIN">Admin</option>
+                    <option value="MACHINE_OPERATOR">Machine Operator</option>
+                    <option value="PACKING_OPERATOR">Packing Operator</option>
+                </select>
+
             </div>
 
             <div class="form-actions">
@@ -182,7 +182,17 @@
             <span class="stat-value">{{ users() | roleCount: 'SALES' }}</span>
             <span class="stat-label">Sales Staff</span>
         </div>
+        <!-- ✅ New -->
+        <div class="stat-chip">
+            <span class="stat-value">{{ users() | roleCount: 'MACHINE_OPERATOR' }}</span>
+            <span class="stat-label">Machine Operators</span>
+        </div>
+        <div class="stat-chip">
+            <span class="stat-value">{{ users() | roleCount: 'PACKING_OPERATOR' }}</span>
+            <span class="stat-label">Packing Operators</span>
+        </div>
     </div>
+
 
     <!-- Users Table -->
     <div class="um-table-card">
@@ -227,9 +237,12 @@
                     <td class="text-muted">&#64;{{ user.username }}</td>
                     <td>
                         <span class="role-badge" [class.role-admin]="user.role === 'ADMIN'"
-                            [class.role-sales]="user.role === 'SALES'">
+                            [class.role-sales]="user.role === 'SALES'"
+                            [class.role-machine-operator]="user.role === 'MACHINE_OPERATOR'"
+                            [class.role-packing-operator]="user.role === 'PACKING_OPERATOR'">
                             {{ user.role }}
                         </span>
+
                     </td>
                     <td class="text-muted">{{ formatDate(user.created_at) }}</td>
                     <td class="col-actions">

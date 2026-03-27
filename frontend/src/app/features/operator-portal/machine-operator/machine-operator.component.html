@@ -1,0 +1,465 @@
+<!-- machine-operator.component.html -->
+
+<div class="mo-page">
+
+  <!-- ══ TOPBAR ════════════════════════════════════════════════════════════ -->
+  <header class="mo-topbar">
+    <div class="mo-topbar__brand">
+      <!-- gear icon -->
+      <svg class="mo-topbar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+      <div>
+        <span class="mo-topbar__title">Machine Operator</span>
+        <span class="mo-topbar__sub">Daily Operations Log</span>
+      </div>
+    </div>
+
+    <div class="mo-topbar__right">
+      <span class="mo-active-badge" *ngIf="log">
+        <!-- check circle -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+        Log Active
+      </span>
+      <button class="mo-btn mo-btn--ghost" (click)="logout()">
+        <!-- logout icon -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        Logout
+      </button>
+    </div>
+  </header>
+
+  <main class="mo-content">
+
+    <!-- ══ CARD 1 — Session Details ═══════════════════════════════════════ -->
+    <div class="mo-card">
+      <div class="mo-card-header">
+        <!-- clipboard icon -->
+        <svg class="mo-card-header__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+          <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+        </svg>
+        <span class="mo-card-header__title">Session Details</span>
+      </div>
+
+      <div class="mo-card-body">
+        <div class="mo-grid-2">
+
+          <!-- Date -->
+          <div class="mo-field">
+            <label class="mo-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+              Date
+              <span class="mo-today-chip" *ngIf="isToday">Today</span>
+            </label>
+            <input
+              type="date"
+              class="mo-input"
+              [(ngModel)]="selectedDateStr"
+              [max]="maxDateStr"
+              (change)="onDateChange()"
+            />
+          </div>
+
+          <div></div>
+
+          <!-- Operator -->
+          <div class="mo-field">
+            <label class="mo-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+              </svg>
+              Operator *
+            </label>
+            <div class="mo-select-wrap">
+              <select
+                class="mo-select"
+                [(ngModel)]="selectedOperatorId"
+                (change)="onOperatorChange()"
+              >
+                <option value="">Select operator…</option>
+                <option *ngFor="let u of operatorOptions" [value]="u._id">
+                  {{ u.full_name }} ({{ u.username }})
+                </option>
+              </select>
+              <svg class="mo-select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Partner -->
+          <div class="mo-field">
+            <label class="mo-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+              Partner *
+            </label>
+            <div class="mo-select-wrap">
+              <select
+                class="mo-select"
+                [(ngModel)]="selectedPartnerId"
+                (change)="onPartnerChange()"
+              >
+                <option value="">Select partner…</option>
+                <option *ngFor="let u of partnerOptions" [value]="u._id">
+                  {{ u.full_name }} ({{ u.username }})
+                </option>
+              </select>
+              <svg class="mo-select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Error -->
+        <div class="mo-error-msg" *ngIf="logError">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          {{ logError }}
+        </div>
+
+        <!-- Spinner -->
+        <div class="mo-spinner-wrap" *ngIf="logLoading">
+          <div class="mo-spinner"></div>
+          <span>Loading log…</span>
+        </div>
+
+        <!-- Create CTA -->
+        <div class="mo-create-cta" *ngIf="!log && !logLoading">
+          <div class="mo-create-cta__text">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            No log for <strong>{{ formatDateLabel(selectedDate) }}</strong> yet.
+          </div>
+          <button
+            class="mo-btn mo-btn--primary"
+            (click)="createLog()"
+            [disabled]="!selectedOperatorId || !selectedPartnerId"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Start Today's Log
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══ CARD 2 — Machine Sessions ══════════════════════════════════════ -->
+    <div class="mo-card" *ngIf="log">
+      <div class="mo-card-header">
+        <!-- bolt / lightning icon -->
+        <svg class="mo-card-header__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+        </svg>
+        <div>
+          <span class="mo-card-header__title">Machine Sessions</span>
+          <span class="mo-card-header__sub">
+            <!-- whatsapp icon -->
+            <svg class="mo-wa-icon" viewBox="0 0 24 24" fill="none" stroke="#25d366" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+            </svg>
+            WhatsApp notification sent on every Start &amp; Stop
+          </span>
+        </div>
+      </div>
+
+      <div class="mo-card-body">
+        <div class="mo-sessions">
+          <div
+            class="mo-session"
+            *ngFor="let s of sessions"
+            [class.mo-session--running]="sessionState(s) === 'running'"
+            [class.mo-session--done]="sessionState(s) === 'done'"
+          >
+
+            <!-- Session head -->
+            <div class="mo-session__head">
+              <div class="mo-session__meta">
+                <!-- sun icon session 1 -->
+                <ng-container *ngIf="s.number === 1">
+                  <svg class="mo-session__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                    <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                  </svg>
+                </ng-container>
+                <!-- clock icon session 2 -->
+                <ng-container *ngIf="s.number === 2">
+                  <svg class="mo-session__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                </ng-container>
+                <!-- moon icon session 3 -->
+                <ng-container *ngIf="s.number === 3">
+                  <svg class="mo-session__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                  </svg>
+                </ng-container>
+                <div>
+                  <div class="mo-session__num">Session {{ s.number }}</div>
+                  <div class="mo-session__label">{{ s.label }}</div>
+                </div>
+              </div>
+
+              <span
+                class="mo-status-pill"
+                [class.mo-status-pill--idle]="sessionState(s) === 'idle'"
+                [class.mo-status-pill--running]="sessionState(s) === 'running'"
+                [class.mo-status-pill--done]="sessionState(s) === 'done'"
+              >
+                {{ sessionTagLabel(s) }}
+              </span>
+            </div>
+
+            <hr class="mo-divider" />
+
+            <!-- Times -->
+            <div class="mo-times-row">
+
+              <div class="mo-time-cell">
+                <span class="mo-time-cell__lbl">
+                  <!-- play icon -->
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/>
+                  </svg>
+                  Started
+                </span>
+                <span class="mo-time-cell__val" [class.mo-time-cell__val--set]="s.data?.startTime">
+                  {{ formatTime(s.data?.startTime) }}
+                </span>
+                <span class="mo-wa-sent" *ngIf="s.data?.startNotified">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#25d366" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                  </svg>
+                </span>
+              </div>
+
+              <svg class="mo-times-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+              </svg>
+
+              <div class="mo-time-cell">
+                <span class="mo-time-cell__lbl">
+                  <!-- stop icon -->
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/><rect x="9" y="9" width="6" height="6"/>
+                  </svg>
+                  Stopped
+                </span>
+                <span class="mo-time-cell__val" [class.mo-time-cell__val--set]="s.data?.stopTime">
+                  {{ formatTime(s.data?.stopTime) }}
+                </span>
+                <span class="mo-wa-sent" *ngIf="s.data?.stopNotified">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#25d366" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                  </svg>
+                </span>
+              </div>
+
+              <div class="mo-time-cell" *ngIf="sessionDuration(s)">
+                <span class="mo-time-cell__lbl">
+                  <!-- hourglass icon -->
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/>
+                    <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/>
+                  </svg>
+                  Duration
+                </span>
+                <span class="mo-time-cell__val mo-time-cell__val--dur">{{ sessionDuration(s) }}</span>
+              </div>
+
+            </div>
+
+            <!-- Actions -->
+            <div class="mo-session__actions">
+              <button
+                *ngIf="sessionState(s) === 'idle'"
+                class="mo-btn mo-btn--start"
+                (click)="startSession(s)"
+                [disabled]="s.loading"
+              >
+                <svg *ngIf="!s.loading" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="5 3 19 12 5 21 5 3"/>
+                </svg>
+                <span class="mo-spinner mo-spinner--sm" *ngIf="s.loading"></span>
+                {{ s.loading ? 'Starting…' : 'Start' }}
+              </button>
+
+              <button
+                *ngIf="sessionState(s) === 'running'"
+                class="mo-btn mo-btn--stop"
+                (click)="stopSession(s)"
+                [disabled]="s.loading"
+              >
+                <svg *ngIf="!s.loading" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                </svg>
+                <span class="mo-spinner mo-spinner--sm" *ngIf="s.loading"></span>
+                {{ s.loading ? 'Stopping…' : 'Stop' }}
+              </button>
+
+              <div class="mo-done-msg" *ngIf="sessionState(s) === 'done'">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+                Session complete
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ CARD 3 — Stock Entry (optional) ════════════════════════════════ -->
+    <div class="mo-card mo-card--stock" *ngIf="log">
+      <div class="mo-card-header mo-card-header--spaced">
+        <div class="mo-card-header__left">
+          <!-- box icon -->
+          <svg class="mo-card-header__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
+          </svg>
+          <div>
+            <span class="mo-card-header__title">Raw Rice Stock Entry</span>
+            <span class="mo-card-header__sub">Fill only on days stock is received or measured</span>
+          </div>
+        </div>
+        <button class="mo-btn mo-btn--ghost mo-btn--sm" (click)="showStockForm = !showStockForm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline *ngIf="showStockForm" points="18 15 12 9 6 15"/>
+            <polyline *ngIf="!showStockForm" points="6 9 12 15 18 9"/>
+          </svg>
+          {{ showStockForm ? 'Hide' : 'Fill Entry' }}
+        </button>
+      </div>
+
+      <div class="mo-card-body mo-stock-form" *ngIf="showStockForm">
+        <div class="mo-grid-2">
+
+          <!-- Raw Rice Received -->
+          <div class="mo-field">
+            <label class="mo-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/>
+              </svg>
+              Raw Rice Received
+            </label>
+            <div class="mo-input-addon">
+              <input type="number" class="mo-input" placeholder="0" min="0" step="0.1" [(ngModel)]="rawRiceReceived" />
+              <span class="mo-addon-label">KG</span>
+            </div>
+          </div>
+
+          <!-- Input -->
+          <div class="mo-field">
+            <label class="mo-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>
+              </svg>
+              Input
+            </label>
+            <div class="mo-input-addon">
+              <input type="number" class="mo-input" placeholder="0" min="0" step="0.1" [(ngModel)]="stockInput" />
+              <span class="mo-addon-label">KG</span>
+            </div>
+          </div>
+
+          <!-- Output -->
+          <div class="mo-field">
+            <label class="mo-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/>
+              </svg>
+              Output
+            </label>
+            <div class="mo-input-addon">
+              <input type="number" class="mo-input" placeholder="0" min="0" step="0.1" [(ngModel)]="stockOutput" />
+              <span class="mo-addon-label">KG</span>
+            </div>
+          </div>
+
+          <!-- Rejection -->
+          <div class="mo-field">
+            <label class="mo-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+              </svg>
+              Rejection
+            </label>
+            <div class="mo-input-addon">
+              <input type="number" class="mo-input" placeholder="0" min="0" step="0.1" [(ngModel)]="rejection" />
+              <span class="mo-addon-label">KG</span>
+            </div>
+          </div>
+
+          <!-- Rejection Date -->
+          <div class="mo-field">
+            <label class="mo-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                <line x1="9" y1="16" x2="15" y2="16"/>
+              </svg>
+              Rejection Date
+            </label>
+            <input type="date" class="mo-input" [(ngModel)]="rejectionDateStr" />
+          </div>
+
+        </div>
+
+        <!-- Efficiency banner -->
+        <div class="mo-efficiency" *ngIf="efficiency">
+          <div class="mo-efficiency__item">
+            <span class="mo-efficiency__lbl">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+              </svg>
+              Efficiency
+            </span>
+            <span class="mo-efficiency__val">{{ efficiency }}</span>
+          </div>
+          <div class="mo-efficiency__item" *ngIf="rejection">
+            <span class="mo-efficiency__lbl">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              Rejection
+            </span>
+            <span class="mo-efficiency__val mo-efficiency__val--red">{{ rejection }} KG</span>
+          </div>
+        </div>
+
+        <div class="mo-stock-footer">
+          <button class="mo-btn mo-btn--primary" (click)="saveStock()" [disabled]="stockSaving">
+            <span class="mo-spinner mo-spinner--sm" *ngIf="stockSaving"></span>
+            <svg *ngIf="!stockSaving" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+              <polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+            </svg>
+            {{ stockSaving ? 'Saving…' : 'Save Stock Entry' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
