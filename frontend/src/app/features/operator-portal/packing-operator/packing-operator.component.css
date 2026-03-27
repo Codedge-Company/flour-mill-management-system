@@ -1,0 +1,520 @@
+/* packing-operator.component.css */
+
+/* ── Page ─────────────────────────────────────────────────────────────────── */
+.po-page {
+    min-height: 100vh;
+    background: #f1f5f9;
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    color: #1e293b;
+}
+
+/* ── Topbar ───────────────────────────────────────────────────────────────── */
+.po-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: .875rem 1.75rem;
+    background: #fff;
+    border-bottom: 1px solid #e2e8f0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, .06);
+    flex-wrap: wrap;
+    gap: .5rem;
+}
+
+.po-topbar__brand {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+}
+
+.po-topbar__icon {
+    width: 28px;
+    height: 28px;
+    color: #0ea5e9;
+    flex-shrink: 0;
+}
+
+.po-topbar__title {
+    display: block;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+.po-topbar__sub {
+    display: block;
+    font-size: .73rem;
+    color: #64748b;
+    margin-top: .05rem;
+}
+
+.po-topbar__right {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    flex-wrap: wrap;
+}
+
+.po-date-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .3rem .85rem;
+    background: #f0f9ff;
+    color: #0369a1;
+    font-size: .78rem;
+    font-weight: 600;
+    border-radius: 20px;
+    border: 1px solid #bae6fd;
+}
+
+.po-date-badge svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* ── Content ──────────────────────────────────────────────────────────────── */
+.po-content {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 1.75rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* ── Card ─────────────────────────────────────────────────────────────────── */
+.po-card {
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, .05);
+    overflow: hidden;
+}
+
+.po-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: .65rem;
+    padding: 1.1rem 1.5rem .95rem;
+    border-bottom: 1px solid #f1f5f9;
+    background: #fafbff;
+}
+
+.po-card-header__icon {
+    width: 20px;
+    height: 20px;
+    color: #0ea5e9;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.po-card-header__title {
+    font-weight: 700;
+    font-size: .95rem;
+    color: #1e293b;
+    display: block;
+}
+
+.po-card-header__sub {
+    font-size: .73rem;
+    color: #64748b;
+    display: block;
+    margin-top: .1rem;
+}
+
+.po-card-body {
+    padding: 1.35rem 1.5rem 1.5rem;
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+.po-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .58rem 1.15rem;
+    border-radius: 10px;
+    font-size: .875rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: background .15s, box-shadow .15s, transform .1s;
+    white-space: nowrap;
+    line-height: 1;
+}
+
+.po-btn svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+.po-btn:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+.po-btn:not(:disabled):active {
+    transform: scale(.97);
+}
+
+.po-btn--ghost {
+    background: transparent;
+    color: #475569;
+    border: 1.5px solid #cbd5e1;
+}
+
+.po-btn--ghost:hover:not(:disabled) {
+    background: #f1f5f9;
+}
+
+.po-btn--done {
+    background: #16a34a;
+    color: #fff;
+    padding: .45rem 1rem;
+    font-size: .82rem;
+}
+
+.po-btn--done:hover:not(:disabled) {
+    background: #15803d;
+}
+
+/* ── Error / Spinner / Empty ──────────────────────────────────────────────── */
+.po-error-msg {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    color: #dc2626;
+    font-size: .83rem;
+    padding: .65rem .9rem;
+    background: #fef2f2;
+    border-radius: 8px;
+    border-left: 3px solid #fca5a5;
+}
+
+.po-error-msg svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+.po-spinner-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .6rem;
+    padding: 2rem;
+    color: #64748b;
+    font-size: .85rem;
+}
+
+.po-spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid #e2e8f0;
+    border-top-color: #0ea5e9;
+    border-radius: 50%;
+    animation: po-spin .75s linear infinite;
+}
+
+.po-spinner--sm {
+    width: 14px;
+    height: 14px;
+    border-width: 2px;
+    flex-shrink: 0;
+}
+
+@keyframes po-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.po-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .6rem;
+    padding: 2.5rem 1rem;
+    color: #94a3b8;
+    font-size: .875rem;
+}
+
+.po-empty svg {
+    width: 40px;
+    height: 40px;
+}
+
+/* ── Orders table ─────────────────────────────────────────────────────────── */
+.po-orders {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.po-orders__header {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1.2fr auto;
+    gap: .5rem;
+    padding: .5rem .75rem;
+    font-size: .7rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.po-order-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1.2fr auto;
+    gap: .5rem;
+    align-items: center;
+    padding: .85rem .75rem;
+    border-bottom: 1px solid #f8fafc;
+    transition: background .15s;
+}
+
+.po-order-row:last-child {
+    border-bottom: none;
+}
+
+.po-order-row:hover {
+    background: #f8fafc;
+}
+
+.po-order-row__cell {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    font-size: .875rem;
+    color: #1e293b;
+}
+
+.po-order-row__cell svg {
+    width: 15px;
+    height: 15px;
+    color: #94a3b8;
+    flex-shrink: 0;
+}
+
+.po-order-row__name {
+    font-weight: 600;
+}
+
+.po-order-row__qty {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #0369a1;
+}
+
+.po-order-row__action {
+    justify-content: flex-end;
+}
+
+.po-weight-chip {
+    background: #f0f9ff;
+    color: #0369a1;
+    font-size: .73rem;
+    font-weight: 700;
+    padding: .2rem .55rem;
+    border-radius: 20px;
+    border: 1px solid #bae6fd;
+}
+
+/* Status pills */
+.po-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: .22rem .65rem;
+    border-radius: 20px;
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .03em;
+}
+
+.po-pill--pending {
+    background: #fef9c3;
+    color: #854d0e;
+    border: 1px solid #fde68a;
+}
+
+.po-pill--approved {
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+}
+
+/* ── Stock grid ───────────────────────────────────────────────────────────── */
+.po-stock-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: .9rem;
+}
+
+.po-stock-tile {
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 13px;
+    padding: 1rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: .35rem;
+    transition: border-color .2s, background .2s;
+}
+
+.po-stock-tile--low {
+    border-color: #fca5a5;
+    background: #fff5f5;
+}
+
+.po-stock-tile__header {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    font-size: .72rem;
+    color: #64748b;
+}
+
+.po-stock-tile__header svg {
+    width: 14px;
+    height: 14px;
+    color: #0ea5e9;
+    flex-shrink: 0;
+}
+
+.po-stock-tile__name {
+    font-weight: 600;
+    color: #1e293b;
+    font-size: .82rem;
+}
+
+.po-stock-tile__weight {
+    font-size: .7rem;
+    color: #94a3b8;
+    font-weight: 500;
+}
+
+.po-stock-tile__qty {
+    font-size: 1.55rem;
+    font-weight: 800;
+    color: #0c4a6e;
+    line-height: 1.1;
+    margin-top: .2rem;
+}
+
+.po-stock-tile__unit {
+    font-size: .7rem;
+    font-weight: 500;
+    color: #94a3b8;
+    margin-left: .2rem;
+}
+
+.po-low-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    font-size: .66rem;
+    font-weight: 700;
+    color: #dc2626;
+    margin-top: .25rem;
+}
+
+.po-low-badge svg {
+    width: 12px;
+    height: 12px;
+}
+
+/* ── Fields & Select ──────────────────────────────────────────────────────── */
+.po-field {
+    display: flex;
+    flex-direction: column;
+    gap: .35rem;
+}
+
+.po-label {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    font-size: .78rem;
+    font-weight: 600;
+    color: #475569;
+}
+
+.po-label svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+.po-select-wrap {
+    position: relative;
+}
+
+.po-select {
+    width: 100%;
+    padding: .6rem 2.25rem .6rem .85rem;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 10px;
+    font-size: .875rem;
+    color: #1e293b;
+    background: #f8fafc;
+    appearance: none;
+    cursor: pointer;
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+    box-sizing: border-box;
+}
+
+.po-select:focus {
+    border-color: #0ea5e9;
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, .12);
+    background: #fff;
+}
+
+.po-select-arrow {
+    position: absolute;
+    right: .7rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    color: #94a3b8;
+    pointer-events: none;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+
+    .po-orders__header,
+    .po-order-row {
+        grid-template-columns: 1.6fr 1fr 1fr;
+    }
+
+    /* hide weight & status columns on very small screens */
+    .po-orders__header span:nth-child(2),
+    .po-order-row__cell:nth-child(2),
+    .po-orders__header span:nth-child(4),
+    .po-order-row__cell:nth-child(4) {
+        display: none;
+    }
+
+    .po-stock-grid {
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    }
+
+    .po-topbar {
+        padding: .75rem 1rem;
+    }
+
+    .po-date-badge {
+        display: none;
+    }
+}
+
+.po-card-body .po-field {
+    max-width: 420px;
+}

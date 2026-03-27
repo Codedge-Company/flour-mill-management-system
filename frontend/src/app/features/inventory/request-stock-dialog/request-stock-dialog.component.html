@@ -1,0 +1,147 @@
+<div class="dialog-backdrop" (click)="onBackdropClick($event)">
+  <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+
+    <!-- Header -->
+    <div class="dialog-header">
+      <div class="dialog-header-left">
+        <div class="dialog-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor" stroke-width="1.8">
+            <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414A1 1 0 0 1 19 9.414V19a2 2 0 0 1-2 2z"/>
+          </svg>
+        </div>
+        <div>
+          <h2 class="dialog-title" id="dialog-title">Request Stock</h2>
+          <p class="dialog-subtitle">Submit a restocking request for this pack type</p>
+        </div>
+      </div>
+      <button class="btn-close" (click)="onCancel()" aria-label="Close">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24"
+          stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Pack Info Card -->
+    <div class="pack-info-card">
+      <div class="pack-info-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24"
+          stroke="currentColor" stroke-width="1.8">
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+          <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+          <line x1="12" y1="22.08" x2="12" y2="12"/>
+        </svg>
+      </div>
+      <div class="pack-info-details">
+        <span class="pack-info-name">{{ item.packName }}</span>
+        <span class="pack-info-weight">{{ item.weightKg }} kg per pack</span>
+      </div>
+      <div class="pack-info-stats">
+        <div class="pack-stat">
+          <span class="pack-stat-label">Current Stock</span>
+          <span class="pack-stat-value" [class.stat-low]="item.isLowStock">{{ item.stockQty }} packs</span>
+        </div>
+        <div class="pack-stat-divider"></div>
+        <div class="pack-stat">
+          <span class="pack-stat-label">Min. Threshold</span>
+          <span class="pack-stat-value">{{ item.threshold }} packs</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Low Stock Warning -->
+    @if (item.isLowStock) {
+    <div class="stock-warning">
+      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24"
+        stroke="currentColor" stroke-width="2">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      <span>Stock is below the minimum threshold — restocking is recommended.</span>
+    </div>
+    }
+
+    <!-- Form -->
+    <div class="dialog-body">
+      <div class="form-group">
+        <label class="form-label" for="req-qty">
+          Requested Quantity
+          <span class="form-label-required">*</span>
+        </label>
+        <div class="input-wrapper">
+          <input
+            id="req-qty"
+            type="number"
+            class="form-input"
+            [class.input-error]="qtyError"
+            placeholder="Enter number of packs"
+            [value]="qty()"
+            (input)="onQtyInput($any($event.target).value)"
+            (keyup.enter)="onSubmit()"
+            min="1"
+            autofocus
+          />
+          <span class="input-unit">packs</span>
+        </div>
+        @if (qtyError) {
+        <span class="form-error">{{ qtyError }}</span>
+        }
+        <span class="form-hint">
+          Recommended: at least {{ recommendedQty }} packs to reach threshold
+        </span>
+      </div>
+
+      <!-- Quick select chips -->
+      <div class="quick-select">
+        <span class="quick-select-label">Quick select:</span>
+        <div class="quick-chips">
+          @for (opt of quickOptions; track opt) {
+          <button class="quick-chip" [class.chip-active]="qty() === opt" (click)="setQty(opt)">
+            {{ opt }}
+          </button>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Error -->
+    @if (submitError()) {
+    <div class="submit-error">
+      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24"
+        stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <span>{{ submitError() }}</span>
+    </div>
+    }
+
+    <!-- Footer -->
+    <div class="dialog-footer">
+      <button class="btn btn-outline" (click)="onCancel()" [disabled]="loading()">
+        Cancel
+      </button>
+      <button class="btn btn-request" (click)="onSubmit()" [disabled]="loading()">
+        @if (loading()) {
+        <svg class="spin" xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
+          viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+        </svg>
+        Submitting...
+        } @else {
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24"
+          stroke="currentColor" stroke-width="2">
+          <line x1="22" y1="2" x2="11" y2="13"/>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+        Request Stock
+        }
+      </button>
+    </div>
+
+  </div>
+</div>

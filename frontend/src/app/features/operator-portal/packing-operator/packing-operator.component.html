@@ -1,1 +1,240 @@
-<p>packing-operator works!</p>
+<div class="po-page">
+
+    <header class="po-topbar">
+        <div class="po-topbar__brand">
+            <svg class="po-topbar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path
+                    d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                <line x1="12" y1="22.08" x2="12" y2="12" />
+            </svg>
+            <div>
+                <span class="po-topbar__title">Packing Operator</span>
+                <span class="po-topbar__sub">Daily Packing Log</span>
+            </div>
+        </div>
+        <div class="po-topbar__right">
+            <span class="po-date-badge">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+                {{ formatDate(today) }}
+            </span>
+        </div>
+    </header>
+
+    <main class="po-content">
+
+        <!-- Card 1 — Today's Orders -->
+        <div class="po-card">
+            <div class="po-card-header">
+                <svg class="po-card-header__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="8" y1="6" x2="21" y2="6" />
+                    <line x1="8" y1="12" x2="21" y2="12" />
+                    <line x1="8" y1="18" x2="21" y2="18" />
+                    <line x1="3" y1="6" x2="3.01" y2="6" />
+                    <line x1="3" y1="12" x2="3.01" y2="12" />
+                    <line x1="3" y1="18" x2="3.01" y2="18" />
+                </svg>
+                <div>
+                    <span class="po-card-header__title">Today's Orders</span>
+                    <span class="po-card-header__sub">Tap Done when a pack order is packed &amp; ready</span>
+                </div>
+            </div>
+
+            <div class="po-card-body">
+
+                <div class="po-spinner-wrap" *ngIf="ordersLoading">
+                    <div class="po-spinner"></div>
+                    <span>Loading orders…</span>
+                </div>
+
+                <div class="po-error-msg" *ngIf="ordersError">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path
+                            d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                        <line x1="12" y1="9" x2="12" y2="13" />
+                        <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                    {{ ordersError }}
+                </div>
+
+                <div class="po-empty" *ngIf="!ordersLoading && !ordersError && orders.length === 0">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                        <polyline points="22 4 12 14.01 9 11.01" />
+                    </svg>
+                    <p>No pending orders for today.</p>
+                </div>
+
+                <div class="po-orders" *ngIf="!ordersLoading && orders.length > 0">
+                    <div class="po-orders__header">
+                        <span>Pack</span>
+                        <span>Weight</span>
+                        <span>Qty</span>
+                        <span>Status</span>
+                        <span></span>
+                    </div>
+
+                    <div class="po-order-row" *ngFor="let order of orders">
+                        <div class="po-order-row__cell po-order-row__name">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <path
+                                    d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                                <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                                <line x1="12" y1="22.08" x2="12" y2="12" />
+                            </svg>
+                            {{ order.packName }}
+                        </div>
+                        <div class="po-order-row__cell">
+                            <span class="po-weight-chip">{{ order.weightKg }} KG</span>
+                        </div>
+                        <div class="po-order-row__cell po-order-row__qty">
+                            {{ order.qty }}
+                        </div>
+                        <div class="po-order-row__cell">
+                            <span class="po-pill" [ngClass]="statusColor(order.status)">
+                                {{ order.status }}
+                            </span>
+                        </div>
+                        <div class="po-order-row__cell po-order-row__action">
+                            <button class="po-btn po-btn--done" (click)="completeOrder(order)"
+                                [disabled]="order.completing">
+                                <span class="po-spinner po-spinner--sm" *ngIf="order.completing"></span>
+                                <svg *ngIf="!order.completing" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                                    <polyline points="22 4 12 14.01 9 11.01" />
+                                </svg>
+                                {{ order.completing ? 'Saving…' : 'Done' }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Card 2 — Stock Available -->
+        <div class="po-card">
+            <div class="po-card-header">
+                <svg class="po-card-header__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="20" x2="18" y2="10" />
+                    <line x1="12" y1="20" x2="12" y2="4" />
+                    <line x1="6" y1="20" x2="6" y2="14" />
+                </svg>
+                <div>
+                    <span class="po-card-header__title">Stock Available</span>
+                    <span class="po-card-header__sub">Current inventory levels per pack type</span>
+                </div>
+            </div>
+
+            <div class="po-card-body">
+
+                <div class="po-spinner-wrap" *ngIf="stockLoading">
+                    <div class="po-spinner"></div>
+                    <span>Loading stock…</span>
+                </div>
+
+                <div class="po-stock-grid" *ngIf="!stockLoading && stockItems.length > 0">
+                    <div class="po-stock-tile" *ngFor="let item of stockItems"
+                        [class.po-stock-tile--low]="item.isLowStock">
+                        <div class="po-stock-tile__header">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <path
+                                    d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                                <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                                <line x1="12" y1="22.08" x2="12" y2="12" />
+                            </svg>
+                            <span class="po-stock-tile__name">{{ item.packName }}</span>
+                        </div>
+                        <div class="po-stock-tile__weight">{{ item.weightKg }} KG</div>
+                        <div class="po-stock-tile__qty">
+                            {{ item.stockQty }}
+                            <span class="po-stock-tile__unit">units</span>
+                        </div>
+                        <div class="po-low-badge" *ngIf="item.isLowStock">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <path
+                                    d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                                <line x1="12" y1="9" x2="12" y2="13" />
+                                <line x1="12" y1="17" x2="12.01" y2="17" />
+                            </svg>
+                            Low Stock
+                        </div>
+                    </div>
+                </div>
+
+                <div class="po-empty" *ngIf="!stockLoading && stockItems.length === 0">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                    <p>No inventory data found.</p>
+                </div>
+
+            </div>
+        </div>
+
+
+        <div class="po-card">
+            <div class="po-card-header">
+                <svg class="po-card-header__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                </svg>
+                <div>
+                    <span class="po-card-header__title">Packing Operator Selection</span>
+                    <span class="po-card-header__sub">Select the operator before marking an order as done</span>
+                </div>
+            </div>
+
+            <div class="po-card-body">
+                <div class="po-field">
+                    <label class="po-label" for="packingOperator">
+                        Select Operator
+                    </label>
+
+                    <div class="po-select-wrap">
+                        <select id="packingOperator" class="po-select" [(ngModel)]="selectedOperatorName">
+                            <option value="">-- Select packing operator --</option>
+                            <option *ngFor="let user of packingOperators" [value]="user.full_name">
+                                {{ user.full_name }}
+                            </option>
+                        </select>
+
+                        <svg class="po-select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="po-spinner-wrap" *ngIf="operatorsLoading">
+                    <div class="po-spinner"></div>
+                    <span>Loading operators…</span>
+                </div>
+
+                <div class="po-error-msg" *ngIf="operatorError">
+                    {{ operatorError }}
+                </div>
+            </div>
+        </div>
+
+    </main>
+</div>

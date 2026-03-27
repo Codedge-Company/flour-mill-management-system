@@ -10,6 +10,7 @@ import { CostHistoryDialogComponent } from '../cost-history-dialog/cost-history-
 import { ThresholdDialogComponent } from '../threshold-dialog/threshold-dialog.component';
 import { CreatePackTypeDialogComponent } from '../create-pack-type-dialog/create-pack-type-dialog.component';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { RequestStockDialogComponent } from '../request-stock-dialog/request-stock-dialog.component';
 
 @Component({
   selector: 'app-inventory-list',
@@ -24,6 +25,7 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
     ThresholdDialogComponent,
     CreatePackTypeDialogComponent,
     ConfirmDialogComponent,
+    RequestStockDialogComponent,
   ],
   templateUrl: './inventory-list.component.html',
   styleUrl: './inventory-list.component.css',
@@ -46,6 +48,7 @@ export class InventoryListComponent implements OnInit {
   editingPackId = signal<string | null>(null);
   editingNameValue = signal<string>('');
   saveNameLoading = signal(false);
+  showRequestStock = signal(false);
 
   constructor(private inventoryService: InventoryService) { }
 
@@ -108,7 +111,8 @@ export class InventoryListComponent implements OnInit {
     this.showCreatePackType.set(false);
     this.deleteTarget.set(null);
     this.selectedItem.set(null);
-    this.cancelEdit(); 
+    this.showRequestStock.set(false);
+    this.cancelEdit();
   }
 
   // ── Success handlers ──────────────────────────────────────────────
@@ -182,35 +186,44 @@ export class InventoryListComponent implements OnInit {
     setTimeout(() => this.successMessage.set(null), 3500);
   }
   startEditName(item: InventoryItem): void {
-  this.editingPackId.set(item.packTypeId);
-  this.editingNameValue.set(item.packName);
-}
-
-cancelEdit(): void {
-  this.editingPackId.set(null);
-  this.editingNameValue.set('');
-}
-
-savePackName(item: InventoryItem): void {
-  const newName = this.editingNameValue().trim();
-  if (!newName || newName === item.packName) {
-    this.cancelEdit();
-    return;
+    this.editingPackId.set(item.packTypeId);
+    this.editingNameValue.set(item.packName);
   }
 
-  this.saveNameLoading.set(true);
+  cancelEdit(): void {
+    this.editingPackId.set(null);
+    this.editingNameValue.set('');
+  }
 
-  this.inventoryService.updatePackName(item.packTypeId, newName).subscribe({
-    next: () => {
-      this.saveNameLoading.set(false);
+  savePackName(item: InventoryItem): void {
+    const newName = this.editingNameValue().trim();
+    if (!newName || newName === item.packName) {
       this.cancelEdit();
-      this.showSuccess(`Pack name updated to "${newName}".`);
-      this.load();
-    },
-    error: err => {
-      this.saveNameLoading.set(false);
-      this.error.set(err?.error?.message ?? 'Failed to update pack name.');
-    },
-  });
-}
+      return;
+    }
+
+    this.saveNameLoading.set(true);
+
+    this.inventoryService.updatePackName(item.packTypeId, newName).subscribe({
+      next: () => {
+        this.saveNameLoading.set(false);
+        this.cancelEdit();
+        this.showSuccess(`Pack name updated to "${newName}".`);
+        this.load();
+      },
+      error: err => {
+        this.saveNameLoading.set(false);
+        this.error.set(err?.error?.message ?? 'Failed to update pack name.');
+      },
+    });
+  }
+  openRequestStock(item: InventoryItem): void {
+    this.selectedItem.set(item);
+    this.showRequestStock.set(true);
+  }
+
+  onRequestStockSuccess(): void {
+    this.closeAll();
+    this.showSuccess('Stock request submitted successfully.');
+  }
 }

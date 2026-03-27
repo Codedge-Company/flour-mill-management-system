@@ -69,6 +69,9 @@
   </div>
   }
 
+  @if (showRequestStock() && selectedItem()) {
+  <app-request-stock-dialog [item]="selectedItem()!" (submitted)="onRequestStockSuccess()" (cancelled)="closeAll()" />
+  }
   @if (error()) {
   <div class="alert alert-error" role="alert">
     <div class="alert-icon">
@@ -341,6 +344,16 @@
           Update Cost
         </button>
 
+        <button class="btn btn-request-stock btn-sm" (click)="openRequestStock(item)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor" stroke-width="2">
+            <line x1="22" y1="2" x2="11" y2="13" />
+            <polygon points="22 2 15 22 11 13 2 9 22 2" />
+          </svg>
+          Request Stock
+        </button>
+      </div>
+      <div class="group-threshold-history">
         <div class="action-group">
           <button class="btn btn-ghost btn-sm" (click)="openThreshold(item)" title="Set Threshold">
             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24"
@@ -358,15 +371,16 @@
             Threshold
           </button>
         </div>
+        <button class="btn btn-ghost btn-sm" (click)="openCostHistory(item)" title="Cost History">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor" stroke-width="2">
+            <polyline points="12 8 12 12 14 14" />
+            <path d="M3.05 11a9 9 0 1 1 .5 4M3 3v5h5" />
+          </svg>
+          History
+        </button>
       </div>
-      <button class="btn btn-ghost btn-sm" (click)="openCostHistory(item)" title="Cost History">
-        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24"
-          stroke="currentColor" stroke-width="2">
-          <polyline points="12 8 12 12 14 14" />
-          <path d="M3.05 11a9 9 0 1 1 .5 4M3 3v5h5" />
-        </svg>
-        History
-      </button>
+
     </div>
     }
   </div>

@@ -1,14 +1,14 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
-const qrcode  = require('qrcode-terminal');
-const QRCode  = require('qrcode');
-const fs      = require('fs');
-const path    = require('path');
+const qrcode = require('qrcode-terminal');
+const QRCode = require('qrcode');
+const fs = require('fs');
+const path = require('path');
 
-const TO = process.env.NOTIFY_WHATSAPP_TO || '94779337369';
+const TO = process.env.NOTIFY_WHATSAPP_TO || '94788041918';
 
 // ── State ──────────────────────────────────────────────────────────────────
-let client   = null;
-let qrData   = { qrImage: null, ready: false };
+let client = null;
+let qrData = { qrImage: null, ready: false };
 let starting = false;
 
 // ── Memory-optimised Puppeteer args ───────────────────────────────────────
@@ -79,19 +79,30 @@ function initWhatsApp() {
 
   console.log('[WhatsApp] Initialising client...');
 
-  const executablePath = resolveChromePath();
+  const executablePath = getChromePath() || resolveChromePath();
 
   client = new Client({
-    authStrategy: new LocalAuth(),
+    authStrategy: new LocalAuth({ clientId: 'flour-mill' }),
     puppeteer: {
-      headless: true,
-      args: PUPPETEER_ARGS,
-      ...(executablePath && { executablePath }),
+      headless: false,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--no-first-run',
+        '--no-zygote',
+        '--disable-extensions',
+        '--disable-background-networking',
+        '--disable-default-apps',
+        '--mute-audio',
+        '--disable-sync',
+      ],
+      ...(executablePath ? { executablePath } : {}),
     },
   });
 
   client.on('qr', async (qr) => {
-    console.log('[WhatsApp] QR received — scan in browser at /whatsapp/qr');
+    console.log('[WhatsApp] QR received');
     qrcode.generate(qr, { small: true });
     try {
       qrData = { qrImage: await QRCode.toDataURL(qr), ready: false };
@@ -103,23 +114,29 @@ function initWhatsApp() {
   client.on('ready', () => {
     console.log('[WhatsApp] Client is ready ✅');
     qrData = { qrImage: null, ready: true };
+    starting = false;
   });
 
-  client.on('auth_failure', () => {
-    console.error('[WhatsApp] Auth failed — delete .wwebjs_auth/ and re-scan.');
-    client   = null;
+  client.on('auth_failure', (msg) => {
+    console.error('[WhatsApp] Auth failed:', msg);
+    client = null;
     starting = false;
-    qrData   = { qrImage: null, ready: false };
+    qrData = { qrImage: null, ready: false };
   });
 
   client.on('disconnected', (reason) => {
     console.warn('[WhatsApp] Disconnected:', reason);
-    client   = null;
+    client = null;
     starting = false;
-    qrData   = { qrImage: null, ready: false };
+    qrData = { qrImage: null, ready: false };
   });
 
-  client.initialize();
+  client.initialize().catch((err) => {
+    console.error('[WhatsApp] initialize failed:', err.message);
+    client = null;
+    starting = false;
+    qrData = { qrImage: null, ready: false };
+  });
 }
 
 // ── Called by /whatsapp/qr route ──────────────────────────────────────────
@@ -142,12 +159,39 @@ async function sendWhatsApp(message) {
     // If frame detached, reset so reconnect can trigger
     if (err.message.includes('detached Frame') || err.message.includes('Session closed')) {
       console.warn('[WhatsApp] Stale client detected — resetting...');
-      client   = null;
+      client = null;
       starting = false;
-      qrData   = { qrImage: null, ready: false };
+      qrData = { qrImage: null, ready: false };
       setTimeout(() => initWhatsApp(), 5000);
     }
   }
+}
+
+// ── Detect Chrome executable path ─────────────────────────────────────────
+function getChromePath() {
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+    return process.env.PUPPETEER_EXECUTABLE_PATH;
+  }
+
+  if (process.platform === 'win32') {
+    const fs = require('fs');
+    const windowsPaths = [
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+      `C:\\Users\\${process.env.USERNAME}\\AppData\\Local\\Google\\Chrome\\Application\\chrome.exe`,
+      // Edge as fallback
+      'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+      'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+    ];
+    for (const p of windowsPaths) {
+      if (fs.existsSync(p)) {
+        console.log('[WhatsApp] Using browser at:', p);
+        return p;
+      }
+    }
+  }
+
+  return undefined;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -189,4 +233,15 @@ async function notifyMachineStop({ date, operator, partner, sessionNumber, stopT
 }
 initWhatsApp();
 
-module.exports = { notifyMachineStart, notifyMachineStop, getWhatsAppQr,sendWhatsApp };
+async function notifyPackingDone({ packName, weightKg, qty, operatorName, time }) {
+  return sendWhatsApp(
+    `📦 *Packing Complete*\n` +
+    `🏷️ Pack: ${packName} (${weightKg} KG)\n` +
+    `🔢 Quantity: ${qty} units\n` +
+    `👷 Operator: ${operatorName}\n` +
+    `🕐 Time: ${formatTime(time)}\n` +
+    `📅 Date: ${formatDate(time)}`
+  );
+}
+
+module.exports = { notifyMachineStart, notifyMachineStop, getWhatsAppQr, notifyPackingDone, sendWhatsApp };

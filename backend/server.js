@@ -125,6 +125,7 @@ app.get('/whatsapp/qr', (req, res) => {
 <html>
 <head>
 <meta charset="UTF-8" />
+<meta http-equiv="refresh" content="3" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>WhatsApp Connected</title>
 <style>
@@ -316,6 +317,8 @@ connectDB()
     server.listen(PORT, () => {
 
       console.log(`🚀 Server running on http://localhost:${PORT}`);
+      const { getWhatsAppQr } = require('./src/services/whatsapp.service');
+      getWhatsAppQr(); // triggers initWhatsApp()
 
     });
 
