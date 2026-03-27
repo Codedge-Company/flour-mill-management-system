@@ -12,3 +12,6 @@ yarn-debug.log*
 yarn-error.log*
 .idea/
 .vscode/
+backend/chrome/
+backend/.wwebjs_auth/
+backend/.wwebjs_cache/
