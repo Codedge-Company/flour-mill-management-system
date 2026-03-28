@@ -5,12 +5,12 @@ const ctrl = require('../controllers/saleRequest.controller');
 const { authenticate } = require('../middlewares/auth.middleware');
 const { authorizeRole } = require('../middlewares/role.middleware');
 
-router.use(authenticate);
-
 // ── Operator routes ────────────────────────────────────────────────────────
 router.post('/', ctrl.create);          // submit request
 router.get('/my', ctrl.getMyRequests);   // operator's own requests
 router.post('/:id/save', ctrl.saveSale);       // operator saves approved → creates sale
+
+router.use(authenticate);
 
 // ── Admin routes ───────────────────────────────────────────────────────────
 router.get('/pending', authorizeRole('ADMIN'), ctrl.getPending);

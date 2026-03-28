@@ -146,7 +146,7 @@ const createRequest = async ({ customer_id, payment_method, sales_person_id, ite
 
   const req = await SaleRequest.create({
     request_no,
-    requested_by: requestedByUser._id,
+    requested_by: requestedByUser?._id ?? null,
     sales_person_id,
     customer_id,
     payment_method,
@@ -172,7 +172,7 @@ const approveRequest = async (requestId, adminUser) => {
   const req = await SaleRequest.findById(requestId)
     .populate('items.pack_type_id', 'pack_name weight_kg');
 
-  if (!req)                     throw Object.assign(new Error('Request not found'), { statusCode: 404 });
+  if (!req) throw Object.assign(new Error('Request not found'), { statusCode: 404 });
   if (req.status !== 'PENDING') throw Object.assign(new Error('Only PENDING requests can be approved'), { statusCode: 400 });
 
   // ── Validate stock is still available ──────────────────────────────────
@@ -194,8 +194,8 @@ const approveRequest = async (requestId, adminUser) => {
     const { line_revenue, line_cost, line_profit } = calculateProfit(item.qty, item.unit_price_sold, unit_cost_at_sale);
 
     saleItems.push({
-      pack_type_id:    packTypeId,
-      qty:             item.qty,
+      pack_type_id: packTypeId,
+      qty: item.qty,
       unit_price_sold: item.unit_price_sold,
       unit_cost_at_sale,
       line_revenue,
@@ -203,21 +203,21 @@ const approveRequest = async (requestId, adminUser) => {
       line_profit,
     });
     total_revenue += line_revenue;
-    total_cost    += line_cost;
+    total_cost += line_cost;
   }
 
-  const total_profit   = parseFloat((total_revenue - total_cost).toFixed(2));
+  const total_profit = parseFloat((total_revenue - total_cost).toFixed(2));
   const payment_status = req.payment_method === 'CREDIT' ? 'PENDING' : 'PAID';
-  const sale_no        = await generateSequence('SALE');
+  const sale_no = await generateSequence('SALE');
 
   // ── Create the Sale ─────────────────────────────────────────────────────
   const sale = await Sale.create({
     sale_no,
-    customer_id:        req.customer_id,
+    customer_id: req.customer_id,
     created_by_user_id: req.sales_person_id,
-    payment_method:     req.payment_method,
+    payment_method: req.payment_method,
     payment_status,
-    sale_datetime:      new Date(),
+    sale_datetime: new Date(),
     total_revenue,
     total_cost,
     total_profit,
@@ -233,24 +233,24 @@ const approveRequest = async (requestId, adminUser) => {
     // Low-stock check (non-blocking)
     Inventory.findOne({ pack_type_id: si.pack_type_id }).then(async inv => {
       if (!inv) return;
-      const td  = await StockThreshold.findOne({ pack_type_id: si.pack_type_id });
+      const td = await StockThreshold.findOne({ pack_type_id: si.pack_type_id });
       const thr = td?.threshold_qty ?? 10;
       if (inv.stock_qty > thr) return;
       const admins = await User.find({ role: { $in: ['ADMIN', 'MANAGER'] } });
       for (const a of admins) {
-        notificationService.createStockAlert(si.pack_type_id, inv.stock_qty, null, thr, a._id).catch(() => {});
+        notificationService.createStockAlert(si.pack_type_id, inv.stock_qty, null, thr, a._id).catch(() => { });
       }
-    }).catch(() => {});
+    }).catch(() => { });
   }
 
   // ── Mark request APPROVED + link sale ──────────────────────────────────
-  req.status      = 'APPROVED';
+  req.status = 'APPROVED';
   req.reviewed_by = adminUser._id;
   req.reviewed_at = new Date();
-  req.sale_id     = sale._id;
+  req.sale_id = sale._id;
   await req.save();
 
-  notifyOperator(req, 'APPROVED', null).catch(() => {});
+  notifyOperator(req, 'APPROVED', null).catch(() => { });
 
   return SaleRequest.findById(req._id)
     .populate('requested_by sales_person_id reviewed_by', 'full_name username')
@@ -287,8 +287,8 @@ const saveApprovedRequest = async (requestId, creatingUser) => {
 
   if (!req) throw Object.assign(new Error('Request not found'), { statusCode: 404 });
   if (req.status !== 'APPROVED') throw Object.assign(new Error('Only APPROVED requests can be saved'), { statusCode: 400 });
-  if (req.requested_by.toString() !== creatingUser._id.toString())
-    throw Object.assign(new Error('Only the requestor can save this'), { statusCode: 403 });
+  if (creatingUser && req.requested_by.toString() !== creatingUser._id.toString())
+    throw Object.assign(new Error('Only the requestor can save this'), { statusCode: 403 })
 
   // Build sale items using current costs
   let total_revenue = 0, total_cost = 0;

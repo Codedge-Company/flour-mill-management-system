@@ -4,7 +4,7 @@ const QRCode = require('qrcode');
 const fs = require('fs');
 const path = require('path');
 
-const TO = process.env.NOTIFY_WHATSAPP_TO || '94788041918';
+const TO = process.env.NOTIFY_WHATSAPP_TO || '94779337369';
 
 // ── State ──────────────────────────────────────────────────────────────────
 let client = null;

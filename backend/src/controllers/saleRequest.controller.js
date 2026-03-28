@@ -4,11 +4,19 @@ const saleRequestService = require('../services/saleRequest.service');
 // POST /api/sale-requests
 exports.create = async (req, res, next) => {
   try {
-    const data = await saleRequestService.createRequest(req.body, req.user);
+    // req.user may be undefined if auth is disabled
+    const data = await saleRequestService.createRequest(req.body, req.user ?? null);
     res.status(201).json({ success: true, data });
   } catch (e) { next(e); }
 };
 
+// POST /api/sale-requests/:id/save
+exports.saveSale = async (req, res, next) => {
+  try {
+    const data = await saleRequestService.saveApprovedRequest(req.params.id, req.user ?? null);
+    res.json({ success: true, data });
+  } catch (e) { next(e); }
+};
 // GET /api/sale-requests/my
 exports.getMyRequests = async (req, res, next) => {
   try {
@@ -61,10 +69,3 @@ exports.reject = async (req, res, next) => {
   } catch (e) { next(e); }
 };
 
-// POST /api/sale-requests/:id/save  (operator — saves approved request as sale)
-exports.saveSale = async (req, res, next) => {
-  try {
-    const data = await saleRequestService.saveApprovedRequest(req.params.id, req.user);
-    res.json({ success: true, data });
-  } catch (e) { next(e); }
-};
