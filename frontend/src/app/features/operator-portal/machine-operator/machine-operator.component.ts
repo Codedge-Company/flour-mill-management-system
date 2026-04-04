@@ -47,6 +47,7 @@ export class MachineOperatorComponent implements OnInit {
     { number: 1, label: 'Morning Session', data: null, loading: false },
     { number: 2, label: 'Mid-day Session', data: null, loading: false },
     { number: 3, label: 'Afternoon Session', data: null, loading: false },
+    { number: 4, label: 'Evening Session',   data: null, loading: false }, 
   ];
 
   // ── Stock ─────────────────────────────────────────────────────────────────

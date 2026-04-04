@@ -186,9 +186,39 @@
 
 @media (max-width: 700px) {
   .so-col-header { display: none; }
-  .so-item-row   { grid-template-columns: 1fr 1fr; grid-template-rows: auto auto auto; }
-  .col-pack { grid-column: 1 / -1; }
-  .col-rm   { grid-column: 2; justify-self: end; }
+
+  .so-item-row {
+    display: flex;
+    flex-direction: column;
+    gap: .6rem;
+    padding: .75rem;
+  }
+
+  .col-pack { width: 100%; }
+  .col-pack .so-select { width: 100%; }
+
+  .col-avail,
+  .col-qty,
+  .col-price,
+  .col-total {
+    text-align: left;
+  }
+
+  /* Row of 3: available / qty / price inline */
+  .so-item-row-inline {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: .5rem;
+    align-items: center;
+  }
+
+  .col-rm {
+    position: absolute;
+    top: .5rem;
+    right: .5rem;
+  }
+
+  .so-item-row { position: relative; }
 }
 
 /* ── Payment tabs ─────────────────────────────────────────────────────────── */
@@ -346,3 +376,81 @@
   font-size: .78rem; color: #64748b; border-top: 1px solid #e9ecef; padding-top: .5rem;
 }
 .so-expand-meta strong { color: #1e293b; }
+/* ── Mobile item layout helpers ───────────────────────────────────────────── */
+.so-item-inline {
+  display: grid;
+  grid-template-columns: 2fr 80px 80px 140px 140px 36px; /* desktop: match original grid */
+  gap: .5rem;
+  align-items: center;
+}
+
+.so-item-footer {
+  display: none; /* hidden on desktop — total is in col-total */
+}
+
+.so-inline-label {
+  display: none; /* hidden on desktop */
+  font-size: .7rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-bottom: .2rem;
+}
+
+@media (max-width: 700px) {
+  .so-col-header { display: none; }
+
+  .so-item-row {
+    display: flex;
+    flex-direction: column;
+    gap: .65rem;
+    padding: .85rem .9rem;
+  }
+
+  /* Hide the desktop-only columns */
+  .col-avail, .col-qty, .col-price, .col-total, .col-rm {
+    display: none;
+  }
+
+  .col-pack { width: 100%; }
+
+  /* Middle 3-column row */
+  .so-item-inline {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: .5rem;
+    align-items: end;
+  }
+
+  .so-inline-label { display: block; }
+
+  .so-inline-field {
+    display: flex;
+    flex-direction: column;
+    gap: .2rem;
+  }
+
+  .so-inline-field .so-input {
+    text-align: left;
+    padding: .5rem .65rem;
+  }
+
+  .so-inline-field .so-stock {
+    font-size: .95rem;
+    padding: .45rem 0;
+  }
+
+  /* Footer row: total left, remove right */
+  .so-item-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px solid #f1f5f9;
+    padding-top: .55rem;
+    margin-top: .1rem;
+  }
+
+  .so-item-footer .so-inline-label { margin: 0; }
+  .so-item-footer .so-line-total   { font-size: 1rem; }
+}

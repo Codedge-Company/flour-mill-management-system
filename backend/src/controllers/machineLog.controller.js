@@ -54,7 +54,7 @@ const updateOperators = async (req, res) => {
 const recordStart = async (req, res) => {
   try {
     const sessionNumber = parseInt(req.params.sessionNumber, 10);
-    if (![1, 2, 3].includes(sessionNumber)) {
+    if (![1, 2, 3, 4].includes(sessionNumber)) {
       return res.status(400).json({ success: false, message: 'Session number must be 1, 2, or 3' });
     }
     const log = await machineLogService.recordStart(req.params.id, sessionNumber);
@@ -68,7 +68,7 @@ const recordStart = async (req, res) => {
 const recordStop = async (req, res) => {
   try {
     const sessionNumber = parseInt(req.params.sessionNumber, 10);
-    if (![1, 2, 3].includes(sessionNumber)) {
+    if (![1, 2, 3, 4].includes(sessionNumber)) {
       return res.status(400).json({ success: false, message: 'Session number must be 1, 2, or 3' });
     }
     const log = await machineLogService.recordStop(req.params.id, sessionNumber);

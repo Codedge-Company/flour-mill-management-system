@@ -198,7 +198,7 @@
             </svg>
             Sale Items
           </div>
-          <button class="so-btn so-btn--ghost so-btn--sm" (click)="addRow()">
+          <button class="so-btn so-btn--ghost so-btn--sm" (click)="addRow()" [disabled]="!selectedCustomerId()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
               stroke-linejoin="round">
               <line x1="12" y1="5" x2="12" y2="19" />
@@ -219,14 +219,15 @@
         </div>
 
         <!-- Rows -->
+        <!-- Rows -->
         <div class="so-items-list">
           <ng-container *ngFor="let row of rows(); let i = index; trackBy: trackRow">
             <div class="so-item-row" [class.so-item-row--error]="!!stockError(row)">
 
-              <!-- Pack -->
+              <!-- Pack — full width on mobile -->
               <div class="col-pack">
                 <div class="so-select-wrap">
-                  <select class="so-select" [ngModel]="row.packTypeId" (ngModelChange)="onPackChange(i, $event)">
+                  <select class="so-select" [ngModel]="row.packTypeId" (ngModelChange)="onPackChange(i, $event)" [disabled]="!selectedCustomerId()">
                     <option [ngValue]="null" disabled>Select pack…</option>
                     <option *ngFor="let p of getAvailablePacks(i)" [ngValue]="p.packTypeId">
                       {{ p.packName }} — {{ p.weightKg }}kg
@@ -239,38 +240,40 @@
                 </div>
               </div>
 
-              <!-- Available -->
-              <div class="col-avail">
-                <span class="so-stock" [class.so-stock--low]="row.availableStock <= 10 && row.packTypeId">
-                  {{ row.packTypeId ? row.availableStock : '—' }}
-                </span>
+              <!-- Middle row: Available / Qty / Price -->
+              <div class="so-item-inline">
+
+                <div class="so-inline-field">
+                  <span class="so-inline-label">Available</span>
+                  <span class="so-stock" [class.so-stock--low]="row.availableStock <= 10 && row.packTypeId">
+                    {{ row.packTypeId ? row.availableStock : '—' }}
+                  </span>
+                </div>
+
+                <div class="so-inline-field">
+                  <span class="so-inline-label">Qty</span>
+                  <input type="text" inputmode="numeric" class="so-input so-input--num"
+                    [class.so-input--error]="!!stockError(row)" [value]="focusedQty()[i] ? qtyBuffer()[i] : row.qty"
+                    (focus)="onQtyFocus(i)" (input)="onQtyInput(i, $any($event.target).value)"
+                    (keydown)="onQtyKeydown(i, $event)" (blur)="onQtyBlur(i, $any($event.target).value)" [disabled]="!selectedCustomerId()" />
+                </div>
+
+                <div class="so-inline-field">
+                  <span class="so-inline-label">Unit Price</span>
+                  <input type="text" inputmode="decimal" class="so-input so-input--num"
+                    [value]="focusedPrice()[i] ? priceBuffer()[i] : row.unitPriceSold" (focus)="onPriceFocus(i)"
+                    (input)="onPriceInput(i, $any($event.target).value)" (keydown)="onPriceKeydown(i, $event)"
+                    (blur)="onPriceBlur(i, $any($event.target).value)" [disabled]="!selectedCustomerId() || !row.packTypeId"/>
+                </div>
+
               </div>
 
-              <!-- Qty -->
-              <div class="col-qty">
-                <input type="text" inputmode="numeric" class="so-input so-input--num"
-                  [class.so-input--error]="!!stockError(row)" [value]="focusedQty()[i] ? qtyBuffer()[i] : row.qty"
-                  (focus)="onQtyFocus(i)" (input)="onQtyInput(i, $any($event.target).value)"
-                  (keydown)="onQtyKeydown(i, $event)" (blur)="onQtyBlur(i, $any($event.target).value)" />
-              </div>
-
-              <!-- Unit price -->
-              <div class="col-price">
-                <input type="text" inputmode="decimal" class="so-input so-input--num"
-                  [value]="focusedPrice()[i] ? priceBuffer()[i] : row.unitPriceSold" (focus)="onPriceFocus(i)"
-                  (input)="onPriceInput(i, $any($event.target).value)" (keydown)="onPriceKeydown(i, $event)"
-                  (blur)="onPriceBlur(i, $any($event.target).value)" [disabled]="!row.packTypeId" />
-              </div>
-
-              <!-- Line total -->
-              <div class="col-total">
+              <!-- Bottom row: Line Total + Remove -->
+              <div class="so-item-footer">
+                <span class="so-inline-label">Total</span>
                 <span class="so-line-total" [class.so-line-total--zero]="row.lineRevenue === 0">
                   {{ formatLKR(row.lineRevenue) }}
                 </span>
-              </div>
-
-              <!-- Remove -->
-              <div class="col-rm">
                 <button class="so-btn-rm" *ngIf="rows().length > 1" (click)="removeRow(i)" title="Remove">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
                     stroke-linejoin="round">
@@ -296,7 +299,7 @@
         </div>
 
         <!-- Add row shortcut -->
-        <button class="so-add-row-btn" (click)="addRow()">
+        <button class="so-add-row-btn" (click)="addRow()" [disabled]="!selectedCustomerId()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
             stroke-linejoin="round">
             <line x1="12" y1="5" x2="12" y2="19" />
@@ -447,7 +450,6 @@
                 <th>Req No</th>
                 <th>Customer</th>
                 <th>Date</th>
-                <th>Total</th>
                 <th>Payment</th>
                 <th>Status</th>
                 <th>Action</th>
@@ -480,7 +482,6 @@
 
                   <td class="so-td-date">{{ formatReqDate(req.createdAt) }}</td>
 
-                  <td class="so-td-amount">{{ formatLKR(req.total_preview) }}</td>
 
                   <td>
                     <span class="so-pay-badge" [class.so-pay-badge--cash]="req.payment_method === 'CASH'"

@@ -21,7 +21,7 @@ const getIO = () => { try { return require('../../server').io; } catch { return 
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.matheeshaflourmill.lk';
+// const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.matheeshaflourmill.lk';
 
 function formatLKR(n) {
   return `LKR ${Number(n).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -42,7 +42,7 @@ async function notifyAdmins(saleRequest, populatedRequest) {
     `💳 Payment: ${populatedRequest.payment_method}\n` +
     `📦 Items:\n${itemLines}\n` +
     `💰 Total: ${formatLKR(populatedRequest.total_preview)}\n` +
-    `🔗 Review: ${FRONTEND_URL}/sales/requests`;
+    `🔗 Review: https://www.matheeshaflourmill.lk/sales/requests`;
 
   // WhatsApp
   if (waService?.sendWhatsApp) {
