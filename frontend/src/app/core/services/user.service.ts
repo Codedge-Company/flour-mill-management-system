@@ -20,12 +20,12 @@ export interface UpdateUserDto {
   role?: 'SALES' | 'ADMIN';
 }
 export interface UserResponse {
-    _id: string;     
-    id: string;
-    full_name: string;
-    username: string;
-    role: 'ADMIN' | 'SALES' | 'MACHINE_OPERATOR' | 'PACKING_OPERATOR';
-    created_at: string;
+  _id: string;
+  id: string;
+  full_name: string;
+  username: string;
+  role: 'ADMIN' | 'SALES' | 'MACHINE_OPERATOR' | 'PACKING_OPERATOR';
+  created_at: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -38,31 +38,38 @@ export class UserService {
     const token = localStorage.getItem('token');
     return { Authorization: `Bearer ${token}` };
   }
+  private mapUser(raw: any): UserResponse {
+    return { ...raw, id: raw._id ?? raw.id };
+  }
 
   getAllUsers(): Observable<UserResponse[]> {
     return this.http
-      .get<{ success: boolean; data: UserResponse[] }>(this.apiUrl, {
-        headers: this.authHeaders
-      })
-      .pipe(map(res => res.data), catchError(this.handleError));
+      .get<{ success: boolean; data: UserResponse[] }>(this.apiUrl, { headers: this.authHeaders })
+      .pipe(
+        map(res => res.data.map(u => this.mapUser(u))),
+        catchError(this.handleError)
+      );
   }
+
 
   createUser(user: CreateUserDto): Observable<UserResponse> {
     return this.http
-      .post<{ success: boolean; data: UserResponse }>(this.apiUrl, user, {
-        headers: this.authHeaders
-      })
-      .pipe(map(res => res.data), catchError(this.handleError));
+      .post<{ success: boolean; data: UserResponse }>(this.apiUrl, user, { headers: this.authHeaders })
+      .pipe(
+        map(res => this.mapUser(res.data)),
+        catchError(this.handleError)
+      );
   }
+
 
   updateUser(id: string, dto: UpdateUserDto): Observable<UserResponse> {
     return this.http
-      .put<{ success: boolean; data: UserResponse }>(`${this.apiUrl}/${id}`, dto, {
-        headers: this.authHeaders
-      })
-      .pipe(map(res => res.data), catchError(this.handleError));
+      .put<{ success: boolean; data: UserResponse }>(`${this.apiUrl}/${id}`, dto, { headers: this.authHeaders })
+      .pipe(
+        map(res => this.mapUser(res.data)),
+        catchError(this.handleError)
+      );
   }
-
   deleteUser(id: string): Observable<void> {
     return this.http
       .delete<{ success: boolean }>(`${this.apiUrl}/${id}`, {
@@ -82,12 +89,12 @@ export class UserService {
     return throwError(() => new Error(errorMessage));
   }
 
-getUsersByRoles(roles: UserResponse['role'][]): Observable<UserResponse[]> {
+  getUsersByRoles(roles: UserResponse['role'][]): Observable<UserResponse[]> {
     return this.http
-        .get<{ success: boolean; data: UserResponse[] }>(
-            `${this.apiUrl}/by-roles?roles=${roles.join(',')}`,  // ✅ /by-roles not /?roles
-            { headers: this.authHeaders }
-        )
-        .pipe(map(res => res.data), catchError(this.handleError));
-}
+      .get<{ success: boolean; data: UserResponse[] }>(
+        `${this.apiUrl}/by-roles?roles=${roles.join(',')}`,  // ✅ /by-roles not /?roles
+        { headers: this.authHeaders }
+      )
+      .pipe(map(res => res.data), catchError(this.handleError));
+  }
 }
