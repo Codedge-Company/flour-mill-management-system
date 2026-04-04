@@ -90,6 +90,10 @@ export class SalesOperatorComponent implements OnInit, OnDestroy {
   expandedReqId = signal<string | null>(null);
 
   private statusSub?: Subscription;
+qtyBuffer = signal<Record<number, string>>({});
+priceBuffer = signal<Record<number, string>>({});
+focusedQty = signal<Record<number, boolean>>({});
+focusedPrice = signal<Record<number, boolean>>({});
 
   constructor(
     public authService: AuthService,
@@ -219,38 +223,86 @@ export class SalesOperatorComponent implements OnInit, OnDestroy {
     const custId = this.selectedCustomerId();
     if (custId) {
       this.customerService.getEffectivePrice(custId, packTypeId).subscribe({
-        next: res => this.updateRow(i, { 
-          packTypeId, 
-          packName: pack.packName, 
-          unitPriceSold: res.unitSellPrice, 
-          availableStock: pack.stockQty 
+        next: res => this.updateRow(i, {
+          packTypeId,
+          packName: pack.packName,
+          unitPriceSold: res.unitSellPrice,
+          availableStock: pack.stockQty
         }),
-        error: () => this.updateRow(i, { 
-          packTypeId, 
-          packName: pack.packName, 
-          unitPriceSold: 0, 
-          availableStock: pack.stockQty 
+        error: () => this.updateRow(i, {
+          packTypeId,
+          packName: pack.packName,
+          unitPriceSold: 0,
+          availableStock: pack.stockQty
         }),
       });
     } else {
-      this.updateRow(i, { 
-        packTypeId, 
-        packName: pack.packName, 
-        unitPriceSold: 0, 
-        availableStock: pack.stockQty 
+      this.updateRow(i, {
+        packTypeId,
+        packName: pack.packName,
+        unitPriceSold: 0,
+        availableStock: pack.stockQty
       });
     }
   }
 
-  onQtyChange(i: number, val: number): void {
-    this.updateRow(i, { qty: Math.max(1, +val || 1) });
-    this.recompute(i);
-  }
+onQtyFocus(i: number): void {
+  this.focusedQty.update((f: Record<number, boolean>) => ({ ...f, [i]: true }));
+  this.qtyBuffer.update((b: Record<number, string>) => ({ ...b, [i]: String(this.rows()[i]?.qty ?? 1) }));
+}
 
-  onPriceChange(i: number, val: number): void {
-    this.updateRow(i, { unitPriceSold: +val || 0 });
-    this.recompute(i);
+onQtyInput(i: number, raw: string): void {
+  this.qtyBuffer.update((b: Record<number, string>) => ({ ...b, [i]: raw }));
+  const val = parseInt(raw, 10);
+  if (!isNaN(val) && val >= 1) {
+    this.updateRow(i, { qty: val });
+    this.recompute(i); // ✅ live line total updates
   }
+}
+
+onQtyKeydown(i: number, event: KeyboardEvent): void {
+  if (event.key === 'Enter') {
+    (event.target as HTMLInputElement).blur();
+  }
+}
+
+onQtyBlur(i: number, raw: string): void {
+  const val = Math.max(1, parseInt(raw, 10) || 1);
+  this.updateRow(i, { qty: val });
+  this.recompute(i);
+  // Clear focus lock — now [value] can read from signal again
+  this.focusedQty.update((f: Record<number, boolean>) => { const n = { ...f }; delete n[i]; return n; });
+  this.qtyBuffer.update((b: Record<number, string>) => { const n = { ...b }; delete n[i]; return n; });
+}
+
+onPriceFocus(i: number): void {
+  this.focusedPrice.update((f: Record<number, boolean>) => ({ ...f, [i]: true }));
+  this.priceBuffer.update((b: Record<number, string>) => ({ ...b, [i]: String(this.rows()[i]?.unitPriceSold ?? 0) }));
+}
+
+onPriceInput(i: number, raw: string): void {
+  this.priceBuffer.update((b: Record<number, string>) => ({ ...b, [i]: raw }));
+  const val = parseFloat(raw);
+  if (!isNaN(val) && val >= 0) {
+    this.updateRow(i, { unitPriceSold: val });
+    this.recompute(i); // ✅ live line total updates
+  }
+}
+
+onPriceKeydown(i: number, event: KeyboardEvent): void {
+  if (event.key === 'Enter') {
+    (event.target as HTMLInputElement).blur();
+  }
+}
+
+onPriceBlur(i: number, raw: string): void {
+  const val = Math.max(0, parseFloat(raw) || 0);
+  this.updateRow(i, { unitPriceSold: val });
+  this.recompute(i);
+  // Clear focus lock — now [value] can read from signal again
+  this.focusedPrice.update((f: Record<number, boolean>) => { const n = { ...f }; delete n[i]; return n; });
+  this.priceBuffer.update((b: Record<number, string>) => { const n = { ...b }; delete n[i]; return n; });
+}
 
   private updateRow(i: number, partial: Partial<ItemRow>): void {
     this.rows.update(rs => rs.map((r, idx) => idx === i ? { ...r, ...partial } : r));
@@ -276,7 +328,7 @@ export class SalesOperatorComponent implements OnInit, OnDestroy {
     if (!row.packTypeId) return '';
     return row.qty > row.availableStock ? `Only ${row.availableStock} available` : '';
   }
-
+  trackRow(index: number, row: ItemRow): number { return row.id; }
   // ── Submit & Other Methods ────────────────────────────────────────────────
   submitRequest(): void {
     if (!this.canSubmit()) return;
@@ -349,11 +401,11 @@ export class SalesOperatorComponent implements OnInit, OnDestroy {
   }
 
   statusClass(status: string): string {
-    return ({ 
-      PENDING: 'badge-pending', 
-      APPROVED: 'badge-approved', 
-      REJECTED: 'badge-rejected', 
-      SAVED: 'badge-saved' 
+    return ({
+      PENDING: 'badge-pending',
+      APPROVED: 'badge-approved',
+      REJECTED: 'badge-rejected',
+      SAVED: 'badge-saved'
     } as any)[status] ?? '';
   }
 
@@ -371,19 +423,19 @@ export class SalesOperatorComponent implements OnInit, OnDestroy {
   }
 
   formatReqDate(iso: string): string {
-    return new Date(iso).toLocaleString('en-LK', { 
-      day: '2-digit', 
-      month: 'short', 
-      year: 'numeric', 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    return new Date(iso).toLocaleString('en-LK', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     });
   }
 
   formatLKR(n: number): string {
-    return `LKR ${Number(n).toLocaleString('en-LK', { 
-      minimumFractionDigits: 2, 
-      maximumFractionDigits: 2 
+    return `LKR ${Number(n).toLocaleString('en-LK', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
     })}`;
   }
 }

@@ -21,7 +21,7 @@ const getIO = () => { try { return require('../../server').io; } catch { return 
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:4200';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.matheeshaflourmill.lk';
 
 function formatLKR(n) {
   return `LKR ${Number(n).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

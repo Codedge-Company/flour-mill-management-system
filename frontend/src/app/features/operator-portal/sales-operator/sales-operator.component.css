@@ -238,7 +238,7 @@
 .so-btn--sm     { padding: .38rem .8rem; font-size: .8rem; }
 
 .so-btn--request {
-  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  background: linear-gradient(135deg, #6366f1, #6366f1);
   color: #fff; padding: .7rem 1.5rem; font-size: .925rem;
   box-shadow: 0 2px 8px rgba(99,102,241,.35);
 }

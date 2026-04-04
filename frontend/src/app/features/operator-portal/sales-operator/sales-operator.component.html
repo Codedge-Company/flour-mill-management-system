@@ -220,7 +220,7 @@
 
         <!-- Rows -->
         <div class="so-items-list">
-          <ng-container *ngFor="let row of rows(); let i = index">
+          <ng-container *ngFor="let row of rows(); let i = index; trackBy: trackRow">
             <div class="so-item-row" [class.so-item-row--error]="!!stockError(row)">
 
               <!-- Pack -->
@@ -248,14 +248,18 @@
 
               <!-- Qty -->
               <div class="col-qty">
-                <input type="number" class="so-input so-input--num" [class.so-input--error]="!!stockError(row)"
-                  [ngModel]="row.qty" (ngModelChange)="onQtyChange(i, $event)" min="1" step="1" />
+                <input type="text" inputmode="numeric" class="so-input so-input--num"
+                  [class.so-input--error]="!!stockError(row)" [value]="focusedQty()[i] ? qtyBuffer()[i] : row.qty"
+                  (focus)="onQtyFocus(i)" (input)="onQtyInput(i, $any($event.target).value)"
+                  (keydown)="onQtyKeydown(i, $event)" (blur)="onQtyBlur(i, $any($event.target).value)" />
               </div>
 
               <!-- Unit price -->
               <div class="col-price">
-                <input type="number" class="so-input so-input--num" [ngModel]="row.unitPriceSold"
-                  (ngModelChange)="onPriceChange(i, $event)" min="0" step="0.01" [disabled]="!row.packTypeId" />
+                <input type="text" inputmode="decimal" class="so-input so-input--num"
+                  [value]="focusedPrice()[i] ? priceBuffer()[i] : row.unitPriceSold" (focus)="onPriceFocus(i)"
+                  (input)="onPriceInput(i, $any($event.target).value)" (keydown)="onPriceKeydown(i, $event)"
+                  (blur)="onPriceBlur(i, $any($event.target).value)" [disabled]="!row.packTypeId" />
               </div>
 
               <!-- Line total -->
