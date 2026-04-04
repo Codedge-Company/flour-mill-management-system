@@ -219,15 +219,16 @@
         </div>
 
         <!-- Rows -->
-        <!-- Rows -->
         <div class="so-items-list">
           <ng-container *ngFor="let row of rows(); let i = index; trackBy: trackRow">
+
             <div class="so-item-row" [class.so-item-row--error]="!!stockError(row)">
 
-              <!-- Pack — full width on mobile -->
+              <!-- col 1: Pack Size -->
               <div class="col-pack">
                 <div class="so-select-wrap">
-                  <select class="so-select" [ngModel]="row.packTypeId" (ngModelChange)="onPackChange(i, $event)" [disabled]="!selectedCustomerId()">
+                  <select class="so-select" [ngModel]="row.packTypeId" (ngModelChange)="onPackChange(i, $event)"
+                    [disabled]="!selectedCustomerId()">
                     <option [ngValue]="null" disabled>Select pack…</option>
                     <option *ngFor="let p of getAvailablePacks(i)" [ngValue]="p.packTypeId">
                       {{ p.packName }} — {{ p.weightKg }}kg
@@ -240,49 +241,68 @@
                 </div>
               </div>
 
-              <!-- Middle row: Available / Qty / Price -->
-              <div class="so-item-inline">
+              <!--
+        so-item-middle:
+          desktop → display:contents (children fall into parent 6-col grid)
+          mobile  → display:grid 3-col sub-row
+      -->
+              <div class="so-item-middle">
 
-                <div class="so-inline-field">
+                <!-- col 2: Available -->
+                <div class="col-avail so-inline-field">
                   <span class="so-inline-label">Available</span>
                   <span class="so-stock" [class.so-stock--low]="row.availableStock <= 10 && row.packTypeId">
                     {{ row.packTypeId ? row.availableStock : '—' }}
                   </span>
                 </div>
 
-                <div class="so-inline-field">
+                <!-- col 3: Qty -->
+                <div class="col-qty so-inline-field">
                   <span class="so-inline-label">Qty</span>
                   <input type="text" inputmode="numeric" class="so-input so-input--num"
                     [class.so-input--error]="!!stockError(row)" [value]="focusedQty()[i] ? qtyBuffer()[i] : row.qty"
                     (focus)="onQtyFocus(i)" (input)="onQtyInput(i, $any($event.target).value)"
-                    (keydown)="onQtyKeydown(i, $event)" (blur)="onQtyBlur(i, $any($event.target).value)" [disabled]="!selectedCustomerId()" />
+                    (keydown)="onQtyKeydown(i, $event)" (blur)="onQtyBlur(i, $any($event.target).value)"
+                    [disabled]="!selectedCustomerId()" />
                 </div>
 
-                <div class="so-inline-field">
+                <!-- col 4: Unit Price -->
+                <div class="col-price so-inline-field">
                   <span class="so-inline-label">Unit Price</span>
                   <input type="text" inputmode="decimal" class="so-input so-input--num"
                     [value]="focusedPrice()[i] ? priceBuffer()[i] : row.unitPriceSold" (focus)="onPriceFocus(i)"
                     (input)="onPriceInput(i, $any($event.target).value)" (keydown)="onPriceKeydown(i, $event)"
-                    (blur)="onPriceBlur(i, $any($event.target).value)" [disabled]="!selectedCustomerId() || !row.packTypeId"/>
+                    (blur)="onPriceBlur(i, $any($event.target).value)"
+                    [disabled]="!selectedCustomerId() || !row.packTypeId" />
                 </div>
 
               </div>
 
-              <!-- Bottom row: Line Total + Remove -->
+              <!--
+        so-item-footer:
+          desktop → display:contents (col-total and col-rm fall into parent grid)
+          mobile  → display:flex row (total left, remove right)
+      -->
               <div class="so-item-footer">
-                <span class="so-inline-label">Total</span>
-                <span class="so-line-total" [class.so-line-total--zero]="row.lineRevenue === 0">
+
+                <!-- col 5: Line Total -->
+                <span class="col-total so-line-total" [class.so-line-total--zero]="row.lineRevenue === 0">
+                  <span class="so-inline-label">Total</span>
                   {{ formatLKR(row.lineRevenue) }}
                 </span>
-                <button class="so-btn-rm" *ngIf="rows().length > 1" (click)="removeRow(i)" title="Remove">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-                    stroke-linejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
-              </div>
 
+                <!-- col 6: Remove -->
+                <div class="col-rm">
+                  <button class="so-btn-rm" *ngIf="rows().length > 1" (click)="removeRow(i)" title="Remove">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                      stroke-linejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </div>
+
+              </div>
             </div>
 
             <!-- Stock error -->
@@ -295,6 +315,7 @@
               </svg>
               {{ stockError(row) }}
             </div>
+
           </ng-container>
         </div>
 
