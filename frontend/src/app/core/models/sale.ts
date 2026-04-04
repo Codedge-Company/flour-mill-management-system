@@ -40,6 +40,7 @@ export interface CreateSaleRequest {
   paymentMethod: PaymentMethod;
   saleDate?:     string;
   items:         CreateSaleItemRequest[];
+  useDefaultPrice?: boolean;  
 }
 
 export interface CreateSaleItemRequest {
