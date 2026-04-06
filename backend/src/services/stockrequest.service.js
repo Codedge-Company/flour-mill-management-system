@@ -78,9 +78,35 @@ const updateStatus = async (id, status, operatorName = null) => {
     return mapRequest(doc);
 };
 
+/** Update requested quantity — only allowed while PENDING or APPROVED */
+const updateQty = async (id, qty) => {
+    const parsed = Number(qty);
+    if (!parsed || parsed < 1) {
+        throw Object.assign(
+            new Error('Quantity must be at least 1'),
+            { statusCode: 400 }
+        );
+    }
+
+    const doc = await RequestedStock.findOneAndUpdate(
+        { _id: id, status: { $in: ['PENDING', 'APPROVED'] } },
+        { $set: { qty: parsed } },
+        { new: true }
+    ).lean();
+
+    if (!doc) {
+        throw Object.assign(
+            new Error('Stock request not found or cannot be edited in its current status'),
+            { statusCode: 404 }
+        );
+    }
+
+    return mapRequest(doc);
+};
+
 const remove = async (id) => {
     const doc = await RequestedStock.findByIdAndDelete(id).lean();
     if (!doc) throw Object.assign(new Error('Stock request not found'), { statusCode: 404 });
 };
 
-module.exports = { create, getAll, getById, updateStatus, remove };
+module.exports = { create, getAll, getById, updateStatus, updateQty, remove };

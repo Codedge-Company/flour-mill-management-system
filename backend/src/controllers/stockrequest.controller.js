@@ -58,6 +58,17 @@ exports.updateStatus = async (req, res, next) => {
     }
 };
 
+/** PATCH /:id  — update quantity only (must still be PENDING or APPROVED) */
+exports.updateQty = async (req, res, next) => {
+    try {
+        const { qty } = req.body;
+        const data = await stockRequestService.updateQty(req.params.id, qty);
+        res.json({ success: true, data });
+    } catch (e) {
+        next(e);
+    }
+};
+
 exports.deleteStockRequest = async (req, res, next) => {
     try {
         await stockRequestService.remove(req.params.id);

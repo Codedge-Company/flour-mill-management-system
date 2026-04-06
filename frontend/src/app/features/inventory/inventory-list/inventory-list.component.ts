@@ -11,6 +11,7 @@ import { ThresholdDialogComponent } from '../threshold-dialog/threshold-dialog.c
 import { CreatePackTypeDialogComponent } from '../create-pack-type-dialog/create-pack-type-dialog.component';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { RequestStockDialogComponent } from '../request-stock-dialog/request-stock-dialog.component';
+import { RequestedStockSectionComponent } from '../requested-stock-section/requested-stock-section.component';
 
 @Component({
   selector: 'app-inventory-list',
@@ -26,6 +27,7 @@ import { RequestStockDialogComponent } from '../request-stock-dialog/request-sto
     CreatePackTypeDialogComponent,
     ConfirmDialogComponent,
     RequestStockDialogComponent,
+    RequestedStockSectionComponent
   ],
   templateUrl: './inventory-list.component.html',
   styleUrl: './inventory-list.component.css',
@@ -49,6 +51,7 @@ export class InventoryListComponent implements OnInit {
   editingNameValue = signal<string>('');
   saveNameLoading = signal(false);
   showRequestStock = signal(false);
+  showRequestedStocks = signal(false);
 
   constructor(private inventoryService: InventoryService) { }
 
@@ -112,6 +115,7 @@ export class InventoryListComponent implements OnInit {
     this.deleteTarget.set(null);
     this.selectedItem.set(null);
     this.showRequestStock.set(false);
+    this.showRequestedStocks.set(false);
     this.cancelEdit();
   }
 
@@ -226,4 +230,17 @@ export class InventoryListComponent implements OnInit {
     this.closeAll();
     this.showSuccess('Stock request submitted successfully.');
   }
+  openRequestedStocks(): void {
+  this.showRequestedStocks.set(true);
+}
+
+closeRequestedStocks(): void {
+  this.showRequestedStocks.set(false);
+}
+
+onRequestedStocksBackdropClick(event: MouseEvent): void {
+  if ((event.target as HTMLElement).classList.contains('dialog-backdrop')) {
+    this.closeRequestedStocks();
+  }
+}
 }

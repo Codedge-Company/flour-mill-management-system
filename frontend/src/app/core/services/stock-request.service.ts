@@ -51,6 +51,35 @@ export class StockRequestService {
     );
   }
 
+  updateStatus(id: string, status: string, operatorName?: string): Observable<ApiResponse<StockRequest>> {
+    return this.http.patch<any>(`${this.requestStoreUrl}/${id}/status`, {
+      status,
+      operatorName: operatorName ?? null
+    }).pipe(
+      map(res => ({
+        success: true,
+        data: this.mapItem(res.data ?? res),
+      }))
+    );
+  }
+
+  /** Update the requested quantity for a pending/approved request */
+  updateQty(id: string, qty: number): Observable<ApiResponse<StockRequest>> {
+    return this.http.patch<any>(`${this.requestStoreUrl}/${id}`, { qty }).pipe(
+      map(res => ({
+        success: true,
+        data: this.mapItem(res.data ?? res),
+      }))
+    );
+  }
+
+  /** Delete a stock request by ID */
+  deleteRequest(id: string): Observable<ApiResponse<void>> {
+    return this.http.delete<any>(`${this.requestStoreUrl}/${id}`).pipe(
+      map(() => ({ success: true, data: undefined }))
+    );
+  }
+
   private mapItem(raw: any): StockRequest {
     return {
       stockRequestId: String(raw._id ?? raw.stock_request_id ?? raw.stockRequestId ?? ''),
@@ -62,17 +91,5 @@ export class StockRequestService {
       status: raw.status ?? 'PENDING',
       operatorName: raw.operator_name ?? raw.operatorName ?? null,
     };
-  }
-
-  updateStatus(id: string, status: string, operatorName?: string): Observable<ApiResponse<StockRequest>> {
-    return this.http.patch<any>(`${this.requestStoreUrl}/${id}/status`, {
-      status,
-      operatorName: operatorName ?? null
-    }).pipe(
-      map(res => ({
-        success: true,
-        data: this.mapItem(res.data ?? res),
-      }))
-    );
   }
 }

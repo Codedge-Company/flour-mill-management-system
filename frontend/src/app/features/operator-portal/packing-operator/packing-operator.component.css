@@ -69,16 +69,18 @@
     font-weight: 600;
     border-radius: 20px;
     border: 1px solid #bae6fd;
+    white-space: nowrap;
 }
 
 .po-date-badge svg {
     width: 14px;
     height: 14px;
+    flex-shrink: 0;
 }
 
 /* ── Content ──────────────────────────────────────────────────────────────── */
 .po-content {
-    max-width: 860px;
+    max-width: 1000px;
     margin: 0 auto;
     padding: 1.75rem 1.25rem;
     display: flex;
@@ -95,13 +97,15 @@
     overflow: hidden;
 }
 
+/* ── Card Header ──────────────────────────────────────────────────────────── */
 .po-card-header {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: .65rem;
     padding: 1.1rem 1.5rem .95rem;
     border-bottom: 1px solid #f1f5f9;
     background: #fafbff;
+    flex-wrap: wrap;
 }
 
 .po-card-header__icon {
@@ -109,7 +113,6 @@
     height: 20px;
     color: #0ea5e9;
     flex-shrink: 0;
-    margin-top: 2px;
 }
 
 .po-card-header__title {
@@ -128,6 +131,51 @@
 
 .po-card-body {
     padding: 1.35rem 1.5rem 1.5rem;
+}
+
+/* ── Sort Toggle ──────────────────────────────────────────────────────────── */
+.po-sort-toggle {
+    margin-left: auto;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+
+.po-sort-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    border-radius: 8px;
+    border: 1.5px solid #e2e8f0;
+    background: transparent;
+    font-size: .75rem;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    transition: all .15s ease;
+    white-space: nowrap;
+    line-height: 1;
+}
+
+.po-sort-btn:hover {
+    border-color: #0ea5e9;
+    color: #0ea5e9;
+    background: #f0f9ff;
+}
+
+.po-sort-btn--active {
+    border-color: #0ea5e9;
+    background: #0ea5e9;
+    color: #fff;
+}
+
+.po-sort-btn--active:hover {
+    background: #0284c7;
+    border-color: #0284c7;
+    color: #fff;
 }
 
 /* ── Buttons ──────────────────────────────────────────────────────────────── */
@@ -159,16 +207,6 @@
 
 .po-btn:not(:disabled):active {
     transform: scale(.97);
-}
-
-.po-btn--ghost {
-    background: transparent;
-    color: #475569;
-    border: 1.5px solid #cbd5e1;
-}
-
-.po-btn--ghost:hover:not(:disabled) {
-    background: #f1f5f9;
 }
 
 .po-btn--done {
@@ -228,9 +266,7 @@
 }
 
 @keyframes po-spin {
-    to {
-        transform: rotate(360deg);
-    }
+    to { transform: rotate(360deg); }
 }
 
 .po-empty {
@@ -241,6 +277,7 @@
     padding: 2.5rem 1rem;
     color: #94a3b8;
     font-size: .875rem;
+    text-align: center;
 }
 
 .po-empty svg {
@@ -248,17 +285,35 @@
     height: 40px;
 }
 
-/* ── Orders table ─────────────────────────────────────────────────────────── */
+/* ── Orders Table ─────────────────────────────────────────────────────────── */
 .po-orders {
     display: flex;
     flex-direction: column;
-    gap: 0;
+    /* allow horizontal scroll on small screens */
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/*
+  6 columns: Pack | Weight | Qty | Status | Requested At | Action
+  Using minmax so columns compress gracefully before we hide them
+*/
+.po-orders__header,
+.po-order-row {
+    display: grid;
+    grid-template-columns:
+        minmax(120px, 2fr)    /* Pack       */
+        minmax(70px,  1fr)    /* Weight     */
+        minmax(50px,  .6fr)   /* Qty        */
+        minmax(90px,  1fr)    /* Status     */
+        minmax(140px, 1.8fr)  /* Requested At */
+        auto;                 /* Action     */
+    gap: .5rem;
+    align-items: center;
+    min-width: 560px;          /* prevent columns collapsing to 0 */
 }
 
 .po-orders__header {
-    display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1.2fr auto;
-    gap: .5rem;
     padding: .5rem .75rem;
     font-size: .7rem;
     font-weight: 700;
@@ -269,10 +324,6 @@
 }
 
 .po-order-row {
-    display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1.2fr auto;
-    gap: .5rem;
-    align-items: center;
     padding: .85rem .75rem;
     border-bottom: 1px solid #f8fafc;
     transition: background .15s;
@@ -286,6 +337,7 @@
     background: #f8fafc;
 }
 
+/* ── Order Row Cells ──────────────────────────────────────────────────────── */
 .po-order-row__cell {
     display: flex;
     align-items: center;
@@ -315,6 +367,22 @@
     justify-content: flex-end;
 }
 
+/* Date cell */
+.po-order-row__date {
+    font-size: .78rem;
+    color: #64748b;
+    white-space: nowrap;
+    gap: 5px;
+}
+
+.po-order-row__date svg {
+    width: 12px;
+    height: 12px;
+    opacity: .55;
+    flex-shrink: 0;
+}
+
+/* ── Chips ────────────────────────────────────────────────────────────────── */
 .po-weight-chip {
     background: #f0f9ff;
     color: #0369a1;
@@ -323,9 +391,10 @@
     padding: .2rem .55rem;
     border-radius: 20px;
     border: 1px solid #bae6fd;
+    white-space: nowrap;
 }
 
-/* Status pills */
+/* ── Status Pills ─────────────────────────────────────────────────────────── */
 .po-pill {
     display: inline-flex;
     align-items: center;
@@ -334,6 +403,7 @@
     font-size: .7rem;
     font-weight: 700;
     letter-spacing: .03em;
+    white-space: nowrap;
 }
 
 .po-pill--pending {
@@ -346,86 +416,6 @@
     background: #dcfce7;
     color: #15803d;
     border: 1px solid #bbf7d0;
-}
-
-/* ── Stock grid ───────────────────────────────────────────────────────────── */
-.po-stock-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: .9rem;
-}
-
-.po-stock-tile {
-    background: #f8fafc;
-    border: 1.5px solid #e2e8f0;
-    border-radius: 13px;
-    padding: 1rem 1.1rem;
-    display: flex;
-    flex-direction: column;
-    gap: .35rem;
-    transition: border-color .2s, background .2s;
-}
-
-.po-stock-tile--low {
-    border-color: #fca5a5;
-    background: #fff5f5;
-}
-
-.po-stock-tile__header {
-    display: flex;
-    align-items: center;
-    gap: .4rem;
-    font-size: .72rem;
-    color: #64748b;
-}
-
-.po-stock-tile__header svg {
-    width: 14px;
-    height: 14px;
-    color: #0ea5e9;
-    flex-shrink: 0;
-}
-
-.po-stock-tile__name {
-    font-weight: 600;
-    color: #1e293b;
-    font-size: .82rem;
-}
-
-.po-stock-tile__weight {
-    font-size: .7rem;
-    color: #94a3b8;
-    font-weight: 500;
-}
-
-.po-stock-tile__qty {
-    font-size: 1.55rem;
-    font-weight: 800;
-    color: #0c4a6e;
-    line-height: 1.1;
-    margin-top: .2rem;
-}
-
-.po-stock-tile__unit {
-    font-size: .7rem;
-    font-weight: 500;
-    color: #94a3b8;
-    margin-left: .2rem;
-}
-
-.po-low-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: .3rem;
-    font-size: .66rem;
-    font-weight: 700;
-    color: #dc2626;
-    margin-top: .25rem;
-}
-
-.po-low-badge svg {
-    width: 12px;
-    height: 12px;
 }
 
 /* ── Fields & Select ──────────────────────────────────────────────────────── */
@@ -444,12 +434,6 @@
     color: #475569;
 }
 
-.po-label svg {
-    width: 14px;
-    height: 14px;
-    flex-shrink: 0;
-}
-
 .po-select-wrap {
     position: relative;
 }
@@ -463,6 +447,7 @@
     color: #1e293b;
     background: #f8fafc;
     appearance: none;
+    -webkit-appearance: none;
     cursor: pointer;
     outline: none;
     transition: border-color .15s, box-shadow .15s;
@@ -486,35 +471,188 @@
     pointer-events: none;
 }
 
-/* ── Responsive ───────────────────────────────────────────────────────────── */
-@media (max-width: 600px) {
+.po-card-body .po-field {
+    max-width: 420px;
+}
 
+/* ══════════════════════════════════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════════════════════════════════ */
+
+/* ── Tablet  (≤ 768px) ────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+
+    .po-content {
+        padding: 1.25rem .75rem;
+        gap: 1rem;
+    }
+
+    .po-card-header {
+        padding: .9rem 1.1rem .8rem;
+        gap: .5rem;
+    }
+
+    .po-card-body {
+        padding: 1rem 1.1rem 1.2rem;
+    }
+
+    /* Sort toggle drops below title on tablet */
+    .po-sort-toggle {
+        margin-left: 0;
+        width: 100%;
+        margin-top: .4rem;
+    }
+
+    /* 5 columns on tablet — drop "Weight" */
     .po-orders__header,
     .po-order-row {
-        grid-template-columns: 1.6fr 1fr 1fr;
+        grid-template-columns:
+            minmax(110px, 2fr)   /* Pack       */
+            minmax(50px,  .6fr)  /* Qty        */
+            minmax(85px,  1fr)   /* Status     */
+            minmax(130px, 1.6fr) /* Requested At */
+            auto;                /* Action     */
+        min-width: 460px;
     }
 
-    /* hide weight & status columns on very small screens */
-    .po-orders__header span:nth-child(2),
-    .po-order-row__cell:nth-child(2),
-    .po-orders__header span:nth-child(4),
-    .po-order-row__cell:nth-child(4) {
-        display: none;
-    }
-
-    .po-stock-grid {
-        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    }
-
-    .po-topbar {
-        padding: .75rem 1rem;
-    }
-
-    .po-date-badge {
+    /* hide Weight column (2nd child) */
+    .po-orders__header > span:nth-child(2),
+    .po-order-row > .po-order-row__cell:nth-child(2) {
         display: none;
     }
 }
 
-.po-card-body .po-field {
-    max-width: 420px;
+/* ── Mobile  (≤ 520px) ────────────────────────────────────────────────────── */
+@media (max-width: 520px) {
+
+    .po-topbar {
+        padding: .7rem 1rem;
+    }
+
+    /* Hide the date badge to save topbar space */
+    .po-date-badge {
+        display: none;
+    }
+
+    .po-content {
+        padding: 1rem .6rem;
+    }
+
+    .po-card {
+        border-radius: 12px;
+    }
+
+    .po-card-header {
+        padding: .8rem 1rem .7rem;
+    }
+
+    .po-card-body {
+        padding: .9rem 1rem 1rem;
+    }
+
+    .po-card-body .po-field {
+        max-width: 100%;
+    }
+
+    /* Sort buttons go full-width row */
+    .po-sort-toggle {
+        flex-wrap: nowrap;
+        width: 100%;
+    }
+
+    .po-sort-btn {
+        flex: 1;
+        justify-content: center;
+        padding: 6px 8px;
+        font-size: .72rem;
+    }
+
+    /*
+      Mobile table: 4 columns — Pack | Qty | Status | Action
+      Date & Weight are hidden; table still scrolls if needed.
+    */
+    .po-orders__header,
+    .po-order-row {
+        grid-template-columns:
+            minmax(100px, 2fr)  /* Pack   */
+            minmax(44px, .55fr) /* Qty    */
+            minmax(80px, 1fr)   /* Status */
+            auto;               /* Action */
+        min-width: 0;
+        gap: .35rem;
+    }
+
+    /* hide Weight (col 2) and Date (col 5) */
+    .po-orders__header > span:nth-child(2),
+    .po-order-row > .po-order-row__cell:nth-child(2),
+    .po-orders__header > span:nth-child(5),
+    .po-order-row > .po-order-row__date {
+        display: none;
+    }
+
+    .po-orders__header {
+        padding: .45rem .6rem;
+        font-size: .65rem;
+    }
+
+    .po-order-row {
+        padding: .75rem .6rem;
+    }
+
+    .po-order-row__cell {
+        font-size: .825rem;
+    }
+
+    .po-order-row__qty {
+        font-size: .95rem;
+    }
+
+    .po-btn--done {
+        padding: .4rem .75rem;
+        font-size: .78rem;
+    }
+
+    .po-weight-chip {
+        font-size: .68rem;
+        padding: .15rem .4rem;
+    }
+
+    .po-pill {
+        font-size: .65rem;
+        padding: .18rem .5rem;
+    }
+}
+
+/* ── Small mobile (≤ 380px) ──────────────────────────────────────────────── */
+@media (max-width: 380px) {
+
+    .po-topbar__sub {
+        display: none;
+    }
+
+    .po-card-header__sub {
+        display: none;
+    }
+
+    .po-sort-btn {
+        font-size: .68rem;
+        padding: 5px 6px;
+        gap: 3px;
+    }
+
+    /* Collapse Pack name SVG icon on tiny screens */
+    .po-order-row__name svg {
+        display: none;
+    }
+
+    .po-btn--done {
+        padding: .38rem .6rem;
+        font-size: .74rem;
+        gap: .3rem;
+    }
+
+    .po-btn--done svg {
+        width: 13px;
+        height: 13px;
+    }
 }

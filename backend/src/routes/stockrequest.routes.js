@@ -12,6 +12,10 @@ router.patch('/:id/status', controller.updateStatus);
 router.use(authenticate);
 router.post('/', controller.createStockRequest);
 router.get('/:id', controller.getStockRequestById);
+
+// Edit qty of a pending/approved request
+router.patch('/:id', controller.updateQty);
+
 router.delete('/:id', authorizeRole('ADMIN'), controller.deleteStockRequest);
 
 module.exports = router;

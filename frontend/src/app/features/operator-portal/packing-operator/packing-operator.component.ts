@@ -15,6 +15,8 @@ interface OrderUI extends StockRequest {
     completing: boolean;
 }
 
+type SortDir = 'oldest' | 'newest';
+
 @Component({
     selector: 'app-packing-operator',
     standalone: true,
@@ -26,12 +28,12 @@ export class PackingOperatorComponent implements OnInit {
 
     today = new Date();
 
+    private _allOrders: OrderUI[] = [];
     orders: OrderUI[] = [];
     ordersLoading = false;
     ordersError = '';
 
-    stockItems: any[] = [];
-    stockLoading = false;
+    sortDir: SortDir = 'oldest';
 
     packingOperators: UserResponse[] = [];
     operatorsLoading = false;
@@ -46,7 +48,6 @@ export class PackingOperatorComponent implements OnInit {
 
     ngOnInit(): void {
         this.loadOrders();
-        this.loadStock();
         this.loadPackingOperators();
     }
 
@@ -72,15 +73,29 @@ export class PackingOperatorComponent implements OnInit {
 
         this.stockRequestService.getAll().subscribe({
             next: res => {
-                this.orders = (res.data ?? [])
+                this._allOrders = (res.data ?? [])
                     .filter(r => r.status === 'PENDING' || r.status === 'APPROVED')
                     .map(r => ({ ...r, completing: false }));
+                this.applySort();
                 this.ordersLoading = false;
             },
             error: () => {
                 this.ordersError = 'Could not load orders. Please try again.';
                 this.ordersLoading = false;
             },
+        });
+    }
+
+    setSortDir(dir: SortDir): void {
+        this.sortDir = dir;
+        this.applySort();
+    }
+
+    private applySort(): void {
+        this.orders = [...this._allOrders].sort((a, b) => {
+            const aTime = new Date(a.requestedAt).getTime();
+            const bTime = new Date(b.requestedAt).getTime();
+            return this.sortDir === 'oldest' ? aTime - bTime : bTime - aTime;
         });
     }
 
@@ -103,10 +118,10 @@ export class PackingOperatorComponent implements OnInit {
                     }).subscribe({
                         next: () => {
                             order.completing = false;
-                            this.orders = this.orders.filter(
+                            this._allOrders = this._allOrders.filter(
                                 o => o.stockRequestId !== order.stockRequestId
                             );
-                            this.loadStock();
+                            this.applySort();
                         },
                         error: () => {
                             order.completing = false;
@@ -119,25 +134,26 @@ export class PackingOperatorComponent implements OnInit {
             });
     }
 
-    loadStock(): void {
-        this.stockLoading = true;
-        this.inventoryService.getAll().subscribe({
-            next: res => {
-                this.stockItems = res.data ?? [];
-                this.stockLoading = false;
-            },
-            error: () => {
-                this.stockLoading = false;
-            },
-        });
-    }
-
-    formatDate(d: Date): string {
-        return d.toLocaleDateString('en-LK', {
+    formatDate(d: Date | string): string {
+        const date = typeof d === 'string' ? new Date(d) : d;
+        return date.toLocaleDateString('en-LK', {
             weekday: 'long',
             year: 'numeric',
             month: 'long',
             day: 'numeric',
+        });
+    }
+
+    formatRequestedAt(isoString: string): string {
+        const d = new Date(isoString);
+        return d.toLocaleDateString('en-LK', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+        }) + ' ' + d.toLocaleTimeString('en-LK', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
         });
     }
 
