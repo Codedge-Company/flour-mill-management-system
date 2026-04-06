@@ -1,7 +1,7 @@
 // machineLog.service.js
 const MachineLog = require('../models/MachineLog');
 const User = require('../models/User');
-const { notifyMachineStart, notifyMachineStop } = require('./whatsapp.service');
+const { notifyMachineStart, notifyMachineStop, notifyStockEntry } = require('./whatsapp.service');
 
 // ✅ Change 'username' to match your actual User model field
 const NAME_FIELD = 'username';
@@ -44,7 +44,7 @@ async function recordStart(logId, sessionNumber) {
   if (!log) throw new Error('Machine log not found');
 
   const operatorName = log.operator?.[NAME_FIELD] || 'Unknown';
-  const partnerName  = log.partner?.[NAME_FIELD]  || 'Unknown';
+  const partnerName = log.partner?.[NAME_FIELD] || 'Unknown';
 
   let session = log.sessions.find(s => s.sessionNumber === sessionNumber);
   if (!session) {
@@ -57,11 +57,11 @@ async function recordStart(logId, sessionNumber) {
 
   try {
     await notifyMachineStart({
-      date:          log.date,
-      operator:      operatorName,
-      partner:       partnerName,
+      date: log.date,
+      operator: operatorName,
+      partner: partnerName,
       sessionNumber,
-      startTime:     session.startTime,
+      startTime: session.startTime,
     });
     session.startNotified = true;
   } catch (err) {
@@ -86,15 +86,15 @@ async function recordStop(logId, sessionNumber) {
   session.stopTime = new Date();
 
   const operatorName = log.operator?.[NAME_FIELD] || 'Unknown';
-  const partnerName  = log.partner?.[NAME_FIELD]  || 'Unknown';
+  const partnerName = log.partner?.[NAME_FIELD] || 'Unknown';
 
   try {
     await notifyMachineStop({
-      date:          log.date,
-      operator:      operatorName,
-      partner:       partnerName,
+      date: log.date,
+      operator: operatorName,
+      partner: partnerName,
       sessionNumber,
-      stopTime:      session.stopTime,
+      stopTime: session.stopTime,
     });
     session.stopNotified = true;
   } catch (err) {
@@ -116,7 +116,7 @@ async function updateOperators(logId, operatorId, partnerId) {
 }
 
 async function updateStockEntry(logId, { rawRiceReceived, input, output, rejection, rejectionDate }) {
-  return MachineLog.findByIdAndUpdate(
+  const log = await MachineLog.findByIdAndUpdate(
     logId,
     {
       hasStockEntry: true,
@@ -130,7 +130,30 @@ async function updateStockEntry(logId, { rawRiceReceived, input, output, rejecti
   )
     .populate('operator', NAME_FIELD)
     .populate('partner', NAME_FIELD);
+
+  if (log) {
+    const operatorName = log.operator?.[NAME_FIELD] || 'Unknown';
+    const partnerName = log.partner?.[NAME_FIELD] || 'Unknown';
+
+    try {
+      await notifyStockEntry({
+        date: log.date,
+        operator: operatorName,
+        partner: partnerName,
+        rawRiceReceived: rawRiceReceived ?? 0,
+        input: input ?? 0,
+        output: output ?? 0,
+        rejection: rejection ?? 0,
+        rejectionDate: rejectionDate || null,
+      });
+    } catch (err) {
+      console.error('[MachineLog] WhatsApp stock notification failed:', err.message);
+    }
+  }
+
+  return log;
 }
+
 
 async function getAllLogs({ page = 1, limit = 20 } = {}) {
   const skip = (page - 1) * limit;

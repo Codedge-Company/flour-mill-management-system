@@ -34,7 +34,8 @@ export class SidebarComponent {
     { label: 'Notifications',   route: '/notifications',   icon: 'pi-bell' },
     { label: 'User Management', route: '/user-management', icon: 'pi-user-edit',    adminOnly: true },
     { label: 'Budget Management', route: '/budget', icon: 'pi-chart-bar',    adminOnly: true },
-    { label: 'Flow Money', route: '/flow-money', icon: 'pi-dollar',    adminOnly: true }
+    { label: 'Flow Money', route: '/flow-money', icon: 'pi-dollar',    adminOnly: true },
+    { label: 'Milling Analysis', route: '/milling-analysis', icon: 'pi-chart-pie', adminOnly: true }
   ];
   readonly displayName: Signal<string> = computed(() => {
     const u: any = this.authService.currentUser();

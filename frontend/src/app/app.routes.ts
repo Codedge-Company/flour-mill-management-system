@@ -5,6 +5,7 @@ import { adminGuard } from './core/guards/admin.guard';
 import { MainLayoutComponent } from './layout/main-layout/main-layout.component';
 import { CreditPaymentsComponent } from './features/credit-payments/credit-payments.component';
 import { FlowMoneyComponent } from './features/flow-money/flow-money/flow-money.component';
+import { MillingAnalysisComponent } from './features/milling-analysis/milling-analysis.component';
 
 export const routes: Routes = [
   {
@@ -61,7 +62,8 @@ export const routes: Routes = [
       },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       { path: 'credit-payments', component: CreditPaymentsComponent },
-      { path: 'flow-money', component: FlowMoneyComponent }
+      { path: 'flow-money', component: FlowMoneyComponent },
+      { path: 'milling-analysis', component: MillingAnalysisComponent }
     ]
   },
   { path: '**', redirectTo: 'dashboard' }

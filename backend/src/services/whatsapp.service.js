@@ -243,5 +243,30 @@ async function notifyPackingDone({ packName, weightKg, qty, operatorName, time }
     `📅 Date: ${formatDate(time)}`
   );
 }
-
-module.exports = { notifyMachineStart, notifyMachineStop, getWhatsAppQr, notifyPackingDone, sendWhatsApp };
+async function notifyStockEntry({ date, operator, partner, rawRiceReceived, input, output, rejection, rejectionDate }) {
+  const efficiency = input > 0 ? ((output / input) * 100).toFixed(1) : '0.0';
+  const rejRate    = input > 0 ? ((rejection / input) * 100).toFixed(1) : '0.0';
+ 
+  let msg =
+    `📊 *Stock Entry Recorded*\n` +
+    `📅 Date: ${formatDate(date)}\n` +
+    `👷 Operator: ${operator}\n` +
+    `🤝 Partner: ${partner}\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `🌾 Raw Rice Received: ${rawRiceReceived ?? 0} kg\n` +
+    `📥 Input: ${input ?? 0} kg\n` +
+    `📤 Output: ${output ?? 0} kg\n` +
+    `🗑️ Rejection: ${rejection ?? 0} kg\n`;
+ 
+  if (rejectionDate) {
+    msg += `📆 Rejection Date: ${formatDate(rejectionDate)}\n`;
+  }
+ 
+  msg +=
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `⚙️ Efficiency: ${efficiency}%\n` +
+    `❌ Rejection Rate: ${rejRate}%`;
+ 
+  return sendWhatsApp(msg);
+}
+module.exports = { notifyMachineStart, notifyMachineStop, getWhatsAppQr, notifyPackingDone, sendWhatsApp, notifyStockEntry };
