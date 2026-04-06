@@ -155,20 +155,57 @@ async function updateStockEntry(logId, { rawRiceReceived, input, output, rejecti
 }
 
 
-async function getAllLogs({ page = 1, limit = 20 } = {}) {
+async function getAllLogs({ page = 1, limit = 20, from = null, to = null } = {}) {
   const skip = (page - 1) * limit;
+ 
+  // Build date filter if provided
+  const dateFilter = {};
+  if (from || to) {
+    dateFilter.date = {};
+    if (from) {
+      // from = "2026-03-28"  →  start of that day in SL time = 18:30 UTC previous day
+      const fromDate = startOfDaySL(new Date(from));
+      dateFilter.date.$gte = fromDate;
+    }
+    if (to) {
+      // to = "2026-04-06"  →  end of that day in SL time = 18:29:59 UTC same day
+      const toDate = endOfDaySL(new Date(to));
+      dateFilter.date.$lte = toDate;
+    }
+  }
+ 
   const [logs, total] = await Promise.all([
-    MachineLog.find()
+    MachineLog.find(dateFilter)
       .sort({ date: -1 })
       .skip(skip)
       .limit(limit)
       .populate('operator', NAME_FIELD)
       .populate('partner', NAME_FIELD),
-    MachineLog.countDocuments(),
+    MachineLog.countDocuments(dateFilter),
   ]);
+ 
   return { logs, total, page, limit };
 }
-
+// Sri Lanka is UTC+5:30. Dates are stored as midnight SL time = 18:30 UTC previous day.
+// "2026-04-06" SL midnight  →  "2026-04-05T18:30:00.000Z"
+function startOfDaySL(date) {
+  // Parse the date string as SL midnight: subtract 5h30m from midnight UTC of that date
+  const d = new Date(date);
+  // d is already at 00:00:00 UTC of the given date string
+  // SL midnight = d minus 5h30m
+  d.setUTCHours(0, 0, 0, 0);
+  d.setTime(d.getTime() - (5 * 60 + 30) * 60 * 1000);
+  return d;
+}
+ 
+function endOfDaySL(date) {
+  // End of day SL = start of next day SL minus 1ms
+  const d = new Date(date);
+  d.setUTCHours(0, 0, 0, 0);
+  d.setTime(d.getTime() - (5 * 60 + 30) * 60 * 1000); // SL midnight of this day
+  d.setTime(d.getTime() + 24 * 60 * 60 * 1000 - 1);   // + 24h - 1ms = end of SL day
+  return d;
+}
 function startOfDay(date) {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);

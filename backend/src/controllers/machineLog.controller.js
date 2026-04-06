@@ -91,16 +91,19 @@ const updateStockEntry = async (req, res) => {
 // GET /api/machine-logs
 const getAllLogs = async (req, res) => {
   try {
-    const { page, limit } = req.query;
+    const { page, limit, from, to } = req.query;
     const result = await machineLogService.getAllLogs({
-      page: parseInt(page) || 1,
+      page:  parseInt(page)  || 1,
       limit: parseInt(limit) || 20,
+      from:  from || null,   // expects "YYYY-MM-DD"
+      to:    to   || null,   // expects "YYYY-MM-DD"
     });
     res.json({ success: true, ...result });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+ 
 
 module.exports = {
   getOrCreateLog,

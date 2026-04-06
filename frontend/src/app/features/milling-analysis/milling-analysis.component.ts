@@ -98,17 +98,22 @@ export class MillingAnalysisComponent implements OnInit {
 
   // ── Data loading ────────────────────────────────────────────────────────────
   private fmtDate(d: Date): string {
-    return d.toISOString().split('T')[0];
+    // Use local date parts so "today" in SL doesn't shift to yesterday in UTC
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
   }
-
   load() {
     this.loading.set(true);
     this.error.set(null);
-
-    let params = new HttpParams().set('limit', '500');
+ 
+    // Always fetch all pages by using a high limit; date filtering is done server-side
+    let params = new HttpParams().set('limit', '500').set('page', '1');
+ 
     if (this.dateFrom()) params = params.set('from', this.fmtDate(this.dateFrom()!));
     if (this.dateTo())   params = params.set('to',   this.fmtDate(this.dateTo()!));
-
+ 
     this.http.get<{ success: boolean; logs: any[]; total: number }>(
       `${environment.apiUrl}/machine-logs`, { params }
     ).subscribe({
@@ -125,7 +130,7 @@ export class MillingAnalysisComponent implements OnInit {
       },
     });
   }
-
+ 
   private enrichEntry(l: any): StockEntry {
     const input     = l.input     ?? 0;
     const output    = l.output    ?? 0;
@@ -480,6 +485,7 @@ export class MillingAnalysisComponent implements OnInit {
         this.dateFrom.set(new Date(now.getFullYear(), now.getMonth(), 1));
         this.dateTo.set(now); break;
     }
+    console.log('Loading data for preset:', preset, 'from', this.dateFrom(), 'to', this.dateTo());
     this.load();
   }
 
