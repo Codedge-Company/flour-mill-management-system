@@ -1,4 +1,4 @@
-// machine-log.service.ts
+// machine-log.service.ts  — ADD the getAllLogs() method below to your existing service
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -16,8 +16,10 @@ export interface MachineSession {
 export interface MachineLog {
   _id: string;
   date: string;
-  operator: { _id: string; name: string };
-  partner: { _id: string; name: string };
+  // The backend populates with `username`; the field is typed as `name` here for legacy compat.
+  // The dashboard handles both via: (log.operator as any)?.username || (log.operator as any)?.name
+  operator: { _id: string; name: string; username?: string };
+  partner:  { _id: string; name: string; username?: string };
   sessions: MachineSession[];
   hasStockEntry: boolean;
   rawRiceReceived: number | null;
@@ -64,8 +66,7 @@ export class MachineLogService {
   recordStart(logId: string, sessionNumber: number): Observable<MachineLog> {
     return this.http
       .post<{ success: boolean; data: MachineLog }>(
-        `${this.base}/${logId}/sessions/${sessionNumber}/start`,
-        {}
+        `${this.base}/${logId}/sessions/${sessionNumber}/start`, {}
       )
       .pipe(map(r => r.data));
   }
@@ -73,8 +74,7 @@ export class MachineLogService {
   recordStop(logId: string, sessionNumber: number): Observable<MachineLog> {
     return this.http
       .post<{ success: boolean; data: MachineLog }>(
-        `${this.base}/${logId}/sessions/${sessionNumber}/stop`,
-        {}
+        `${this.base}/${logId}/sessions/${sessionNumber}/stop`, {}
       )
       .pipe(map(r => r.data));
   }
@@ -94,8 +94,28 @@ export class MachineLogService {
       .pipe(map(r => r.data));
   }
 
+  // ── NEW: Fetch paginated / date-filtered logs for the dashboard ───────────
+  getAllLogs(params: {
+    page?:  number;
+    limit?: number;
+    from?:  string | null;
+    to?:    string | null;
+  } = {}): Observable<{ logs: MachineLog[]; total: number; page: number; limit: number }> {
+    let httpParams = new HttpParams();
+    if (params.page  != null) httpParams = httpParams.set('page',  String(params.page));
+    if (params.limit != null) httpParams = httpParams.set('limit', String(params.limit));
+    if (params.from)          httpParams = httpParams.set('from',  params.from);
+    if (params.to)            httpParams = httpParams.set('to',    params.to);
+
+    // Backend responds: { success: true, logs: [...], total: N, page: N, limit: N }
+    return this.http
+      .get<{ success: boolean; logs: MachineLog[]; total: number; page: number; limit: number }>(
+        this.base, { params: httpParams }
+      )
+      .pipe(map(r => ({ logs: r.logs ?? [], total: r.total, page: r.page, limit: r.limit })));
+  }
+
   private toDateString(date: Date): string {
     return date.toISOString().split('T')[0];
   }
-  
 }
