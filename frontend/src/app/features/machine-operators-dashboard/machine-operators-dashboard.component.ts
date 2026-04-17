@@ -47,7 +47,7 @@ export interface DashSummary {
 @Component({
   selector: 'app-machine-operators-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, DecimalPipe, TitleCasePipe,
+  imports: [CommonModule, FormsModule, DecimalPipe,
             CalendarModule, ChartModule, SkeletonModule, TooltipModule],
   templateUrl: './machine-operators-dashboard.component.html',
   styleUrl: './machine-operators-dashboard.component.css',

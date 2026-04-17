@@ -22,6 +22,12 @@ export const OPERATOR_PORTAL_ROUTES: Routes = [
             import('./packing-operator/packing-operator.component')
                 .then(m => m.PackingOperatorComponent)
     },
+    {
+        path: 'sifting-operator',
+        loadComponent: () =>
+            import('./sifting-operator/sifting-operator.component')
+                .then(m => m.SiftingOperatorComponent)
+    },
 
     { path: '', redirectTo: 'machine-operator', pathMatch: 'full' }   // ← only redirect empty path
 ];

@@ -1,27 +1,36 @@
+// models/MachineLog.js  — UPDATED: adds batchNo field so it's stored in DB
 const mongoose = require('mongoose');
 
 const sessionSchema = new mongoose.Schema({
-  sessionNumber: { type: Number, required: true }, // 1, 2, or 3
-  startTime: { type: Date, default: null },
-  stopTime: { type: Date, default: null },
-  startNotified: { type: Boolean, default: false },
-  stopNotified: { type: Boolean, default: false },
+  sessionNumber:  { type: Number, required: true }, // 1, 2, 3, or 4
+  startTime:      { type: Date,    default: null },
+  stopTime:       { type: Date,    default: null },
+  startNotified:  { type: Boolean, default: false },
+  stopNotified:   { type: Boolean, default: false },
 });
 
 const machineLogSchema = new mongoose.Schema(
   {
     date: { type: Date, required: true },
+
     operator: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    partner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    partner:  { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+
+    // ── NEW: persisted batch number ────────────────────────────────────────
+    // Populated automatically by the service when rawRiceReceived is first set.
+    // Format: ST-{MM}-{DD}-{OperatorInitial}{PartnerInitial}
+    // e.g.  "ST-04-15-ST"
+    batchNo:   { type: String, default: null },
+
     sessions: { type: [sessionSchema], default: [] },
 
     // Optional stock section — only filled on some days
-    hasStockEntry: { type: Boolean, default: false },
-    rawRiceReceived: { type: Number, default: null },
-    input: { type: Number, default: null },
-    output: { type: Number, default: null },
-    rejection: { type: Number, default: null },
-    rejectionDate: { type: Date, default: null },
+    hasStockEntry:    { type: Boolean, default: false },
+    rawRiceReceived:  { type: Number,  default: null },
+    input:            { type: Number,  default: null },
+    output:           { type: Number,  default: null },
+    rejection:        { type: Number,  default: null },
+    rejectionDate:    { type: Date,    default: null },
   },
   { timestamps: true }
 );

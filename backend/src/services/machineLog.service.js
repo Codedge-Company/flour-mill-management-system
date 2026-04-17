@@ -116,6 +116,20 @@ async function updateOperators(logId, operatorId, partnerId) {
 }
 
 async function updateStockEntry(logId, { rawRiceReceived, input, output, rejection, rejectionDate }) {
+  // ── 1. Fetch the current document first so we can inspect batchNo ──────────
+  const existing = await MachineLog.findById(logId);
+  if (!existing) return null;
+
+  // ── 2. Determine whether this is the first rawRiceReceived entry ───────────
+  let batchNoUpdate = {};
+  if (!existing.batchNo && rawRiceReceived > 0) {
+    const { buildBatchNo } = require('./sievingLog.service');
+    // Merge incoming values so buildBatchNo sees the final state of the log
+    const draft = Object.assign(existing, { rawRiceReceived });
+    batchNoUpdate.batchNo = buildBatchNo(draft);
+  }
+
+  // ── 3. Persist stock fields + batchNo (if generated) in one round-trip ─────
   const log = await MachineLog.findByIdAndUpdate(
     logId,
     {
@@ -125,6 +139,7 @@ async function updateStockEntry(logId, { rawRiceReceived, input, output, rejecti
       output,
       rejection,
       rejectionDate: rejectionDate || null,
+      ...batchNoUpdate,               // only present when batchNo was generated
     },
     { new: true }
   )
@@ -133,7 +148,7 @@ async function updateStockEntry(logId, { rawRiceReceived, input, output, rejecti
 
   if (log) {
     const operatorName = log.operator?.[NAME_FIELD] || 'Unknown';
-    const partnerName = log.partner?.[NAME_FIELD] || 'Unknown';
+    const partnerName  = log.partner?.[NAME_FIELD]  || 'Unknown';
 
     try {
       await notifyStockEntry({
@@ -141,10 +156,10 @@ async function updateStockEntry(logId, { rawRiceReceived, input, output, rejecti
         operator: operatorName,
         partner: partnerName,
         rawRiceReceived: rawRiceReceived ?? 0,
-        input: input ?? 0,
-        output: output ?? 0,
-        rejection: rejection ?? 0,
-        rejectionDate: rejectionDate || null,
+        input:           input           ?? 0,
+        output:          output          ?? 0,
+        rejection:       rejection       ?? 0,
+        rejectionDate:   rejectionDate   || null,
       });
     } catch (err) {
       console.error('[MachineLog] WhatsApp stock notification failed:', err.message);

@@ -1,0 +1,566 @@
+<div class="sf-page">
+
+    <!-- ══ TOPBAR ════════════════════════════════════════════════════════════ -->
+    <header class="sf-topbar">
+        <div class="sf-topbar__brand">
+            <svg class="sf-topbar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+            </svg>
+            <div>
+                <span class="sf-topbar__title">Sifting Operator</span>
+                <span class="sf-topbar__sub">Flour Sifting · Batch Management</span>
+            </div>
+        </div>
+        <div class="sf-topbar__right">
+            <span class="sf-active-badge" *ngIf="log && !log.isCompleted">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                </svg>
+                In Progress
+            </span>
+            <span class="sf-done-badge" *ngIf="log?.isCompleted">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                    <polyline points="22 4 12 14.01 9 11.01" />
+                </svg>
+                Batch Complete
+            </span>
+            <button class="sf-btn sf-btn--ghost" (click)="logout()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <polyline points="16 17 21 12 16 7" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+                Logout
+            </button>
+        </div>
+    </header>
+
+    <main class="sf-content">
+
+        <!-- ══ CARD 1 — Batch & Operator Selection ════════════════════════════ -->
+        <div class="sf-card">
+            <div class="sf-card-header">
+                <svg class="sf-card-header__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                </svg>
+                <span class="sf-card-header__title">Select Batch &amp; Operator</span>
+            </div>
+
+            <div class="sf-card-body">
+                <div class="sf-grid-2">
+
+                    <!-- Batch -->
+                    <div class="sf-field sf-field--full">
+                        <label class="sf-label">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <path
+                                    d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                            </svg>
+                            Batch Number *
+                        </label>
+                        <div class="sf-select-wrap" [class.sf-select-wrap--loading]="batchesLoading">
+                            <select class="sf-select" [(ngModel)]="selectedBatchId"
+                                [disabled]="!!log || batchesLoading">
+                                <option value="">{{ batchesLoading ? 'Loading batches…' : 'Select a batch…' }}</option>
+                                <option *ngFor="let b of batches" [value]="b._id">
+                                    {{ b.batchNo }} — {{ formatDate(b.date) }}
+                                    ({{ b.remainingStock | number:'1.0-1' }} kg remaining)
+                                </option>
+                            </select>
+                            <svg class="sf-select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="6 9 12 15 18 9" />
+                            </svg>
+                        </div>
+
+                        <!-- ── Stock summary card ── -->
+                        <div class="sf-stock-card" *ngIf="selectedBatch && !log">
+                            <div class="sf-stock-card__header">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                                    <line x1="16" y1="2" x2="16" y2="6" />
+                                    <line x1="8" y1="2" x2="8" y2="6" />
+                                    <line x1="3" y1="10" x2="21" y2="10" />
+                                </svg>
+                                {{ formatDate(selectedBatch.date) }}
+                            </div>
+                            <div class="sf-stock-bar-wrap">
+                                <div class="sf-stock-bar__label">
+                                    <span>Sifted so far</span>
+                                    <span>{{ selectedBatch.totalSievedInput | number:'1.0-1' }} / {{
+                                        selectedBatch.output | number:'1.0-1' }} kg</span>
+                                </div>
+                                <div class="sf-stock-bar">
+                                    <div class="sf-stock-bar__fill"
+                                        [style.width.%]="selectedBatch.output ? (selectedBatch.totalSievedInput / selectedBatch.output) * 100 : 0">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="sf-stock-stats">
+                                <div class="sf-stock-stat">
+                                    <span class="sf-stock-stat__lbl">Milled Output</span>
+                                    <span class="sf-stock-stat__val sf-val--blue">{{ selectedBatch.output |
+                                        number:'1.0-1' }} kg</span>
+                                </div>
+                                <div class="sf-stock-stat">
+                                    <span class="sf-stock-stat__lbl">Already Sifted</span>
+                                    <span class="sf-stock-stat__val sf-val--amber">{{ selectedBatch.totalSievedInput |
+                                        number:'1.0-1' }} kg</span>
+                                </div>
+                                <div class="sf-stock-stat sf-stock-stat--highlight">
+                                    <span class="sf-stock-stat__lbl">Remaining to Sift</span>
+                                    <span class="sf-stock-stat__val sf-val--emerald">{{ selectedBatch.remainingStock |
+                                        number:'1.0-1' }} kg</span>
+                                </div>
+                            </div>
+                            <div class="sf-batch-info__row">
+                                <span class="sf-batch-info__lbl">Machine Operators</span>
+                                <span class="sf-batch-info__val">{{ selectedBatch.operatorName }} &amp; {{
+                                    selectedBatch.partnerName }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Operator (single) -->
+                    <div class="sf-field">
+                        <label class="sf-label">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                <circle cx="12" cy="7" r="4" />
+                            </svg>
+                            Sifting Operator *
+                        </label>
+                        <div class="sf-select-wrap">
+                            <select class="sf-select" [(ngModel)]="selectedOperatorId" [disabled]="!!log">
+                                <option value="">Select operator…</option>
+                                <option *ngFor="let u of operatorList" [value]="u._id">
+                                    {{ u.full_name }} ({{ u.username }})
+                                </option>
+                            </select>
+                            <svg class="sf-select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="6 9 12 15 18 9" />
+                            </svg>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="sf-error-msg" *ngIf="logError">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path
+                            d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                        <line x1="12" y1="9" x2="12" y2="13" />
+                        <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                    {{ logError }}
+                </div>
+
+                <div class="sf-spinner-wrap" *ngIf="logLoading">
+                    <div class="sf-spinner"></div><span>Setting up sifting log…</span>
+                </div>
+
+                <div class="sf-start-cta" *ngIf="!log && !logLoading">
+                    <div class="sf-start-cta__text">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                        </svg>
+                        Select a batch and operator to begin sifting
+                    </div>
+                    <button class="sf-btn sf-btn--primary" [disabled]="!selectedBatchId || !selectedOperatorId"
+                        (click)="startLog()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="5 3 19 12 5 21 5 3" />
+                        </svg>
+                        Start Sifting
+                    </button>
+                </div>
+
+                <!-- Active log strip -->
+                <div class="sf-log-strip" *ngIf="log">
+                    <div class="sf-log-strip__batch">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path
+                                d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                        </svg>
+                        <span>{{ log.batchNo }}</span>
+                    </div>
+                    <div class="sf-log-strip__ops">
+                        <div class="sf-mini-av op-av">{{ log.operator.username[0].toUpperCase() }}</div>
+                        <span>{{ log.operator.username }}</span>
+                    </div>
+                    <div class="sf-log-strip__date">{{ formatDate(log.date) }}</div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ══ CARD 2 — Sifting Parts ════════════════════════════════════════ -->
+        <div class="sf-card" *ngIf="log">
+            <div class="sf-card-header">
+                <svg class="sf-card-header__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                </svg>
+                <div>
+                    <span class="sf-card-header__title">Sifting Parts</span>
+                    <span class="sf-card-header__sub">Add each sifting run as a separate part</span>
+                </div>
+                <button class="sf-btn sf-btn--primary sf-btn--sm" *ngIf="!log.isCompleted" [disabled]="showAddForm"
+                    (click)="openAddForm()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    Add Part
+                </button>
+            </div>
+
+            <div class="sf-card-body">
+
+                <!-- Completed banner -->
+                <div class="sf-completed-banner" *ngIf="log.isCompleted">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                        <polyline points="22 4 12 14.01 9 11.01" />
+                    </svg>
+                    <div>
+                        <strong>Batch {{ log.batchNo }} — Sifting Complete!</strong>
+                        <span>Completed {{ formatTime(log.completedAt) }}
+                            <span class="sf-wa-confirmed" *ngIf="log.completionNotified">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="#25d366" stroke-width="1.8"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7
+                           8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8
+                           8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                                </svg>
+                                WhatsApp sent
+                            </span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- ── Add Part form ── -->
+                <div class="sf-part-form" *ngIf="showAddForm">
+                    <div class="sf-part-form__title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                        New Part — Part {{ log.parts.length + 1 }}
+                    </div>
+                    <div class="sf-grid-3">
+                        <!-- Input field — add max binding and error class -->
+                        <div class="sf-field">
+                            <label class="sf-label">Input (kg)
+                                <span class="sf-label-hint" *ngIf="sessionRemaining > 0">
+                                    max {{ sessionRemaining | number:'1.0-1' }} kg
+                                </span>
+                            </label>
+                            <div class="sf-input-addon">
+                                <input type="number" class="sf-input"
+                                    [class.sf-input--danger]="newPartInputExceedsLimit" placeholder="0.0" min="0"
+                                    [max]="sessionRemaining" step="0.1" [(ngModel)]="newPart.input" />
+                                <span class="sf-addon-label">KG</span>
+                            </div>
+                            <span class="sf-field-error" *ngIf="newPartInputExceedsLimit">
+                                Exceeds remaining stock ({{ sessionRemaining | number:'1.0-1' }} kg left)
+                            </span>
+                        </div>
+                        <div class="sf-field">
+                            <label class="sf-label">Output (kg)</label>
+                            <div class="sf-input-addon">
+                                <input type="number" class="sf-input" placeholder="0.0" min="0" step="0.1"
+                                    [(ngModel)]="newPart.output" />
+                                <span class="sf-addon-label">KG</span>
+                            </div>
+                        </div>
+                        <div class="sf-field">
+                            <label class="sf-label">Rejection (kg)</label>
+                            <div class="sf-input-addon">
+                                <input type="number" class="sf-input sf-input--danger" placeholder="0.0" min="0"
+                                    step="0.1" [(ngModel)]="newPart.rejection" />
+                                <span class="sf-addon-label">KG</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="sf-field">
+                        <label class="sf-label">Note (optional)</label>
+                        <input type="text" class="sf-input" placeholder="e.g. 2nd round, fine mesh used…"
+                            [(ngModel)]="newPart.note" />
+                    </div>
+                    <div class="sf-part-form__actions">
+                        <button class="sf-btn sf-btn--ghost" (click)="cancelAdd()">Cancel</button>
+                        <button class="sf-btn sf-btn--primary" (click)="submitPart()"
+                            [disabled]="addingPart || !newPartValid">
+                            <span class="sf-spinner sf-spinner--sm sf-spinner--white" *ngIf="addingPart"></span>
+                            <svg *ngIf="!addingPart" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                                <polyline points="17 21 17 13 7 13 7 21" />
+                                <polyline points="7 3 7 8 15 8" />
+                            </svg>
+                            {{ addingPart ? 'Saving…' : 'Save Part' }}
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ── Empty state ── -->
+                <div class="sf-empty-parts" *ngIf="!log.parts.length && !showAddForm">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                    </svg>
+                    <p>No sifting parts yet.</p>
+                    <span>Click <strong>Add Part</strong> to record the first sifting run.</span>
+                </div>
+
+                <!-- ── Parts table ── -->
+                <div class="sf-parts-table-wrap" *ngIf="log.parts.length">
+                    <table class="sf-parts-table">
+                        <thead>
+                            <tr>
+                                <th>Part</th>
+                                <th>Input</th>
+                                <th>Output</th>
+                                <th>Rejection</th>
+                                <th>Loss</th>
+                                <th>Efficiency</th>
+                                <th *ngIf="!log.isCompleted"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <ng-container *ngFor="let part of log.parts">
+                                <!-- View row -->
+                                <tr *ngIf="editingPartId !== part._id" class="sf-part-row">
+                                    <td>
+                                        <span class="sf-part-badge">Part {{ part.partNo }}</span>
+                                        <span class="sf-part-note" *ngIf="part.note">{{ part.note }}</span>
+                                    </td>
+                                    <td class="sf-td--num sf-val--blue">{{ part.input | number:'1.0-1' }} kg</td>
+                                    <td class="sf-td--num sf-val--emerald">{{ part.output | number:'1.0-1' }} kg</td>
+                                    <td class="sf-td--num sf-val--red">{{ part.rejection | number:'1.0-1' }} kg</td>
+                                    <td class="sf-td--num sf-val--amber">
+                                        {{ ((part.input ?? 0) - (part.output ?? 0) - (part.rejection ?? 0)) |
+                                        number:'1.0-1' }} kg
+                                    </td>
+                                    <td class="sf-td--num">
+                                        <span class="sf-eff-badge" *ngIf="part.input && part.output">
+                                            {{ partEfficiency(part) }}
+                                        </span>
+                                        <span *ngIf="!part.input || !part.output">—</span>
+                                    </td>
+                                    <td *ngIf="!log.isCompleted" class="sf-td--actions">
+                                        <!-- <button class="sf-icon-btn sf-icon-btn--edit" (click)="startEdit(part)"
+                                            title="Edit">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                            </svg>
+                                        </button> -->
+                                        <button class="sf-icon-btn sf-icon-btn--del"
+                                            [disabled]="deletingPartId === part._id" (click)="deletePart(part._id)"
+                                            title="Delete">
+                                            <span class="sf-spinner sf-spinner--xs"
+                                                *ngIf="deletingPartId === part._id"></span>
+                                            <svg *ngIf="deletingPartId !== part._id" viewBox="0 0 24 24" fill="none"
+                                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                stroke-linejoin="round">
+                                                <polyline points="3 6 5 6 21 6" />
+                                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                                                <path d="M10 11v6M14 11v6" />
+                                            </svg>
+                                        </button>
+                                    </td>
+                                </tr>
+
+                                <!-- Edit row -->
+                                <tr *ngIf="editingPartId === part._id" class="sf-part-row sf-part-row--editing">
+                                    <td>
+                                        <span class="sf-part-badge sf-part-badge--edit">Part {{ part.partNo }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="sf-input-addon sf-input-addon--sm">
+                                            <input type="number" class="sf-input sf-input--sm" placeholder="0.0"
+                                                step="0.1" [(ngModel)]="editPart.input" />
+                                            <span class="sf-addon-label">KG</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="sf-input-addon sf-input-addon--sm">
+                                            <input type="number" class="sf-input sf-input--sm" placeholder="0.0"
+                                                step="0.1" [(ngModel)]="editPart.output" />
+                                            <span class="sf-addon-label">KG</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="sf-input-addon sf-input-addon--sm">
+                                            <input type="number" class="sf-input sf-input--sm sf-input--danger"
+                                                placeholder="0.0" step="0.1" [(ngModel)]="editPart.rejection" />
+                                            <span class="sf-addon-label">KG</span>
+                                        </div>
+                                    </td>
+                                    <td colspan="2">
+                                        <input type="text" class="sf-input sf-input--sm" placeholder="Note…"
+                                            [(ngModel)]="editPart.note" />
+                                    </td>
+                                    <td class="sf-td--actions">
+                                        <button class="sf-icon-btn sf-icon-btn--save"
+                                            [disabled]="savingPartId === part._id" (click)="saveEdit(part._id)"
+                                            title="Save">
+                                            <span class="sf-spinner sf-spinner--xs"
+                                                *ngIf="savingPartId === part._id"></span>
+                                            <svg *ngIf="savingPartId !== part._id" viewBox="0 0 24 24" fill="none"
+                                                stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                                                stroke-linejoin="round">
+                                                <polyline points="20 6 9 17 4 12" />
+                                            </svg>
+                                        </button>
+                                        <button class="sf-icon-btn" (click)="cancelEdit()" title="Cancel">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <line x1="18" y1="6" x2="6" y2="18" />
+                                                <line x1="6" y1="6" x2="18" y2="18" />
+                                            </svg>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </ng-container>
+
+                            <!-- Totals row -->
+                            <!-- AFTER -->
+                            <tr class="sf-parts-totals" *ngIf="log.parts.length > 1">
+                                <td><strong>Total</strong></td>
+                                <td class="sf-td--num sf-val--blue"><strong>{{ totalInput | number:'1.0-1' }}
+                                        kg</strong></td>
+                                <td class="sf-td--num sf-val--emerald"><strong>{{ totalOutput | number:'1.0-1' }}
+                                        kg</strong></td>
+                                <td class="sf-td--num sf-val--red"><strong>{{ totalRejection | number:'1.0-1' }}
+                                        kg</strong></td>
+                                <td class="sf-td--num sf-val--amber"><strong>{{ totalLoss | number:'1.0-1' }}
+                                        kg</strong></td>
+                                <td class="sf-td--num">
+                                    <span class="sf-eff-badge sf-eff-badge--total" *ngIf="overallEfficiency">
+                                        {{ overallEfficiency }}
+                                    </span>
+                                </td>
+                                <td *ngIf="!log.isCompleted"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ── Overall metrics ── -->
+                <div class="sf-metrics" *ngIf="log.parts.length">
+                    <div class="sf-metric" *ngIf="overallEfficiency">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                        </svg>
+                        <span class="sf-metric__lbl">Overall Efficiency</span>
+                        <span class="sf-metric__val sf-metric__val--green">{{ overallEfficiency }}</span>
+                    </div>
+                    <div class="sf-metric" *ngIf="totalLoss > 0">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path
+                                d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                            <line x1="12" y1="9" x2="12" y2="13" />
+                            <line x1="12" y1="17" x2="12.01" y2="17" />
+                        </svg>
+                        <span class="sf-metric__lbl">Total Loss</span>
+                        <span class="sf-metric__val sf-metric__val--amber">{{ totalLoss | number:'1.1-1' }} kg</span>
+                    </div>
+                    <div class="sf-metric">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                        </svg>
+                        <span class="sf-metric__lbl">Parts Done</span>
+                        <span class="sf-metric__val">{{ log.parts.length }}</span>
+                    </div>
+                </div>
+
+                <!-- ── Complete button ── -->
+                <!-- <div class="sf-action-row" *ngIf="!log.isCompleted">
+                    <button class="sf-btn sf-btn--complete" (click)="confirmComplete()"
+                        [disabled]="completing || !canComplete">
+                        <span class="sf-spinner sf-spinner--sm sf-spinner--white" *ngIf="completing"></span>
+                        <svg *ngIf="!completing" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                            <polyline points="22 4 12 14.01 9 11.01" />
+                        </svg>
+                        {{ completing ? 'Completing…' : 'Complete Batch' }}
+                    </button>
+                    <span class="sf-complete-hint" *ngIf="!canComplete">Add at least one part to complete</span>
+                </div> -->
+
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ══ CONFIRM DIALOG ═════════════════════════════════════════════════════ -->
+    <div class="sf-overlay" *ngIf="showConfirmDialog" (click)="cancelComplete()">
+        <div class="sf-dialog" (click)="$event.stopPropagation()">
+            <div class="sf-dialog__icon-wrap">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7
+                   8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8
+                   8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                </svg>
+            </div>
+            <h3 class="sf-dialog__title">Complete Sifting Batch?</h3>
+            <p class="sf-dialog__body">
+                Batch <strong>{{ log?.batchNo }}</strong> will be marked complete across
+                <strong>{{ log?.parts?.length }}</strong> part(s). A WhatsApp notification will be sent.
+                This <strong>cannot be undone</strong>.
+            </p>
+            <div class="sf-dialog__summary" *ngIf="log">
+                <div class="sf-dialog__row"><span>Parts</span><strong>{{ log.parts.length }}</strong></div>
+                <div class="sf-dialog__row"><span>Total Input</span><strong>{{ totalInput | number:'1.0-1' }}
+                        kg</strong></div>
+                <div class="sf-dialog__row"><span>Total Output</span><strong>{{ totalOutput | number:'1.0-1' }}
+                        kg</strong></div>
+                <div class="sf-dialog__row"><span>Total Rejection</span><strong>{{ totalRejection | number:'1.0-1' }}
+                        kg</strong></div>
+                <div class="sf-dialog__row" *ngIf="overallEfficiency">
+                    <span>Efficiency</span><strong class="sf-val--green">{{ overallEfficiency }}</strong>
+                </div>
+            </div>
+            <div class="sf-dialog__actions">
+                <button class="sf-btn sf-btn--ghost" (click)="cancelComplete()">Cancel</button>
+                <button class="sf-btn sf-btn--complete" (click)="doComplete()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                        <polyline points="22 4 12 14.01 9 11.01" />
+                    </svg>
+                    Yes, Complete &amp; Notify
+                </button>
+            </div>
+        </div>
+    </div>
+
+</div>

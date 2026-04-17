@@ -269,4 +269,28 @@ async function notifyStockEntry({ date, operator, partner, rawRiceReceived, inpu
  
   return sendWhatsApp(msg);
 }
-module.exports = { notifyMachineStart, notifyMachineStop, getWhatsAppQr, notifyPackingDone, sendWhatsApp, notifyStockEntry };
+async function notifySiftingComplete({
+  batchNo, date, operator, parts,
+  input, output, rejection, efficiency, completedAt
+}) {
+  const dateStr      = new Date(date).toLocaleDateString('en-LK', { timeZone: 'Asia/Colombo' });
+  const completedStr = formatTime(completedAt);
+
+  const message = [
+    `✅ *Sifting Completed*`,
+    `📦 Batch: *${batchNo}*`,
+    `📅 Date: ${dateStr}`,
+    `👤 Operator: ${operator}`,
+    `🔢 Parts: ${parts}`,
+    ``,
+    `📥 Input:      ${input} kg`,
+    `📤 Output:     ${output} kg`,
+    `🗑️  Rejection:  ${rejection} kg`,
+    `📊 Efficiency: ${efficiency}%`,
+    ``,
+    `🕐 Completed at ${completedStr}`,
+  ].join('\n');
+
+  return sendWhatsApp(message);   // ✅ was sendWhatsAppMessage (undefined)
+}
+module.exports = { notifyMachineStart, notifyMachineStop, getWhatsAppQr, notifyPackingDone, sendWhatsApp, notifyStockEntry, notifySiftingComplete  };

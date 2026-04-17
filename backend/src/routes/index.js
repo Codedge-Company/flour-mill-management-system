@@ -21,4 +21,5 @@ router.use('/budget', require('./budget.routes'));
 router.use('/budget-entries', require('./budgetEntry.routes'));
 router.use('/machine-logs', require('./machineLog.routes'));
 router.use('/sale-requests', require('./saleRequest.routes'));
+router.use('/sieving-logs', require('./sievingLog.routes'));
 module.exports = router;
