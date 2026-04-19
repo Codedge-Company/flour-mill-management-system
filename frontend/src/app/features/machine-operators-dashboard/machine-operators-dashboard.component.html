@@ -286,7 +286,7 @@
         }
       </div>
 
-      <!-- Grinded Employees -->
+      <!-- Operators -->
       <div class="sum-card">
         <div class="sum-card-top">
           <span class="sum-label">Operators</span>
@@ -512,11 +512,12 @@
             @for (entry of sortedEntries().slice(0, 8); track entry._id) {
               <div class="emp-row">
                 <div class="emp-avatars">
+                  <!-- FIX: replaced ?. with . (string index is never undefined in TS strict mode) -->
                   <div class="emp-avatar emp-avatar--op">
-                    {{ entry.operatorName[0]?.toUpperCase() ?? '?' }}
+                    {{ entry.operatorName[0].toUpperCase() }}
                   </div>
                   <div class="emp-avatar emp-avatar--pr">
-                    {{ entry.partnerName[0]?.toUpperCase() ?? '?' }}
+                    {{ entry.partnerName[0].toUpperCase() }}
                   </div>
                 </div>
                 <div class="emp-info">
@@ -591,8 +592,9 @@
                     </td>
                     <td>
                       <div class="table-emp">
-                        <div class="mini-avatar op-av">{{ row.operatorName[0]?.toUpperCase() }}</div>
-                        <div class="mini-avatar pr-av">{{ row.partnerName[0]?.toUpperCase() }}</div>
+                        <!-- FIX: replaced ?. with . (string index is never undefined in TS strict mode) -->
+                        <div class="mini-avatar op-av">{{ row.operatorName[0].toUpperCase() }}</div>
+                        <div class="mini-avatar pr-av">{{ row.partnerName[0].toUpperCase() }}</div>
                         <span class="emp-pair-label">{{ row.operatorName }}, {{ row.partnerName }}</span>
                       </div>
                     </td>
@@ -633,4 +635,4 @@
     </section>
 
   </main>
-</div>
+</div>  

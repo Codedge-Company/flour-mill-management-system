@@ -93,12 +93,11 @@ export class SiftingOperatorComponent implements OnInit {
   }
 
   loadOperators(): void {
-    this.userService.getUsersByRoles(['MACHINE_OPERATOR']).subscribe({
-      next: users => (this.operatorList = users),
+    this.userService.getAllUsers().subscribe({
+      next: users =>
+        (this.operatorList = users.filter(u => u.role !== 'ADMIN')),
       error: () => {
-        this.userService.getAllUsers().subscribe(
-          all => (this.operatorList = all.filter(u => u.role === 'MACHINE_OPERATOR'))
-        );
+        this.operatorList = [];
       },
     });
   }
@@ -256,7 +255,7 @@ export class SiftingOperatorComponent implements OnInit {
   }
 
   get newPartValid(): boolean {
-    const hasInput  = this.newPart.input  !== null && this.newPart.input  > 0;
+    const hasInput = this.newPart.input !== null && this.newPart.input > 0;
     const hasOutput = this.newPart.output !== null && this.newPart.output > 0;
     if (!hasInput && !hasOutput) return false;
     if (this.newPartInputExceedsLimit) return false;
