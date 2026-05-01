@@ -159,4 +159,12 @@ private mapItem = (raw: any): InventoryItem => ({
     map(res => ({ success: true, data: this.mapItem(res.data ?? res) }))
   );
 }
+setStock(packTypeId: string, setQty: number): Observable<ApiResponse<InventoryItem>> {
+  return this.http.patch<any>(
+    `${this.inventoryUrl}/${packTypeId}`,
+    { set_qty: setQty }
+  ).pipe(
+    map(res => ({ success: true, data: this.mapItem(res.data ?? res) }))
+  );
+}
 }

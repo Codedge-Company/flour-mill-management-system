@@ -310,7 +310,7 @@
   background: var(--surface, #fff);
   border: 1px solid var(--border, #e2e8f0);
   border-radius: 14px;
-  padding: 0;
+  padding-bottom: 12px;
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -850,12 +850,6 @@
 
   .inv-actions {
     flex-wrap: inherit;
-  }
-
-  .action-group {
-    margin-left: 0;
-    width: 100%;
-    justify-content: flex-end;
   }
 
   .empty-state-card {

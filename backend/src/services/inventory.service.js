@@ -64,24 +64,81 @@ const create = async ({ pack_type_id, stock_qty }) => {
   return enrichOne(populated);
 };
 
-const update = async (pack_type_id, body, userId) => {   // ← add userId param
-  const { add_qty } = body;
+// ── UPDATE (add stock OR correct stock) ───────────────────────────
+const update = async (pack_type_id, body, userId) => {
+  const { add_qty, set_qty, correction_reason } = body;
 
-  if (add_qty === undefined || add_qty === null)
-    throw Object.assign(new Error('add_qty is required'), { statusCode: 400 });
+  // ── Must provide exactly one of add_qty / set_qty ──
+  if (add_qty === undefined && set_qty === undefined)
+    throw Object.assign(
+      new Error('Either add_qty or set_qty is required'),
+      { statusCode: 400 }
+    );
 
-  const addQty = Number(add_qty);
-  if (isNaN(addQty) || addQty <= 0)
-    throw Object.assign(new Error('add_qty must be a positive number'), { statusCode: 400 });
+  if (add_qty !== undefined && set_qty !== undefined)
+    throw Object.assign(
+      new Error('Provide either add_qty or set_qty, not both'),
+      { statusCode: 400 }
+    );
 
+  let mongoUpdate;
+  let isCorrection = false;
+  let reason = 'Data Entry Mistake'; // ← moved here: outer scope, default value
+
+  // ── Branch: add stock (existing behaviour) ──
+  if (add_qty !== undefined) {
+    const addQty = Number(add_qty);
+    if (isNaN(addQty) || addQty <= 0)
+      throw Object.assign(
+        new Error('add_qty must be a positive number'),
+        { statusCode: 400 }
+      );
+
+    mongoUpdate = {
+      $inc: { stock_qty: addQty },
+      $set: { last_updated_at: new Date() },
+    };
+  }
+
+  // ── Branch: correct stock (overwrite) ──
+  if (set_qty !== undefined) {
+    const setQty = Number(set_qty);
+    if (isNaN(setQty) || setQty < 0)
+      throw Object.assign(
+        new Error('set_qty must be a non-negative number'),
+        { statusCode: 400 }
+      );
+
+    // Assign validated reason (falls back to default if blank or too short)
+    reason = (correction_reason && String(correction_reason).trim().length >= 3)
+      ? String(correction_reason).trim()
+      : 'Data Entry Mistake'; // ← no longer const, just assignment
+
+    mongoUpdate = {
+      $set: { stock_qty: setQty, last_updated_at: new Date() },
+    };
+    isCorrection = true;
+  }
+
+  // ── Apply update ──
   const inv = await Inventory.findOneAndUpdate(
     { pack_type_id },
-    { $inc: { stock_qty: addQty }, $set: { last_updated_at: new Date() } },
+    mongoUpdate,
     { new: true }
   ).populate('pack_type_id', 'pack_name weight_kg is_active').lean();
 
   if (!inv) throw Object.assign(new Error('Inventory record not found'), { statusCode: 404 });
 
+  // ── Log correction — `reason` is now accessible here ✅ ──
+  if (isCorrection) {
+    console.info(
+      `[Inventory] Stock correction on pack_type_id=${pack_type_id} ` +
+      `→ set to ${inv.stock_qty} by userId=${userId ?? 'unknown'}. ` +
+      `Reason: "${reason}"`
+    );
+  }
+
+  // ── Low-stock notification (applies to both add and set) ──
   const threshold = await StockThreshold.findOne({ pack_type_id }).lean();
   try {
     if (threshold && inv.stock_qty <= threshold.threshold_qty) {
@@ -97,7 +154,6 @@ const update = async (pack_type_id, body, userId) => {   // ← add userId param
     }
   } catch (notifErr) {
     console.error('[Inventory] Notification create failed:', notifErr.message);
-
   }
 
   return enrichOne(inv);

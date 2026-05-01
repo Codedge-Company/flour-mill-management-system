@@ -12,6 +12,7 @@ router.put('/:pack_type_id', inventoryController.updateInventory);
 router.use(authenticate);
 router.get('/:pack_type_id', inventoryController.getInventoryByPackType);
 router.post('/', authorizeRole('ADMIN'), inventoryController.createInventory);
+router.patch('/:pack_type_id', inventoryController.updateInventory);
 router.delete('/:pack_type_id', authorizeRole('ADMIN'), inventoryController.deleteInventory);
 
 module.exports = router;

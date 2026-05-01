@@ -12,6 +12,7 @@ import { CreatePackTypeDialogComponent } from '../create-pack-type-dialog/create
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { RequestStockDialogComponent } from '../request-stock-dialog/request-stock-dialog.component';
 import { RequestedStockSectionComponent } from '../requested-stock-section/requested-stock-section.component';
+import { EditStockDialogComponent } from '../edit-stock-dialog/edit-stock-dialog.component';
 
 @Component({
   selector: 'app-inventory-list',
@@ -27,7 +28,8 @@ import { RequestedStockSectionComponent } from '../requested-stock-section/reque
     CreatePackTypeDialogComponent,
     ConfirmDialogComponent,
     RequestStockDialogComponent,
-    RequestedStockSectionComponent
+    RequestedStockSectionComponent,
+    EditStockDialogComponent
   ],
   templateUrl: './inventory-list.component.html',
   styleUrl: './inventory-list.component.css',
@@ -52,6 +54,7 @@ export class InventoryListComponent implements OnInit {
   saveNameLoading = signal(false);
   showRequestStock = signal(false);
   showRequestedStocks = signal(false);
+  showEditStock = signal(false);
 
   constructor(private inventoryService: InventoryService) { }
 
@@ -116,6 +119,7 @@ export class InventoryListComponent implements OnInit {
     this.selectedItem.set(null);
     this.showRequestStock.set(false);
     this.showRequestedStocks.set(false);
+    this.showEditStock.set(false);
     this.cancelEdit();
   }
 
@@ -242,5 +246,14 @@ onRequestedStocksBackdropClick(event: MouseEvent): void {
   if ((event.target as HTMLElement).classList.contains('dialog-backdrop')) {
     this.closeRequestedStocks();
   }
+}
+openEditStock(item: InventoryItem): void {
+  this.selectedItem.set(item);
+  this.showEditStock.set(true);
+}
+onEditStockSuccess(): void {
+  this.closeAll();
+  this.showSuccess('Stock corrected successfully.');
+  this.load();
 }
 }
