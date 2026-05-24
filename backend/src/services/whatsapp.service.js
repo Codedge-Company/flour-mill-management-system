@@ -6,12 +6,11 @@ const path = require('path');
 
 const TO = process.env.NOTIFY_WHATSAPP_TO || '94779337369';
 
-// ── State ──────────────────────────────────────────────────────────────────
 let client = null;
 let qrData = { qrImage: null, ready: false };
 let starting = false;
 
-// ── Memory-optimised Puppeteer args ───────────────────────────────────────
+// ── Puppeteer args ──
 const PUPPETEER_ARGS = [
   '--no-sandbox',
   '--disable-setuid-sandbox',
@@ -28,75 +27,40 @@ const PUPPETEER_ARGS = [
   '--disable-sync',
 ];
 
-// ── Dynamically resolve installed Chrome executable ───────────────────────
-function resolveChromePath() {
-  // 1. Explicit env var always wins (set this in Render dashboard)
+// ── Chrome path ──
+function getChromePath() {
   if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-    console.log('[WhatsApp] Using Chrome from env:', process.env.PUPPETEER_EXECUTABLE_PATH);
     return process.env.PUPPETEER_EXECUTABLE_PATH;
   }
 
-  // 2. Auto-discover from the chrome/ cache dir created by postinstall
-  try {
-    const cacheDir = path.join(process.cwd(), 'chrome');
-    if (!fs.existsSync(cacheDir)) {
-      console.warn('[WhatsApp] chrome/ cache dir not found — falling back to bundled Chromium');
-      return undefined;
-    }
+  if (process.platform === 'win32') {
+    const windowsPaths = [
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+    ];
 
-    // Walk: chrome/<platform>-<buildId>/chrome-<platform>/chrome[.exe]
-    for (const platformDir of fs.readdirSync(cacheDir)) {
-      const inner = path.join(cacheDir, platformDir);
-      if (!fs.statSync(inner).isDirectory()) continue;
-
-      for (const browserDir of fs.readdirSync(inner)) {
-        const candidates = [
-          path.join(inner, browserDir, 'chrome'),        // Linux
-          path.join(inner, browserDir, 'chrome.exe'),    // Windows
-          path.join(inner, browserDir, 'Google Chrome for Testing.app',
-            'Contents', 'MacOS', 'Google Chrome for Testing'), // macOS
-        ];
-        for (const candidate of candidates) {
-          if (fs.existsSync(candidate)) {
-            console.log('[WhatsApp] Auto-discovered Chrome at:', candidate);
-            return candidate;
-          }
-        }
-      }
+    for (const p of windowsPaths) {
+      if (fs.existsSync(p)) return p;
     }
-  } catch (e) {
-    console.warn('[WhatsApp] Chrome auto-discovery failed:', e.message);
   }
 
-  console.warn('[WhatsApp] No Chrome found — will use whatsapp-web.js bundled Chromium');
   return undefined;
 }
 
-// ── Lazy init — called only when needed ───────────────────────────────────
+// ── INIT (ONLY WHEN CALLED) ──
 function initWhatsApp() {
   if (client || starting) return;
   starting = true;
 
   console.log('[WhatsApp] Initialising client...');
 
-  const executablePath = getChromePath() || resolveChromePath();
+  const executablePath = getChromePath();
 
   client = new Client({
     authStrategy: new LocalAuth({ clientId: 'flour-mill' }),
     puppeteer: {
-      headless: false,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--no-first-run',
-        '--no-zygote',
-        '--disable-extensions',
-        '--disable-background-networking',
-        '--disable-default-apps',
-        '--mute-audio',
-        '--disable-sync',
-      ],
+      headless: 'new',   // ✅ FIX (no GUI, low CPU)
+      args: PUPPETEER_ARGS,
       ...(executablePath ? { executablePath } : {}),
     },
   });
@@ -104,114 +68,90 @@ function initWhatsApp() {
   client.on('qr', async (qr) => {
     console.log('[WhatsApp] QR received');
     qrcode.generate(qr, { small: true });
+
     try {
-      qrData = { qrImage: await QRCode.toDataURL(qr), ready: false };
+      qrData = {
+        qrImage: await QRCode.toDataURL(qr),
+        ready: false,
+      };
     } catch (e) {
-      console.error('[WhatsApp] QR image gen failed:', e.message);
+      console.error('[WhatsApp] QR error:', e.message);
     }
   });
 
   client.on('ready', () => {
-    console.log('[WhatsApp] Client is ready ✅');
+    console.log('[WhatsApp] Client ready');
     qrData = { qrImage: null, ready: true };
     starting = false;
   });
 
-  client.on('auth_failure', (msg) => {
-    console.error('[WhatsApp] Auth failed:', msg);
+  client.on('auth_failure', () => {
     client = null;
     starting = false;
     qrData = { qrImage: null, ready: false };
   });
 
-  client.on('disconnected', (reason) => {
-    console.warn('[WhatsApp] Disconnected:', reason);
+  client.on('disconnected', () => {
     client = null;
     starting = false;
     qrData = { qrImage: null, ready: false };
   });
 
-  client.initialize().catch((err) => {
-    console.error('[WhatsApp] initialize failed:', err.message);
+  client.initialize().catch(() => {
     client = null;
     starting = false;
-    qrData = { qrImage: null, ready: false };
   });
 }
 
-// ── Called by /whatsapp/qr route ──────────────────────────────────────────
+// ── QR ACCESS ──
 function getWhatsAppQr() {
   initWhatsApp();
   return qrData;
 }
 
-// ── Internal sender ───────────────────────────────────────────────────────
+// ── SEND MESSAGE ──
 async function sendWhatsApp(message) {
   if (!client || !qrData.ready) {
     console.warn('[WhatsApp] Client not ready — message skipped.');
     return;
   }
+
   try {
     await client.sendMessage(`${TO}@c.us`, message);
     console.log('[WhatsApp] Sent to', TO);
   } catch (err) {
     console.error('[WhatsApp] Send failed:', err.message);
-    // If frame detached, reset so reconnect can trigger
-    if (err.message.includes('detached Frame') || err.message.includes('Session closed')) {
-      console.warn('[WhatsApp] Stale client detected — resetting...');
-      client = null;
-      starting = false;
-      qrData = { qrImage: null, ready: false };
-      setTimeout(() => initWhatsApp(), 5000);
-    }
+
+    client = null;
+    starting = false;
+    qrData = { qrImage: null, ready: false };
   }
 }
 
-// ── Detect Chrome executable path ─────────────────────────────────────────
-function getChromePath() {
-  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-    return process.env.PUPPETEER_EXECUTABLE_PATH;
-  }
-
-  if (process.platform === 'win32') {
-    const fs = require('fs');
-    const windowsPaths = [
-      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-      `C:\\Users\\${process.env.USERNAME}\\AppData\\Local\\Google\\Chrome\\Application\\chrome.exe`,
-      // Edge as fallback
-      'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
-      'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
-    ];
-    for (const p of windowsPaths) {
-      if (fs.existsSync(p)) {
-        console.log('[WhatsApp] Using browser at:', p);
-        return p;
-      }
-    }
-  }
-
-  return undefined;
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────
+// ── FORMAT HELPERS (UNCHANGED) ──
 function formatTime(date) {
   return new Date(date).toLocaleTimeString('en-LK', {
-    hour: '2-digit', minute: '2-digit', hour12: true,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
     timeZone: 'Asia/Colombo',
   });
 }
 
 function formatDate(date) {
   return new Date(date).toLocaleDateString('en-LK', {
-    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
     timeZone: 'Asia/Colombo',
   });
 }
 
-// ── Notification functions ────────────────────────────────────────────────
+// ── NOTIFICATIONS (UNCHANGED MESSAGES) ──
 async function notifyMachineStart({ date, operator, partner, sessionNumber, startTime }) {
   const sessionLabel = sessionNumber === 1 ? '1st' : sessionNumber === 2 ? '2nd' : '3rd';
+
   return sendWhatsApp(
     `🟢 *Machine Started* — ${sessionLabel} Session\n` +
     `📅 Date: ${formatDate(date)}\n` +
@@ -223,6 +163,7 @@ async function notifyMachineStart({ date, operator, partner, sessionNumber, star
 
 async function notifyMachineStop({ date, operator, partner, sessionNumber, stopTime }) {
   const sessionLabel = sessionNumber === 1 ? '1st' : sessionNumber === 2 ? '2nd' : '3rd';
+
   return sendWhatsApp(
     `🔴 *Machine Stopped* — ${sessionLabel} Session\n` +
     `📅 Date: ${formatDate(date)}\n` +
@@ -231,7 +172,6 @@ async function notifyMachineStop({ date, operator, partner, sessionNumber, stopT
     `🕐 Stop Time: ${formatTime(stopTime)}`
   );
 }
-initWhatsApp();
 
 async function notifyPackingDone({ packName, weightKg, qty, operatorName, time }) {
   return sendWhatsApp(
@@ -243,10 +183,11 @@ async function notifyPackingDone({ packName, weightKg, qty, operatorName, time }
     `📅 Date: ${formatDate(time)}`
   );
 }
+
 async function notifyStockEntry({ date, operator, partner, rawRiceReceived, input, output, rejection, rejectionDate }) {
   const efficiency = input > 0 ? ((output / input) * 100).toFixed(1) : '0.0';
-  const rejRate    = input > 0 ? ((rejection / input) * 100).toFixed(1) : '0.0';
- 
+  const rejRate = input > 0 ? ((rejection / input) * 100).toFixed(1) : '0.0';
+
   let msg =
     `📊 *Stock Entry Recorded*\n` +
     `📅 Date: ${formatDate(date)}\n` +
@@ -257,23 +198,24 @@ async function notifyStockEntry({ date, operator, partner, rawRiceReceived, inpu
     `📥 Input: ${input ?? 0} kg\n` +
     `📤 Output: ${output ?? 0} kg\n` +
     `🗑️ Rejection: ${rejection ?? 0} kg\n`;
- 
+
   if (rejectionDate) {
     msg += `📆 Rejection Date: ${formatDate(rejectionDate)}\n`;
   }
- 
+
   msg +=
     `━━━━━━━━━━━━━━━━━━━━\n` +
     `⚙️ Efficiency: ${efficiency}%\n` +
     `❌ Rejection Rate: ${rejRate}%`;
- 
+
   return sendWhatsApp(msg);
 }
+
 async function notifySiftingComplete({
   batchNo, date, operator, parts,
   input, output, rejection, efficiency, completedAt
 }) {
-  const dateStr      = new Date(date).toLocaleDateString('en-LK', { timeZone: 'Asia/Colombo' });
+  const dateStr = new Date(date).toLocaleDateString('en-LK', { timeZone: 'Asia/Colombo' });
   const completedStr = formatTime(completedAt);
 
   const message = [
@@ -291,6 +233,15 @@ async function notifySiftingComplete({
     `🕐 Completed at ${completedStr}`,
   ].join('\n');
 
-  return sendWhatsApp(message);   // ✅ was sendWhatsAppMessage (undefined)
+  return sendWhatsApp(message);
 }
-module.exports = { notifyMachineStart, notifyMachineStop, getWhatsAppQr, notifyPackingDone, sendWhatsApp, notifyStockEntry, notifySiftingComplete  };
+
+module.exports = {
+  notifyMachineStart,
+  notifyMachineStop,
+  getWhatsAppQr,
+  notifyPackingDone,
+  sendWhatsApp,
+  notifyStockEntry,
+  notifySiftingComplete
+};
