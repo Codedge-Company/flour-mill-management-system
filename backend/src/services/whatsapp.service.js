@@ -210,8 +210,6 @@ async function notifyStockEntry({ date, operator, partner, rawRiceReceived, inpu
   let msg =
     `📊 *Stock Entry Recorded*\n` +
     `📅 Date: ${formatDate(date)}\n` +
-    `👷 Operator: ${operator}\n` +
-    `🤝 Partner: ${partner}\n` +
     `━━━━━━━━━━━━━━━━━━━━\n` +
     `🌾 Raw Rice Received: ${rawRiceReceived ?? 0} kg\n` +
     `📥 Input: ${input ?? 0} kg\n` +
