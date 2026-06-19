@@ -25,7 +25,6 @@ interface SessionUI {
 export class MachineOperatorComponent implements OnInit {
 
   // ── Date ─────────────────────────────────────────────────────────────────
-  /** String bound to <input type="date"> — format YYYY-MM-DD */
   selectedDateStr: string = this.toDateStr(new Date());
   maxDateStr: string = this.toDateStr(new Date());
 
@@ -41,24 +40,13 @@ export class MachineOperatorComponent implements OnInit {
   logLoading = false;
   logError = '';
 
-
   // ── Sessions ──────────────────────────────────────────────────────────────
   sessions: SessionUI[] = [
     { number: 1, label: 'Morning Session', data: null, loading: false },
     { number: 2, label: 'Mid-day Session', data: null, loading: false },
     { number: 3, label: 'Afternoon Session', data: null, loading: false },
-    { number: 4, label: 'Evening Session',   data: null, loading: false }, 
+    { number: 4, label: 'Evening Session',   data: null, loading: false },
   ];
-
-  // ── Stock ─────────────────────────────────────────────────────────────────
-  showStockForm = false;
-  stockSaving = false;
-  stockSaved = false;   // ← add this
-  rawRiceReceived: number | null = null;
-  stockInput: number | null = null;
-  stockOutput: number | null = null;
-  rejection: number | null = null;
-  rejectionDateStr = '';
 
   constructor(
     public authService: AuthService,
@@ -83,12 +71,12 @@ export class MachineOperatorComponent implements OnInit {
       },
     });
   }
+
   canStart(s: SessionUI): boolean {
-    // Disable if THIS session is already done or running
     if (this.sessionState(s) !== 'idle') return false;
-    // Disable if ANY other session is currently running
     return !this.sessions.some(other => this.sessionState(other) === 'running');
   }
+
   get operatorOptions(): UserResponse[] {
     return this.operatorList.filter(u => u._id !== this.selectedPartnerId);
   }
@@ -116,7 +104,6 @@ export class MachineOperatorComponent implements OnInit {
           this.selectedOperatorId = log.operator._id;
           this.selectedPartnerId = log.partner._id;
           this.syncSessions(log);
-          this.syncStockForm(log);
         }
         this.logLoading = false;
       },
@@ -212,51 +199,17 @@ export class MachineOperatorComponent implements OnInit {
     this.sessions.forEach(s => (s.data = null));
   }
 
-  // ── Stock ─────────────────────────────────────────────────────────────────
-  private syncStockForm(log: MachineLog): void {
-    if (!log.hasStockEntry) return;
-    this.showStockForm = true;
-    this.rawRiceReceived = log.rawRiceReceived;
-    this.stockInput = log.input;
-    this.stockOutput = log.output;
-    this.rejection = log.rejection;
-    this.rejectionDateStr = log.rejectionDate
-      ? new Date(log.rejectionDate).toISOString().split('T')[0]
-      : '';
-  }
-
-  saveStock(): void {
-    if (!this.log) return;
-    this.stockSaving = true;
-    this.stockSaved = false;
-    this.machineLogSvc
-      .updateStock(this.log._id, {
-        rawRiceReceived: this.rawRiceReceived,
-        input: this.stockInput,
-        output: this.stockOutput,
-        rejection: this.rejection,
-        rejectionDate: this.rejectionDateStr || null,
-      })
-      .subscribe({
-        next: log => {
-          this.log = log;
-          this.stockSaving = false;
-          this.stockSaved = true;
-          setTimeout(() => this.stockSaved = false, 4000); // auto-hide after 4s
-        },
-        error: () => { this.stockSaving = false; },
-      });
-  }
-
-  get efficiency(): string {
-    if (!this.stockInput || !this.stockOutput || this.stockInput === 0) return '';
-    return ((this.stockOutput / this.stockInput) * 100).toFixed(1) + '%';
-  }
-
   // ── Auth ──────────────────────────────────────────────────────────────────
   logout(): void {
     this.authService.logout();
     this.router.navigateByUrl('/portal/machine-operator');
+  }
+
+  // ── Navigation ────────────────────────────────────────────────────────────
+  goToStockEntry(): void {
+    this.router.navigate(['/portal/stock-entry'], {
+      queryParams: { date: this.selectedDateStr }
+    });
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
@@ -276,6 +229,6 @@ export class MachineOperatorComponent implements OnInit {
   }
 
   private toDateStr(d: Date): string {
-    return d.toISOString().split('T')[0]; // YYYY-MM-DD
+    return d.toISOString().split('T')[0];
   }
 }

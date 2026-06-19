@@ -19,7 +19,7 @@ export interface MachineLog {
   // The backend populates with `username`; the field is typed as `name` here for legacy compat.
   // The dashboard handles both via: (log.operator as any)?.username || (log.operator as any)?.name
   operator: { _id: string; name: string; username?: string };
-  partner:  { _id: string; name: string; username?: string };
+  partner: { _id: string; name: string; username?: string };
   sessions: MachineSession[];
   hasStockEntry: boolean;
   rawRiceReceived: number | null;
@@ -35,7 +35,7 @@ export interface MachineLog {
 export class MachineLogService {
   private readonly base = `${environment.apiUrl}/machine-logs`;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   getByDate(date: Date): Observable<MachineLog | null> {
     const params = new HttpParams().set('date', this.toDateString(date));
@@ -96,16 +96,16 @@ export class MachineLogService {
 
   // ── NEW: Fetch paginated / date-filtered logs for the dashboard ───────────
   getAllLogs(params: {
-    page?:  number;
+    page?: number;
     limit?: number;
-    from?:  string | null;
-    to?:    string | null;
+    from?: string | null;
+    to?: string | null;
   } = {}): Observable<{ logs: MachineLog[]; total: number; page: number; limit: number }> {
     let httpParams = new HttpParams();
-    if (params.page  != null) httpParams = httpParams.set('page',  String(params.page));
+    if (params.page != null) httpParams = httpParams.set('page', String(params.page));
     if (params.limit != null) httpParams = httpParams.set('limit', String(params.limit));
-    if (params.from)          httpParams = httpParams.set('from',  params.from);
-    if (params.to)            httpParams = httpParams.set('to',    params.to);
+    if (params.from) httpParams = httpParams.set('from', params.from);
+    if (params.to) httpParams = httpParams.set('to', params.to);
 
     // Backend responds: { success: true, logs: [...], total: N, page: N, limit: N }
     return this.http
@@ -117,5 +117,22 @@ export class MachineLogService {
 
   private toDateString(date: Date): string {
     return date.toISOString().split('T')[0];
+  }
+  upsertStockByDate(
+    date: Date,
+    stock: {
+      rawRiceReceived: number | null;
+      input: number | null;
+      output: number | null;
+      rejection: number | null;
+      rejectionDate: string | null;
+    }
+  ): Observable<MachineLog> {
+    return this.http
+      .patch<{ success: boolean; data: MachineLog }>(`${this.base}/stock-by-date`, {
+        date: this.toDateString(date),
+        ...stock,
+      })
+      .pipe(map(r => r.data));
   }
 }

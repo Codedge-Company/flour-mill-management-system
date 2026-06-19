@@ -103,13 +103,31 @@ const getAllLogs = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
- 
+const updateStockByDate = async (req, res) => {
+  try {
+    const { date, rawRiceReceived, input, output, rejection, rejectionDate } = req.body;
+    if (!date) {
+      return res.status(400).json({ success: false, message: 'date is required' });
+    }
+    const log = await machineLogService.upsertStockByDate(new Date(date), {
+      rawRiceReceived,
+      input,
+      output,
+      rejection,
+      rejectionDate,
+    });
+    res.json({ success: true, data: log });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
 
 module.exports = {
   getOrCreateLog,
   getLogByDate,
   createLog,
   updateOperators,
+  updateStockByDate,
   recordStart,
   recordStop,
   updateStockEntry,

@@ -10,10 +10,17 @@ export const OPERATOR_PORTAL_ROUTES: Routes = [
             import('./machine-operator/machine-operator.component')
                 .then(m => m.MachineOperatorComponent)
     },
+    // ── Raw Rice Stock Entry ──────────────────────────────────────────
+    {
+        path: 'stock-entry',
+        loadComponent: () =>
+            import('./raw-rice-stock-entry/raw-rice-stock-entry.component')
+                .then(m => m.RawRiceStockEntryComponent)
+    },
     // ── Sales Operator ───────────────────────────────────────────────
     {
         path: 'sales-operator',
-        component: SalesOperatorComponent   // ← direct import, not lazy
+        component: SalesOperatorComponent
     },
     // ── Packing Operator ─────────────────────────────────────────────
     {
@@ -29,5 +36,5 @@ export const OPERATOR_PORTAL_ROUTES: Routes = [
                 .then(m => m.SiftingOperatorComponent)
     },
 
-    { path: '', redirectTo: 'machine-operator', pathMatch: 'full' }   // ← only redirect empty path
+    { path: '', redirectTo: 'machine-operator', pathMatch: 'full' }
 ];

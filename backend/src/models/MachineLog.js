@@ -1,8 +1,8 @@
-// models/MachineLog.js  — UPDATED: adds batchNo field so it's stored in DB
+// models/MachineLog.js
 const mongoose = require('mongoose');
 
 const sessionSchema = new mongoose.Schema({
-  sessionNumber:  { type: Number, required: true }, // 1, 2, 3, or 4
+  sessionNumber:  { type: Number, required: true },
   startTime:      { type: Date,    default: null },
   stopTime:       { type: Date,    default: null },
   startNotified:  { type: Boolean, default: false },
@@ -13,18 +13,16 @@ const machineLogSchema = new mongoose.Schema(
   {
     date: { type: Date, required: true },
 
-    operator: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    partner:  { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    // ── CHANGED: no longer strictly required ──────────────────────────────
+    // A log can now exist with ONLY stock data (created from the standalone
+    // Raw Rice Stock Entry page) before any operator/partner is assigned.
+    operator: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false, default: null },
+    partner:  { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false, default: null },
 
-    // ── NEW: persisted batch number ────────────────────────────────────────
-    // Populated automatically by the service when rawRiceReceived is first set.
-    // Format: ST-{MM}-{DD}-{OperatorInitial}{PartnerInitial}
-    // e.g.  "ST-04-15-ST"
     batchNo:   { type: String, default: null },
 
     sessions: { type: [sessionSchema], default: [] },
 
-    // Optional stock section — only filled on some days
     hasStockEntry:    { type: Boolean, default: false },
     rawRiceReceived:  { type: Number,  default: null },
     input:            { type: Number,  default: null },
@@ -35,7 +33,6 @@ const machineLogSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// One log per date (date stored as start-of-day UTC)
 machineLogSchema.index({ date: 1 }, { unique: true });
 
 module.exports = mongoose.model('MachineLog', machineLogSchema);

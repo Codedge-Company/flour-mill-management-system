@@ -17,5 +17,6 @@ router.post('/:id/sessions/:sessionNumber/stop', ctrl.recordStop);
 
 // Stock entry
 router.patch('/:id/stock', ctrl.updateStockEntry);
+router.patch('/stock-by-date', ctrl.updateStockByDate);   // ← NEW: standalone stock entry
 
 module.exports = router;

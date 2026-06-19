@@ -1,0 +1,136 @@
+<div class="mo-page">
+
+  <!-- ══ TOPBAR ════════════════════════════════════════════════════════════ -->
+  <header class="mo-topbar">
+    <div class="mo-topbar__brand">
+      <svg class="mo-topbar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+        <line x1="12" y1="22.08" x2="12" y2="12" />
+      </svg>
+      <div>
+        <span class="mo-topbar__title">Raw Rice Stock Entry</span>
+        <span class="mo-topbar__sub">Daily Stock Tracking</span>
+      </div>
+    </div>
+
+    <div class="mo-topbar__right">
+      <button class="mo-btn mo-btn--ghost" (click)="goBack()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12" />
+          <polyline points="12 19 5 12 12 5" />
+        </svg>
+        Back to Sessions
+      </button>
+    </div>
+  </header>
+
+  <main class="mo-content">
+
+    <!-- ══ CARD — Date Selection ════════════════════════════════════════════ -->
+    <div class="mo-card">
+      <div class="mo-card-body">
+        <div class="mo-field mo-field--narrow">
+          <label class="mo-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+            Date
+            <span class="mo-today-chip" *ngIf="isToday">Today</span>
+          </label>
+          <input type="date" class="mo-input" [(ngModel)]="selectedDateStr" [max]="maxDateStr" (change)="onDateChange()" />
+        </div>
+
+        <div class="mo-spinner-wrap" *ngIf="logLoading">
+          <div class="mo-spinner"></div>
+          <span>Checking existing data…</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ CARD — Stock Entry Form (always available) ══════════════════════ -->
+    <div class="mo-card mo-card--stock" *ngIf="!logLoading">
+      <div class="mo-card-header">
+        <svg class="mo-card-header__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+          <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+          <line x1="12" y1="22.08" x2="12" y2="12" />
+        </svg>
+        <div>
+          <span class="mo-card-header__title">Raw Rice Stock Entry</span>
+          <span class="mo-card-header__sub">
+            For {{ formatDateLabel(selectedDate) }}
+            <ng-container *ngIf="log?.hasStockEntry"> — editing existing entry</ng-container>
+          </span>
+        </div>
+      </div>
+
+      <div class="mo-card-body mo-stock-form">
+        <div class="mo-grid-2">
+
+          <div class="mo-field">
+            <label class="mo-label">Raw Rice Received</label>
+            <div class="mo-input-addon">
+              <input type="number" class="mo-input" placeholder="0" min="0" step="0.1" [(ngModel)]="rawRiceReceived" />
+              <span class="mo-addon-label">KG</span>
+            </div>
+          </div>
+
+          <div class="mo-field">
+            <label class="mo-label">Input</label>
+            <div class="mo-input-addon">
+              <input type="number" class="mo-input" placeholder="0" min="0" step="0.1" [(ngModel)]="stockInput" />
+              <span class="mo-addon-label">KG</span>
+            </div>
+          </div>
+
+          <div class="mo-field">
+            <label class="mo-label">Output</label>
+            <div class="mo-input-addon">
+              <input type="number" class="mo-input" placeholder="0" min="0" step="0.1" [(ngModel)]="stockOutput" />
+              <span class="mo-addon-label">KG</span>
+            </div>
+          </div>
+
+          <div class="mo-field">
+            <label class="mo-label">Rejection</label>
+            <div class="mo-input-addon">
+              <input type="number" class="mo-input" placeholder="0" min="0" step="0.1" [(ngModel)]="rejection" />
+              <span class="mo-addon-label">KG</span>
+            </div>
+          </div>
+
+          <div class="mo-field">
+            <label class="mo-label">Rejection Date</label>
+            <input type="date" class="mo-input" [(ngModel)]="rejectionDateStr" />
+          </div>
+
+        </div>
+
+        <div class="mo-efficiency" *ngIf="efficiency">
+          <div class="mo-efficiency__item">
+            <span class="mo-efficiency__lbl">Efficiency</span>
+            <span class="mo-efficiency__val">{{ efficiency }}</span>
+          </div>
+          <div class="mo-efficiency__item" *ngIf="rejection">
+            <span class="mo-efficiency__lbl">Rejection</span>
+            <span class="mo-efficiency__val mo-efficiency__val--red">{{ rejection }} KG</span>
+          </div>
+        </div>
+
+        <div class="mo-stock-footer">
+          <div class="mo-stock-saved" *ngIf="stockSaved">Stock entry saved successfully!</div>
+          <button class="mo-btn mo-btn--primary" (click)="saveStock()" [disabled]="stockSaving">
+            <span class="mo-spinner mo-spinner--sm" *ngIf="stockSaving"></span>
+            {{ stockSaving ? 'Saving…' : 'Save Stock Entry' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>

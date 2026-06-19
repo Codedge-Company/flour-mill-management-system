@@ -201,6 +201,64 @@ async function getAllLogs({ page = 1, limit = 20, from = null, to = null } = {})
  
   return { logs, total, page, limit };
 }
+// ── NEW: Create/update stock data for a date WITHOUT requiring an existing
+// session log (operator/partner not needed). Used by the standalone
+// Raw Rice Stock Entry page. ──────────────────────────────────────────────
+async function upsertStockByDate(date, { rawRiceReceived, input, output, rejection, rejectionDate }) {
+  const dayStart = startOfDay(date);
+
+  const existing = await MachineLog.findOne({ date: dayStart });
+
+  // Only attempt batchNo generation if operator+partner already exist on
+  // this log (i.e. a session log was created separately) — otherwise skip,
+  // it can be generated later once operators are assigned.
+  let batchNoUpdate = {};
+  if (existing && existing.operator && existing.partner && !existing.batchNo && rawRiceReceived > 0) {
+    const { buildBatchNo } = require('./sievingLog.service');
+    const draft = Object.assign(existing, { rawRiceReceived });
+    batchNoUpdate.batchNo = buildBatchNo(draft);
+  }
+
+  const log = await MachineLog.findOneAndUpdate(
+    { date: dayStart },
+    {
+      $set: {
+        hasStockEntry: true,
+        rawRiceReceived,
+        input,
+        output,
+        rejection,
+        rejectionDate: rejectionDate || null,
+        ...batchNoUpdate,
+      },
+      $setOnInsert: { date: dayStart, sessions: [] },
+    },
+    { new: true, upsert: true }
+  )
+    .populate('operator', NAME_FIELD)
+    .populate('partner', NAME_FIELD);
+
+  // Best-effort WhatsApp notification — same data shape as updateStockEntry
+  const operatorName = log.operator?.[NAME_FIELD] || 'Unassigned';
+  const partnerName  = log.partner?.[NAME_FIELD]  || 'Unassigned';
+
+  try {
+    await notifyStockEntry({
+      date: log.date,
+      operator: operatorName,
+      partner: partnerName,
+      rawRiceReceived: rawRiceReceived ?? 0,
+      input:           input           ?? 0,
+      output:          output          ?? 0,
+      rejection:       rejection       ?? 0,
+      rejectionDate:   rejectionDate   || null,
+    });
+  } catch (err) {
+    console.error('[MachineLog] WhatsApp stock notification failed:', err.message);
+  }
+
+  return log;
+}
 // Sri Lanka is UTC+5:30. Dates are stored as midnight SL time = 18:30 UTC previous day.
 // "2026-04-06" SL midnight  →  "2026-04-05T18:30:00.000Z"
 function startOfDaySL(date) {
@@ -232,6 +290,7 @@ module.exports = {
   getLogByDate,
   recordStart,
   recordStop,
+  upsertStockByDate,
   updateOperators,
   updateStockEntry,
   getAllLogs,
