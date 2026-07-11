@@ -31,6 +31,7 @@ export class SidebarComponent {
     { label: 'Sales',           route: '/sales',           icon: 'pi-shopping-cart' },
     { label: 'Customers',       route: '/customers',       icon: 'pi-users' },
     { label: 'Inventory',       route: '/inventory',       icon: 'pi-box',          adminOnly: true },
+    { label: 'Material Store',  route: '/material-store',  icon: 'pi-warehouse',    adminOnly: true }, // ← NEW
     { label: 'Notifications',   route: '/notifications',   icon: 'pi-bell' },
     { label: 'User Management', route: '/user-management', icon: 'pi-user-edit',    adminOnly: true },
     { label: 'Budget Management', route: '/budget', icon: 'pi-chart-bar',    adminOnly: true },

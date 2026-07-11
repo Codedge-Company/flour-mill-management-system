@@ -1,7 +1,6 @@
 // machineLog.controller.js
 const machineLogService = require('../services/machineLog.service');
 
-// GET /api/machine-logs/today?date=YYYY-MM-DD
 const getOrCreateLog = async (req, res) => {
   try {
     const date = req.query.date ? new Date(req.query.date) : new Date();
@@ -13,7 +12,6 @@ const getOrCreateLog = async (req, res) => {
   }
 };
 
-// GET /api/machine-logs/by-date?date=YYYY-MM-DD
 const getLogByDate = async (req, res) => {
   try {
     const date = req.query.date ? new Date(req.query.date) : new Date();
@@ -24,7 +22,6 @@ const getLogByDate = async (req, res) => {
   }
 };
 
-// POST /api/machine-logs
 const createLog = async (req, res) => {
   try {
     const { date, operatorId, partnerId } = req.body;
@@ -39,7 +36,6 @@ const createLog = async (req, res) => {
   }
 };
 
-// PATCH /api/machine-logs/:id/operators
 const updateOperators = async (req, res) => {
   try {
     const { operatorId, partnerId } = req.body;
@@ -50,7 +46,6 @@ const updateOperators = async (req, res) => {
   }
 };
 
-// POST /api/machine-logs/:id/sessions/:sessionNumber/start
 const recordStart = async (req, res) => {
   try {
     const sessionNumber = parseInt(req.params.sessionNumber, 10);
@@ -64,7 +59,6 @@ const recordStart = async (req, res) => {
   }
 };
 
-// POST /api/machine-logs/:id/sessions/:sessionNumber/stop
 const recordStop = async (req, res) => {
   try {
     const sessionNumber = parseInt(req.params.sessionNumber, 10);
@@ -78,7 +72,6 @@ const recordStop = async (req, res) => {
   }
 };
 
-// PATCH /api/machine-logs/:id/stock
 const updateStockEntry = async (req, res) => {
   try {
     const log = await machineLogService.updateStockEntry(req.params.id, req.body);
@@ -88,21 +81,21 @@ const updateStockEntry = async (req, res) => {
   }
 };
 
-// GET /api/machine-logs
 const getAllLogs = async (req, res) => {
   try {
     const { page, limit, from, to } = req.query;
     const result = await machineLogService.getAllLogs({
       page:  parseInt(page)  || 1,
       limit: parseInt(limit) || 20,
-      from:  from || null,   // expects "YYYY-MM-DD"
-      to:    to   || null,   // expects "YYYY-MM-DD"
+      from:  from || null,
+      to:    to   || null,
     });
     res.json({ success: true, ...result });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
 const updateStockByDate = async (req, res) => {
   try {
     const { date, rawRiceReceived, input, output, rejection, rejectionDate } = req.body;
@@ -122,6 +115,16 @@ const updateStockByDate = async (req, res) => {
   }
 };
 
+// GET /api/machine-logs/raw-rice-stock — Material Store dashboard
+const getRawRiceStockSummary = async (req, res) => {
+  try {
+    const summary = await machineLogService.getRawRiceStockSummary();
+    res.json({ success: true, data: summary });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 module.exports = {
   getOrCreateLog,
   getLogByDate,
@@ -132,4 +135,5 @@ module.exports = {
   recordStop,
   updateStockEntry,
   getAllLogs,
+  getRawRiceStockSummary,
 };

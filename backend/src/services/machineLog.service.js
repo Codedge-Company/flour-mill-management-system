@@ -116,20 +116,16 @@ async function updateOperators(logId, operatorId, partnerId) {
 }
 
 async function updateStockEntry(logId, { rawRiceReceived, input, output, rejection, rejectionDate }) {
-  // ── 1. Fetch the current document first so we can inspect batchNo ──────────
   const existing = await MachineLog.findById(logId);
   if (!existing) return null;
 
-  // ── 2. Determine whether this is the first rawRiceReceived entry ───────────
   let batchNoUpdate = {};
   if (!existing.batchNo && rawRiceReceived > 0) {
     const { buildBatchNo } = require('./sievingLog.service');
-    // Merge incoming values so buildBatchNo sees the final state of the log
     const draft = Object.assign(existing, { rawRiceReceived });
     batchNoUpdate.batchNo = buildBatchNo(draft);
   }
 
-  // ── 3. Persist stock fields + batchNo (if generated) in one round-trip ─────
   const log = await MachineLog.findByIdAndUpdate(
     logId,
     {
@@ -139,7 +135,7 @@ async function updateStockEntry(logId, { rawRiceReceived, input, output, rejecti
       output,
       rejection,
       rejectionDate: rejectionDate || null,
-      ...batchNoUpdate,               // only present when batchNo was generated
+      ...batchNoUpdate,
     },
     { new: true }
   )
@@ -172,23 +168,20 @@ async function updateStockEntry(logId, { rawRiceReceived, input, output, rejecti
 
 async function getAllLogs({ page = 1, limit = 20, from = null, to = null } = {}) {
   const skip = (page - 1) * limit;
- 
-  // Build date filter if provided
+
   const dateFilter = {};
   if (from || to) {
     dateFilter.date = {};
     if (from) {
-      // from = "2026-03-28"  →  start of that day in SL time = 18:30 UTC previous day
       const fromDate = startOfDaySL(new Date(from));
       dateFilter.date.$gte = fromDate;
     }
     if (to) {
-      // to = "2026-04-06"  →  end of that day in SL time = 18:29:59 UTC same day
       const toDate = endOfDaySL(new Date(to));
       dateFilter.date.$lte = toDate;
     }
   }
- 
+
   const [logs, total] = await Promise.all([
     MachineLog.find(dateFilter)
       .sort({ date: -1 })
@@ -198,20 +191,15 @@ async function getAllLogs({ page = 1, limit = 20, from = null, to = null } = {})
       .populate('partner', NAME_FIELD),
     MachineLog.countDocuments(dateFilter),
   ]);
- 
+
   return { logs, total, page, limit };
 }
-// ── NEW: Create/update stock data for a date WITHOUT requiring an existing
-// session log (operator/partner not needed). Used by the standalone
-// Raw Rice Stock Entry page. ──────────────────────────────────────────────
+
 async function upsertStockByDate(date, { rawRiceReceived, input, output, rejection, rejectionDate }) {
   const dayStart = startOfDay(date);
 
   const existing = await MachineLog.findOne({ date: dayStart });
 
-  // Only attempt batchNo generation if operator+partner already exist on
-  // this log (i.e. a session log was created separately) — otherwise skip,
-  // it can be generated later once operators are assigned.
   let batchNoUpdate = {};
   if (existing && existing.operator && existing.partner && !existing.batchNo && rawRiceReceived > 0) {
     const { buildBatchNo } = require('./sievingLog.service');
@@ -238,7 +226,6 @@ async function upsertStockByDate(date, { rawRiceReceived, input, output, rejecti
     .populate('operator', NAME_FIELD)
     .populate('partner', NAME_FIELD);
 
-  // Best-effort WhatsApp notification — same data shape as updateStockEntry
   const operatorName = log.operator?.[NAME_FIELD] || 'Unassigned';
   const partnerName  = log.partner?.[NAME_FIELD]  || 'Unassigned';
 
@@ -259,24 +246,51 @@ async function upsertStockByDate(date, { rawRiceReceived, input, output, rejecti
 
   return log;
 }
+
+// ── NEW: Raw Rice Stock summary for the Material Store dashboard ───────────
+// Running balance = every rawRiceReceived ever logged, minus every input
+// ever logged. e.g. received 10,000kg total, used 1,000kg total → 9,000kg
+// remaining. No opening-balance concept — it's a pure running total across
+// all MachineLog documents.
+async function getRawRiceStockSummary() {
+  const agg = await MachineLog.aggregate([
+    {
+      $group: {
+        _id: null,
+        totalReceived: { $sum: { $ifNull: ['$rawRiceReceived', 0] } },
+        totalInput: { $sum: { $ifNull: ['$input', 0] } },
+      },
+    },
+  ]);
+
+  const totalReceived = agg[0]?.totalReceived ?? 0;
+  const totalInput = agg[0]?.totalInput ?? 0;
+  const currentBalance = totalReceived - totalInput;
+
+  const recentEntries = await MachineLog.find({
+    $or: [{ rawRiceReceived: { $gt: 0 } }, { input: { $gt: 0 } }],
+  })
+    .sort({ date: -1 })
+    .limit(30)
+    .select('date rawRiceReceived input')
+    .lean();
+
+  return { totalReceived, totalInput, currentBalance, recentEntries };
+}
+
 // Sri Lanka is UTC+5:30. Dates are stored as midnight SL time = 18:30 UTC previous day.
-// "2026-04-06" SL midnight  →  "2026-04-05T18:30:00.000Z"
 function startOfDaySL(date) {
-  // Parse the date string as SL midnight: subtract 5h30m from midnight UTC of that date
   const d = new Date(date);
-  // d is already at 00:00:00 UTC of the given date string
-  // SL midnight = d minus 5h30m
   d.setUTCHours(0, 0, 0, 0);
   d.setTime(d.getTime() - (5 * 60 + 30) * 60 * 1000);
   return d;
 }
- 
+
 function endOfDaySL(date) {
-  // End of day SL = start of next day SL minus 1ms
   const d = new Date(date);
   d.setUTCHours(0, 0, 0, 0);
-  d.setTime(d.getTime() - (5 * 60 + 30) * 60 * 1000); // SL midnight of this day
-  d.setTime(d.getTime() + 24 * 60 * 60 * 1000 - 1);   // + 24h - 1ms = end of SL day
+  d.setTime(d.getTime() - (5 * 60 + 30) * 60 * 1000);
+  d.setTime(d.getTime() + 24 * 60 * 60 * 1000 - 1);
   return d;
 }
 function startOfDay(date) {
@@ -294,4 +308,5 @@ module.exports = {
   updateOperators,
   updateStockEntry,
   getAllLogs,
+  getRawRiceStockSummary,
 };

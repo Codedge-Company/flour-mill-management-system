@@ -10,12 +10,11 @@ let qrData = { qrImage: null, ready: false };
 let starting = false;
 let reconnectTimer = null;
 
-// ── NEW: queue for messages sent while client isn't ready ──────────────────
+// ── Queue for messages sent while client isn't ready ────────────────────────
 const pendingMessages = [];
 const MAX_QUEUE_SIZE = 50;
 
-// ── Puppeteer args ── (removed --single-process / --no-zygote: these are
-// known to cause random Chromium crashes with whatsapp-web.js)
+// ── Puppeteer args ──
 const PUPPETEER_ARGS = [
   '--no-sandbox',
   '--disable-setuid-sandbox',
@@ -100,7 +99,6 @@ function initWhatsApp() {
 
 function teardownClient() {
   if (client) {
-    // best-effort cleanup of the old puppeteer/browser session
     client.destroy().catch(() => {});
   }
   client = null;
@@ -114,7 +112,7 @@ function scheduleReconnect() {
     reconnectTimer = null;
     console.log('[WhatsApp] Attempting reconnect...');
     initWhatsApp();
-  }, 10_000); // wait 10s before retrying — avoids rapid crash-loop
+  }, 10_000);
 }
 
 function getWhatsAppQr() {
@@ -140,7 +138,6 @@ async function sendWhatsApp(message) {
       pendingMessages.shift();
       pendingMessages.push(message);
     }
-    // make sure a connection attempt is in flight
     initWhatsApp();
     return;
   }
@@ -152,12 +149,11 @@ async function sendWhatsApp(message) {
     console.error('[WhatsApp] Send failed:', err.message);
     teardownClient();
     scheduleReconnect();
-    // requeue so it's not lost
     if (pendingMessages.length < MAX_QUEUE_SIZE) pendingMessages.push(message);
   }
 }
 
-// ── FORMAT HELPERS (unchanged) ──────────────────────────────────────────
+// ── FORMAT HELPERS ──────────────────────────────────────────
 function formatTime(date) {
   return new Date(date).toLocaleTimeString('en-LK', {
     hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Colombo',
@@ -169,7 +165,7 @@ function formatDate(date) {
   });
 }
 
-// ── NOTIFICATIONS (unchanged messages) ──────────────────────────────────
+// ── NOTIFICATIONS (unchanged) ──────────────────────────────────
 async function notifyMachineStart({ date, operator, partner, sessionNumber, startTime }) {
   const sessionLabel = sessionNumber === 1 ? '1st' : sessionNumber === 2 ? '2nd' : '3rd';
   return sendWhatsApp(
@@ -252,6 +248,21 @@ async function notifySiftingComplete({
   return sendWhatsApp(message);
 }
 
+// ── NEW: generic low-stock alert — used by Bag Stock (Inventory) and
+// Spare Parts. Same emoji/format style as the other stock messages. ────────
+async function notifyLowStock({ itemName, category, currentQty, unit, thresholdQty }) {
+  return sendWhatsApp(
+    `⚠️ *Low Stock Alert*\n` +
+    `📦 Item: ${itemName}\n` +
+    `🏷️ Category: ${category}\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `📉 Current Stock: ${currentQty} ${unit}\n` +
+    `🚦 Threshold: ${thresholdQty} ${unit}\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `🔔 Please restock soon.`
+  );
+}
+
 module.exports = {
   notifyMachineStart,
   notifyMachineStop,
@@ -260,4 +271,5 @@ module.exports = {
   sendWhatsApp,
   notifyStockEntry,
   notifySiftingComplete,
+  notifyLowStock,
 };

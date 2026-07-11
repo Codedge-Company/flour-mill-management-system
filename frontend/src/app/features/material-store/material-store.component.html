@@ -1,0 +1,30 @@
+<div class="ms-root">
+  <header class="ms-topbar">
+    <div class="ms-brand">
+      <div class="ms-brand-icon">
+        <i class="pi pi-warehouse"></i>
+      </div>
+      <div>
+        <h1 class="ms-title">Material Store</h1>
+        <p class="ms-sub">Raw Rice · Bags · Spare Parts</p>
+      </div>
+    </div>
+
+    <nav class="ms-tabs">
+      @for (tab of tabs; track tab.key) {
+        <button class="ms-tab-btn" [class.active]="activeTab() === tab.key" (click)="setTab(tab.key)">
+          <i class="pi" [class]="tab.icon"></i>
+          {{ tab.label }}
+        </button>
+      }
+    </nav>
+  </header>
+
+  <main class="ms-content">
+    @switch (activeTab()) {
+      @case ('raw-rice') { <app-raw-rice-panel /> }
+      @case ('bags')     { <app-bag-stock-panel /> }
+      <!-- @case ('spares')   { <app-spare-parts-panel /> } -->
+    }
+  </main>
+</div>

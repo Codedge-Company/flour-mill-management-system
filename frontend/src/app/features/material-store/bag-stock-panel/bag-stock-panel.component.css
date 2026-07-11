@@ -1,0 +1,69 @@
+:host { display: block; }
+
+.bs-error {
+  display: flex; gap: 10px; align-items: center;
+  background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px;
+  padding: 11px 16px; color: #1e40af; font-size: 13.5px; margin-bottom: 16px;
+}
+.bs-error button {
+  margin-left: auto; background: #2563eb; color: #fff; border: none;
+  border-radius: 6px; padding: 4px 12px; font-size: 12px; cursor: pointer;
+}
+
+.bs-summary {
+  display: flex; align-items: center; gap: 24px;
+  background: #fff; border: 1px solid #e8eaed; border-radius: 14px;
+  padding: 16px 20px; margin-bottom: 18px; flex-wrap: wrap;
+}
+.bs-stat { display: flex; flex-direction: column; gap: 2px; }
+.bs-stat-val { font-size: 22px; font-weight: 800; color: #0f172a; }
+.bs-stat-val.warn { color: #2563eb; }
+.bs-stat-lbl { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: .4px; font-weight: 600; }
+.bs-manage-link {
+  margin-left: auto; display: flex; align-items: center; gap: 6px;
+  font-size: 13px; font-weight: 600; color: #2563eb; text-decoration: none;
+}
+.bs-manage-link:hover { text-decoration: underline; }
+
+.bs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+
+.bs-card {
+  background: #fff; border: 1px solid #e8eaed; border-radius: 12px;
+  padding: 16px; display: flex; flex-direction: column; gap: 8px;
+}
+.bs-card.low { border-color: #93c5fd; background: #eff6ff; }
+.bs-card.out { border-color: #60a5fa; background: #dbeafe; }
+
+.bs-card-top { display: flex; flex-direction: column; }
+.bs-pack-name { font-size: 14px; font-weight: 700; color: #0f172a; }
+.bs-pack-weight { font-size: 11.5px; color: #94a3b8; }
+
+.bs-qty { font-size: 22px; font-weight: 800; color: #0f172a; }
+.bs-qty span { font-size: 12px; font-weight: 500; color: #94a3b8; }
+
+.bs-track { height: 6px; background: #f1f5f9; border-radius: 99px; overflow: hidden; }
+.bs-fill { height: 100%; background: #2563eb; border-radius: 99px; }
+.bs-fill.fill-low { background: #3b82f6; }
+.bs-fill.fill-out { background: #1e40af; width: 2px !important; }
+
+.bs-threshold { font-size: 11px; color: #94a3b8; }
+
+.bs-skel-card {
+  height: 120px; border-radius: 12px;
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%; animation: shimmer 1.4s infinite;
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.bs-empty {
+  padding: 32px; text-align: center; color: #94a3b8; font-size: 13px;
+  background: #fff; border: 1px solid #e8eaed; border-radius: 14px;
+}
+
+@media (max-width: 768px) {
+  .bs-summary { gap: 14px; }
+  .bs-manage-link { margin-left: 0; }
+}

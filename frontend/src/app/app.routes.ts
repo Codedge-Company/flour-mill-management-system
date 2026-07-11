@@ -35,6 +35,13 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./features/inventory/inventory.routes').then(m => m.inventoryRoutes)
       },
+      // ← NEW: Material Store (Raw Rice / Bag Stock / Spare Parts)
+      {
+        path: 'material-store',
+        canActivate: [adminGuard],
+        loadChildren: () =>
+          import('./features/material-store/material-store.routes').then(m => m.materialStoreRoutes)
+      },
       {
         path: 'customers',
         loadChildren: () =>
@@ -65,7 +72,7 @@ export const routes: Routes = [
       { path: 'credit-payments', component: CreditPaymentsComponent },
       { path: 'flow-money', component: FlowMoneyComponent },
       { path: 'milling-analysis', component: MillingAnalysisComponent },
-      { path: 'operators-dashboard', component: MachineOperatorsDashboardComponent }, 
+      { path: 'operators-dashboard', component: MachineOperatorsDashboardComponent },
     ]
   },
   { path: '**', redirectTo: 'dashboard' }

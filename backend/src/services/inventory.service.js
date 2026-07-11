@@ -3,6 +3,7 @@ const StockThreshold = require('../models/StockThreshold');
 const CostHistory = require('../models/CostHistory');
 const Notification = require('../models/Notification');
 const PackType = require('../models/PackType');
+const { notifyLowStock } = require('./whatsapp.service'); // ← NEW
 
 // ── Helper: enrich a single inventory doc with cost + threshold ──
 const enrichOne = async (inv) => {
@@ -68,7 +69,6 @@ const create = async ({ pack_type_id, stock_qty }) => {
 const update = async (pack_type_id, body, userId) => {
   const { add_qty, set_qty, correction_reason } = body;
 
-  // ── Must provide exactly one of add_qty / set_qty ──
   if (add_qty === undefined && set_qty === undefined)
     throw Object.assign(
       new Error('Either add_qty or set_qty is required'),
@@ -83,9 +83,8 @@ const update = async (pack_type_id, body, userId) => {
 
   let mongoUpdate;
   let isCorrection = false;
-  let reason = 'Data Entry Mistake'; // ← moved here: outer scope, default value
+  let reason = 'Data Entry Mistake';
 
-  // ── Branch: add stock (existing behaviour) ──
   if (add_qty !== undefined) {
     const addQty = Number(add_qty);
     if (isNaN(addQty) || addQty <= 0)
@@ -100,7 +99,6 @@ const update = async (pack_type_id, body, userId) => {
     };
   }
 
-  // ── Branch: correct stock (overwrite) ──
   if (set_qty !== undefined) {
     const setQty = Number(set_qty);
     if (isNaN(setQty) || setQty < 0)
@@ -109,10 +107,9 @@ const update = async (pack_type_id, body, userId) => {
         { statusCode: 400 }
       );
 
-    // Assign validated reason (falls back to default if blank or too short)
     reason = (correction_reason && String(correction_reason).trim().length >= 3)
       ? String(correction_reason).trim()
-      : 'Data Entry Mistake'; // ← no longer const, just assignment
+      : 'Data Entry Mistake';
 
     mongoUpdate = {
       $set: { stock_qty: setQty, last_updated_at: new Date() },
@@ -120,7 +117,6 @@ const update = async (pack_type_id, body, userId) => {
     isCorrection = true;
   }
 
-  // ── Apply update ──
   const inv = await Inventory.findOneAndUpdate(
     { pack_type_id },
     mongoUpdate,
@@ -129,7 +125,6 @@ const update = async (pack_type_id, body, userId) => {
 
   if (!inv) throw Object.assign(new Error('Inventory record not found'), { statusCode: 404 });
 
-  // ── Log correction — `reason` is now accessible here ✅ ──
   if (isCorrection) {
     console.info(
       `[Inventory] Stock correction on pack_type_id=${pack_type_id} ` +
@@ -138,11 +133,12 @@ const update = async (pack_type_id, body, userId) => {
     );
   }
 
-  // ── Low-stock notification (applies to both add and set) ──
+  // ── Low-stock notification (in-app + WhatsApp) — applies to both add and set ──
   const threshold = await StockThreshold.findOne({ pack_type_id }).lean();
   try {
     if (threshold && inv.stock_qty <= threshold.threshold_qty) {
       const pt = inv.pack_type_id ?? await PackType.findById(pack_type_id).lean();
+
       await Notification.create({
         type: 'LOW_STOCK',
         pack_type_id,
@@ -150,6 +146,15 @@ const update = async (pack_type_id, body, userId) => {
         threshold: threshold.threshold_qty,
         message: `Low stock alert: ${pt?.pack_name ?? pack_type_id} has only ${inv.stock_qty} units remaining.`,
         userId,
+      });
+
+      // ← NEW: WhatsApp low-stock alert for Bag Stock
+      await notifyLowStock({
+        itemName: pt?.pack_name ?? 'Pack type',
+        category: `Bag Stock${pt?.weight_kg ? ' — ' + pt.weight_kg + 'kg' : ''}`,
+        currentQty: inv.stock_qty,
+        unit: 'bags',
+        thresholdQty: threshold.threshold_qty,
       });
     }
   } catch (notifErr) {

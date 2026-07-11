@@ -3,6 +3,7 @@ const Sale = require('../models/Sale');
 const Inventory = require('../models/Inventory');
 const StockThreshold = require('../models/StockThreshold');
 const User = require('../models/User');
+const PackType = require('../models/PackType'); // ← NEW (needed for WhatsApp alert text)
 const notificationService = require('./notification.service');
 const customerPriceRuleService = require('./customerPriceRule.service');
 const defaultPriceService = require('./defaultPrice.service');
@@ -10,12 +11,12 @@ const costService = require('./cost.service');
 const { calculateProfit } = require('../utils/calculateProfit');
 const { generateSequence } = require('../utils/sequence');
 const Payment = require('../models/Payment');
+const { notifyLowStock } = require('./whatsapp.service'); // ← NEW
 
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 
-// No more 409 needed — manual price path bypasses this function completely
 const resolveUnitPrice = async (customer_id, pack_type_id) => {
     const special = await customerPriceRuleService.resolvePrice(customer_id, pack_type_id);
     if (special !== null) return special;
@@ -27,6 +28,8 @@ const derivePaymentStatus = (payment_method) =>
     payment_method === 'CREDIT' ? 'PENDING' : 'PAID';
 
 
+// ← UPDATED: also fires a single WhatsApp low-stock alert (in addition to
+// the existing per-admin in-app notifications).
 const triggerLowStockNotification = async (pack_type_id, newStockQty) => {
     const thresholdDoc = await StockThreshold.findOne({ pack_type_id });
     const threshold = thresholdDoc ? thresholdDoc.threshold_qty : 10;
@@ -39,6 +42,19 @@ const triggerLowStockNotification = async (pack_type_id, newStockQty) => {
         } catch (err) {
             console.error(`[LowStock] Failed to notify user ${admin._id}:`, err.message);
         }
+    }
+
+    try {
+        const packType = await PackType.findById(pack_type_id).select('pack_name weight_kg').lean();
+        await notifyLowStock({
+            itemName: packType?.pack_name ?? 'Pack type',
+            category: `Bag Stock${packType?.weight_kg ? ' — ' + packType.weight_kg + 'kg' : ''}`,
+            currentQty: newStockQty,
+            unit: 'bags',
+            thresholdQty: threshold,
+        });
+    } catch (err) {
+        console.error('[LowStock] WhatsApp notify failed:', err.message);
     }
 };
 
@@ -64,7 +80,6 @@ const createSale = async ({ customer_id, payment_method, sale_datetime, items, u
         let unit_price_sold;
 
         if (!use_default_price) {
-            // ✅ Use the price the user manually entered — no DB lookup, no 409
             if (!manualPrice || manualPrice <= 0)
                 throw Object.assign(
                     new Error(`unit_price_sold is required for item ${pack_type_id} when not using default pricing`),
@@ -72,7 +87,6 @@ const createSale = async ({ customer_id, payment_method, sale_datetime, items, u
                 );
             unit_price_sold = manualPrice;
         } else {
-            // use_default_price: true → resolve from DB (price rule or default)
             unit_price_sold = await resolveUnitPrice(customer_id, pack_type_id, true);
         }
 
@@ -203,17 +217,15 @@ const getById = async (id) => {
 const getAllPaginated = async (page = 0, size = 20, filters = {}) => {
     const skip = page * size;
 
-    // ── Sort ──────────────────────────────────────────────────────────────
     const sortFieldMap = {
         saleNo: 'sale_no',
         saleDatetime: 'sale_datetime',
         totalRevenue: 'total_revenue',
         totalProfit: 'total_profit',
     };
-    const sortField = sortFieldMap[filters.sortBy] ?? 'sale_no'; // ← default: sale_no
-    const sortDir = filters.sortDir === 'asc' ? 1 : -1;        // ← default: desc
+    const sortField = sortFieldMap[filters.sortBy] ?? 'sale_no';
+    const sortDir = filters.sortDir === 'asc' ? 1 : -1;
     const sortObj = { [sortField]: sortDir };
-    // ─────────────────────────────────────────────────────────────────────
 
     const match = { status: { $ne: 'DRAFT' } };
 
@@ -240,7 +252,7 @@ const getAllPaginated = async (page = 0, size = 20, filters = {}) => {
 
     const [saleIds, immediateTotalsRaw, creditTotalsRaw, total] = await Promise.all([
         Sale.find(match)
-            .sort(sortObj)          // ✅ dynamic sort
+            .sort(sortObj)
             .skip(skip)
             .limit(size)
             .select('_id')
@@ -320,7 +332,7 @@ const getAllPaginated = async (page = 0, size = 20, filters = {}) => {
             .populate('customer_id', 'customer_code name')
             .populate('created_by_user_id', 'full_name username')
             .populate('items.pack_type_id', 'pack_name weight_kg')
-            .sort(sortObj)          // ✅ keep same order after $in re-fetch
+            .sort(sortObj)
             .lean(),
 
         Payment.aggregate([

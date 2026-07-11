@@ -1,9 +1,10 @@
-// machine-log.service.ts  — ADD the getAllLogs() method below to your existing service
+// machine-log.service.ts
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { environment } from '../../../environments/environment.prod';
+import { RawRiceStockSummary } from '../models/material-store'; // ← NEW
 
 export interface MachineSession {
   sessionNumber: number;
@@ -16,8 +17,6 @@ export interface MachineSession {
 export interface MachineLog {
   _id: string;
   date: string;
-  // The backend populates with `username`; the field is typed as `name` here for legacy compat.
-  // The dashboard handles both via: (log.operator as any)?.username || (log.operator as any)?.name
   operator: { _id: string; name: string; username?: string };
   partner: { _id: string; name: string; username?: string };
   sessions: MachineSession[];
@@ -94,7 +93,6 @@ export class MachineLogService {
       .pipe(map(r => r.data));
   }
 
-  // ── NEW: Fetch paginated / date-filtered logs for the dashboard ───────────
   getAllLogs(params: {
     page?: number;
     limit?: number;
@@ -107,7 +105,6 @@ export class MachineLogService {
     if (params.from) httpParams = httpParams.set('from', params.from);
     if (params.to) httpParams = httpParams.set('to', params.to);
 
-    // Backend responds: { success: true, logs: [...], total: N, page: N, limit: N }
     return this.http
       .get<{ success: boolean; logs: MachineLog[]; total: number; page: number; limit: number }>(
         this.base, { params: httpParams }
@@ -118,6 +115,7 @@ export class MachineLogService {
   private toDateString(date: Date): string {
     return date.toISOString().split('T')[0];
   }
+
   upsertStockByDate(
     date: Date,
     stock: {
@@ -133,6 +131,13 @@ export class MachineLogService {
         date: this.toDateString(date),
         ...stock,
       })
+      .pipe(map(r => r.data));
+  }
+
+  // ── NEW: Material Store — Raw Rice Stock summary ──────────────────────────
+  getRawRiceStockSummary(): Observable<RawRiceStockSummary> {
+    return this.http
+      .get<{ success: boolean; data: RawRiceStockSummary }>(`${this.base}/raw-rice-stock`)
       .pipe(map(r => r.data));
   }
 }

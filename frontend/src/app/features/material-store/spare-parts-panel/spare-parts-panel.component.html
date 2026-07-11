@@ -1,0 +1,103 @@
+<div class="sp-root">
+
+  @if (error()) { <div class="sp-alert sp-alert--error">{{ error() }}</div> }
+  @if (success()) { <div class="sp-alert sp-alert--success">{{ success() }}</div> }
+
+  <section class="sp-summary">
+    <div class="sp-stat">
+      <span class="sp-stat-val">{{ items().length }}</span>
+      <span class="sp-stat-lbl">Spare Part Types</span>
+    </div>
+    <div class="sp-stat">
+      <span class="sp-stat-val" [class.warn]="lowStockCount > 0">{{ lowStockCount }}</span>
+      <span class="sp-stat-lbl">Low Stock Items</span>
+    </div>
+    <button class="sp-btn sp-btn--primary" (click)="toggleAddForm()">
+      <i class="pi pi-plus"></i> {{ showAddForm() ? 'Cancel' : 'Add Spare Part' }}
+    </button>
+  </section>
+
+  @if (showAddForm()) {
+    <section class="sp-form">
+      <div class="sp-form-grid">
+        <div class="sp-field">
+          <label>Name</label>
+          <input type="text" [(ngModel)]="newPart.name" placeholder="e.g. Conveyor Belt" />
+        </div>
+        <div class="sp-field">
+          <label>Category</label>
+          <input type="text" [(ngModel)]="newPart.category" placeholder="e.g. Belt, Bearing, Motor" />
+        </div>
+        <div class="sp-field">
+          <label>Unit</label>
+          <input type="text" [(ngModel)]="newPart.unit" placeholder="pcs, set, m…" />
+        </div>
+        <div class="sp-field">
+          <label>Starting Qty</label>
+          <input type="number" min="0" [(ngModel)]="newPart.qty" />
+        </div>
+        <div class="sp-field">
+          <label>Low Stock Threshold</label>
+          <input type="number" min="0" [(ngModel)]="newPart.threshold_qty" />
+        </div>
+        <div class="sp-field sp-field--wide">
+          <label>Supplier / Notes</label>
+          <input type="text" [(ngModel)]="newPart.supplier_notes" placeholder="Supplier name, part no, notes…" />
+        </div>
+      </div>
+      <button class="sp-btn sp-btn--primary" (click)="submitNewPart()" [disabled]="saving()">
+        {{ saving() ? 'Saving…' : 'Save Spare Part' }}
+      </button>
+    </section>
+  }
+
+  @if (loading()) {
+    <div class="sp-grid">
+      @for (n of [1,2,3,4]; track n) { <div class="sp-skel-card"></div> }
+    </div>
+  } @else if (!items().length) {
+    <div class="sp-empty">No spare parts recorded yet. Add your first item above.</div>
+  } @else {
+    <div class="sp-grid">
+      @for (item of items(); track item.sparePartId) {
+        <div class="sp-card" [class.low]="item.isLowStock" [class.out]="item.qty === 0">
+          <div class="sp-card-top">
+            <div>
+              <span class="sp-name">{{ item.name }}</span>
+              <span class="sp-category">{{ item.category }}</span>
+            </div>
+            <button class="sp-icon-btn sp-icon-btn--danger" (click)="deletePart(item)" title="Remove">
+              <i class="pi pi-trash"></i>
+            </button>
+          </div>
+
+          @if (qtyEditId() === item.sparePartId) {
+            <div class="sp-qty-edit">
+              <input type="number" min="0" [(ngModel)]="qtyEditValue" />
+              <button class="sp-icon-btn sp-icon-btn--confirm" (click)="saveQty(item)"><i class="pi pi-check"></i></button>
+              <button class="sp-icon-btn sp-icon-btn--cancel" (click)="cancelQtyEdit()"><i class="pi pi-times"></i></button>
+            </div>
+          } @else {
+            <div class="sp-qty-row">
+              <button class="sp-stepper" (click)="adjustQty(item, -1)" [disabled]="item.qty <= 0">−</button>
+              <span class="sp-qty" (click)="startQtyEdit(item)">{{ item.qty }} <small>{{ item.unit }}</small></span>
+              <button class="sp-stepper" (click)="adjustQty(item, 1)">+</button>
+            </div>
+          }
+
+          <div class="sp-meta">
+            <span>Threshold: {{ item.thresholdQty }} {{ item.unit }}</span>
+            @if (item.supplierNotes) { <span class="sp-notes">{{ item.supplierNotes }}</span> }
+          </div>
+
+          @if (item.isLowStock) {
+            <div class="sp-low-badge">
+              <i class="pi pi-exclamation-triangle"></i> Low stock
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+
+</div>

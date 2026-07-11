@@ -1,0 +1,103 @@
+:host {
+  --c-bg: #ffffff;
+  --c-surface: #ffffff;
+  --c-surface-alt: #f8f9fb;
+  --c-border: #e8eaed;
+  --c-text-primary: #0f172a;
+  --c-text-secondary: #64748b;
+  --c-text-muted: #94a3b8;
+  --c-blue: #2563eb;
+  --c-blue-lt: #eff6ff;
+  --c-blue-md: #93c5fd;
+  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'DM Mono', 'SF Mono', Consolas, monospace;
+
+  display: block;
+  background: var(--c-bg);
+  min-height: 100vh;
+  font-family: var(--font-sans);
+  color: var(--c-text-primary);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+.ms-root { display: flex; flex-direction: column; min-height: 100vh; }
+
+.ms-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(255, 255, 255, .92);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border-bottom: 1px solid var(--c-border);
+  padding: 0 24px;
+}
+
+.ms-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0 12px;
+}
+
+.ms-brand-icon {
+  width: 38px;
+  height: 38px;
+  background: var(--c-blue);
+  color: #fff;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, .35);
+  flex-shrink: 0;
+  font-size: 17px;
+}
+
+.ms-title { font-size: 16px; font-weight: 700; margin: 0; color: var(--c-text-primary); letter-spacing: -.2px; }
+.ms-sub { font-size: 12px; color: var(--c-text-muted); margin: 2px 0 0; }
+
+.ms-tabs {
+  display: flex;
+  gap: 4px;
+  padding-bottom: 10px;
+  overflow-x: auto;
+}
+
+.ms-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-text-secondary);
+  background: var(--c-surface-alt);
+  border: 1px solid var(--c-border);
+  border-radius: 9px;
+  padding: 8px 16px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .15s ease;
+}
+
+.ms-tab-btn:hover { color: var(--c-text-primary); }
+
+.ms-tab-btn.active {
+  background: var(--c-blue-lt);
+  color: var(--c-blue);
+  border-color: var(--c-blue-md);
+}
+
+.ms-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px 24px 40px;
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .ms-topbar { padding: 0 14px; }
+  .ms-content { padding: 14px 14px 28px; }
+}

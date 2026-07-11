@@ -1,0 +1,50 @@
+<div class="bs-root">
+
+  @if (error()) {
+    <div class="bs-error">
+      {{ error() }}
+      <button (click)="load()">Retry</button>
+    </div>
+  }
+
+  <section class="bs-summary">
+    <div class="bs-stat">
+      <span class="bs-stat-val">{{ totalBags }}</span>
+      <span class="bs-stat-lbl">Total Bags in Stock</span>
+    </div>
+    <div class="bs-stat">
+      <span class="bs-stat-val" [class.warn]="lowStockCount > 0">{{ lowStockCount }}</span>
+      <span class="bs-stat-lbl">Low Stock Pack Types</span>
+    </div>
+    <a class="bs-manage-link" routerLink="/inventory">
+      Manage full inventory
+      <i class="pi pi-arrow-right"></i>
+    </a>
+  </section>
+
+  @if (loading()) {
+    <div class="bs-grid">
+      @for (n of [1,2,3,4]; track n) { <div class="bs-skel-card"></div> }
+    </div>
+  } @else if (!items().length) {
+    <div class="bs-empty">No pack types set up yet. Add one from the Inventory page.</div>
+  } @else {
+    <div class="bs-grid">
+      @for (item of items(); track item.packTypeId) {
+        <div class="bs-card" [class.low]="item.isLowStock" [class.out]="item.stockQty === 0">
+          <div class="bs-card-top">
+            <span class="bs-pack-name">{{ item.packName }}</span>
+            <span class="bs-pack-weight">{{ item.weightKg }} kg bag</span>
+          </div>
+          <div class="bs-qty">{{ item.stockQty }} <span>bags</span></div>
+          <div class="bs-track">
+            <div class="bs-fill" [style.width.%]="getBarPercent(item)"
+                 [class.fill-low]="item.isLowStock" [class.fill-out]="item.stockQty === 0"></div>
+          </div>
+          <div class="bs-threshold">Threshold: {{ item.threshold }} bags</div>
+        </div>
+      }
+    </div>
+  }
+
+</div>

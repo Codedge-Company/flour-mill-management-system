@@ -1,0 +1,73 @@
+<div class="rr-root">
+
+  @if (error()) {
+    <div class="rr-error">
+      {{ error() }}
+      <button class="rr-retry" (click)="load()">Retry</button>
+    </div>
+  }
+
+  <section class="rr-cards">
+    <div class="rr-card rr-card--hero">
+      <span class="rr-label">Current Raw Rice Balance</span>
+      @if (loading()) {
+        <div class="rr-skel rr-skel--hero"></div>
+      } @else {
+        <div class="rr-hero-val">{{ fmt(summary()?.currentBalance) }}</div>
+      }
+    </div>
+
+    <div class="rr-card">
+      <span class="rr-label">Total Received</span>
+      @if (loading()) {
+        <div class="rr-skel"></div>
+      } @else {
+        <div class="rr-val rr-val--amber">{{ fmt(summary()?.totalReceived) }}</div>
+      }
+    </div>
+
+    <div class="rr-card">
+      <span class="rr-label">Total Used (Input)</span>
+      @if (loading()) {
+        <div class="rr-skel"></div>
+      } @else {
+        <div class="rr-val rr-val--neutral">{{ fmt(summary()?.totalInput) }}</div>
+      }
+    </div>
+  </section>
+
+  <section class="rr-panel">
+    <div class="rr-panel-head">
+      <h3>Recent Stock Movements</h3>
+      <p>Raw rice received and input, most recent first</p>
+    </div>
+
+    <div class="rr-table-wrap">
+      @if (loading()) {
+        <div class="rr-loading">Loading…</div>
+      } @else if (!summary()?.recentEntries?.length) {
+        <div class="rr-empty">No raw rice movements recorded yet.</div>
+      } @else {
+        <table class="rr-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th class="num">Received</th>
+              <th class="num">Input</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of summary()!.recentEntries; track row.date) {
+              <tr>
+                <td>{{ row.date | date:'MMM d, y' }}</td>
+                <td class="num amber">{{ fmt(row.rawRiceReceived) }}</td>
+                <td class="num neutral">{{ fmt(row.input) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+  </section>
+
+</div>
