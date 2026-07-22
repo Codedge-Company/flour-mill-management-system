@@ -222,23 +222,39 @@ async function upsertStockByDate(date, { rawRiceReceived, input, output, rejecti
     .populate('operator', NAME_FIELD)
     .populate('partner', NAME_FIELD);
 
+  // Build update object only for fields that are provided (not null/undefined)
+  const updateFields = {};
+  if (rawRiceReceived !== undefined && rawRiceReceived !== null && rawRiceReceived > 0) {
+    updateFields.rawRiceReceived = rawRiceReceived;
+  }
+  if (input !== undefined && input !== null && input > 0) {
+    updateFields.input = input;
+  }
+  if (output !== undefined && output !== null && output > 0) {
+    updateFields.output = output;
+  }
+  // Rejection can be 0, so allow it (but skip if null/undefined)
+  if (rejection !== undefined && rejection !== null) {
+    updateFields.rejection = rejection;
+  }
+  if (rejectionDate !== undefined && rejectionDate !== null) {
+    updateFields.rejectionDate = rejectionDate;
+  }
+
+  // Only mark hasStockEntry if at least one stock field was provided
+  if (Object.keys(updateFields).length > 0) {
+    updateFields.hasStockEntry = true;
+  }
+
+  // Generate batchNo only if rawRiceReceived is provided and >0
   let batchNoUpdate = {};
-  if (rawRiceReceived > 0) {
+  if (rawRiceReceived !== undefined && rawRiceReceived !== null && rawRiceReceived > 0) {
     const { buildBatchNo } = require('./sievingLog.service');
-
-    // Build a draft from existing or from scratch
-    const draft = existing ? { ...existing.toObject(), rawRiceReceived }
+    const draft = existing ? { ...existing.toObject(), rawRiceReceived } 
                            : { date: dayStart, operator: null, partner: null, rawRiceReceived };
-
     const newBatch = buildBatchNo(draft);
-
-    // Set batchNo if:
-    // - there is no batchNo yet, OR
-    // - current batchNo is '??' and we now have operator/partner (so we can improve it)
-    const shouldSet = !existing?.batchNo || 
-                      (existing?.batchNo?.includes('??') && existing?.operator && existing?.partner);
-
-    if (shouldSet) {
+    // Only set batchNo if it doesn't exist or currently has '??' and we have operator/partner
+    if (!existing?.batchNo || (existing?.batchNo?.includes('??') && existing?.operator && existing?.partner)) {
       batchNoUpdate.batchNo = newBatch;
     }
   }
@@ -246,15 +262,7 @@ async function upsertStockByDate(date, { rawRiceReceived, input, output, rejecti
   const log = await MachineLog.findOneAndUpdate(
     { date: dayStart },
     {
-      $set: {
-        hasStockEntry: true,
-        rawRiceReceived,
-        input,
-        output,
-        rejection,
-        rejectionDate: rejectionDate || null,
-        ...batchNoUpdate,
-      },
+      $set: { ...updateFields, ...batchNoUpdate },
       $setOnInsert: { date: dayStart, sessions: [] },
     },
     { new: true, upsert: true }
@@ -262,22 +270,24 @@ async function upsertStockByDate(date, { rawRiceReceived, input, output, rejecti
     .populate('operator', NAME_FIELD)
     .populate('partner', NAME_FIELD);
 
-  const operatorName = log.operator?.[NAME_FIELD] || 'Unassigned';
-  const partnerName = log.partner?.[NAME_FIELD] || 'Unassigned';
-
-  try {
-    await notifyStockEntry({
-      date: log.date,
-      operator: operatorName,
-      partner: partnerName,
-      rawRiceReceived: rawRiceReceived ?? 0,
-      input: input ?? 0,
-      output: output ?? 0,
-      rejection: rejection ?? 0,
-      rejectionDate: rejectionDate || null,
-    });
-  } catch (err) {
-    console.error('[MachineLog] WhatsApp stock notification failed:', err.message);
+  // Send WhatsApp notification if any stock fields were provided
+  if (Object.keys(updateFields).length > 0) {
+    const operatorName = log.operator?.[NAME_FIELD] || 'Unassigned';
+    const partnerName = log.partner?.[NAME_FIELD] || 'Unassigned';
+    try {
+      await notifyStockEntry({
+        date: log.date,
+        operator: operatorName,
+        partner: partnerName,
+        rawRiceReceived: log.rawRiceReceived ?? 0,
+        input: log.input ?? 0,
+        output: log.output ?? 0,
+        rejection: log.rejection ?? 0,
+        rejectionDate: log.rejectionDate || null,
+      });
+    } catch (err) {
+      console.error('[MachineLog] WhatsApp stock notification failed:', err.message);
+    }
   }
 
   return log;
