@@ -37,7 +37,8 @@ export class SidebarComponent {
     { label: 'Budget Management', route: '/budget', icon: 'pi-chart-bar',    adminOnly: true },
     { label: 'Flow Money', route: '/flow-money', icon: 'pi-dollar',    adminOnly: true },
     { label: 'Milling Analysis', route: '/milling-analysis', icon: 'pi-chart-pie', adminOnly: true },
-    { label: 'Operator Sessions', route: '/operators-dashboard', icon: 'pi-cog', adminOnly: true }
+    { label: 'Grind Sessions', route: '/operators-dashboard', icon: 'pi-cog', adminOnly: true },
+    { label: 'Sift Session',    route: '/sifting-dashboard', icon: 'pi-filter',     adminOnly: true },
   ];
   readonly displayName: Signal<string> = computed(() => {
     const u: any = this.authService.currentUser();

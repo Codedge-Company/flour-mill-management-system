@@ -193,11 +193,11 @@
                             <path
                                 d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
                         </svg>
-                        <span>{{ log.batchNo }}</span>
+                        <span>{{ log.batchNo || '—' }}</span>
                     </div>
                     <div class="sf-log-strip__ops">
-                        <div class="sf-mini-av op-av">{{ log.operator.username[0].toUpperCase() }}</div>
-                        <span>{{ log.operator.username }}</span>
+                        <div class="sf-mini-av op-av">{{ (log.operator?.username || '?')[0].toUpperCase() }}</div>
+                        <span>{{ log.operator?.username || '—' }}</span>
                     </div>
                     <div class="sf-log-strip__date">{{ formatDate(log.date) }}</div>
                 </div>
@@ -237,7 +237,7 @@
                         <polyline points="22 4 12 14.01 9 11.01" />
                     </svg>
                     <div>
-                        <strong>Batch {{ log.batchNo }} — Sifting Complete!</strong>
+                        <strong>Batch {{ log.batchNo || '—' }} — Sifting Complete!</strong>
                         <span>Completed {{ formatTime(log.completedAt) }}
                             <span class="sf-wa-confirmed" *ngIf="log.completionNotified">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="#25d366" stroke-width="1.8"
@@ -260,7 +260,7 @@
                             <line x1="12" y1="5" x2="12" y2="19" />
                             <line x1="5" y1="12" x2="19" y2="12" />
                         </svg>
-                        New Part — Part {{ log.parts.length + 1 }}
+                        New Part — Part {{ (log.parts?.length ?? 0) + 1 }}
                     </div>
                     <div class="sf-grid-3">
                         <!-- Input field — add max binding and error class -->
@@ -319,7 +319,7 @@
                 </div>
 
                 <!-- ── Empty state ── -->
-                <div class="sf-empty-parts" *ngIf="!log.parts.length && !showAddForm">
+                <div class="sf-empty-parts" *ngIf="!log.parts?.length && !showAddForm">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
                         stroke-linejoin="round">
                         <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
@@ -329,7 +329,7 @@
                 </div>
 
                 <!-- ── Parts table ── -->
-                <div class="sf-parts-table-wrap" *ngIf="log.parts.length">
+                <div class="sf-parts-table-wrap" *ngIf="log.parts?.length">
                     <table class="sf-parts-table">
                         <thead>
                             <tr>
@@ -442,8 +442,7 @@
                             </ng-container>
 
                             <!-- Totals row -->
-                            <!-- AFTER -->
-                            <tr class="sf-parts-totals" *ngIf="log.parts.length > 1">
+                            <tr class="sf-parts-totals" *ngIf="(log.parts?.length ?? 0) > 1">
                                 <td><strong>Total</strong></td>
                                 <td class="sf-td--num sf-val--blue"><strong>{{ totalInput | number:'1.0-1' }}
                                         kg</strong></td>
@@ -465,7 +464,7 @@
                 </div>
 
                 <!-- ── Overall metrics ── -->
-                <div class="sf-metrics" *ngIf="log.parts.length">
+                <div class="sf-metrics" *ngIf="log.parts?.length">
                     <div class="sf-metric" *ngIf="overallEfficiency">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                             stroke-linecap="round" stroke-linejoin="round">
@@ -491,7 +490,7 @@
                             <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
                         </svg>
                         <span class="sf-metric__lbl">Parts Done</span>
-                        <span class="sf-metric__val">{{ log.parts.length }}</span>
+                        <span class="sf-metric__val">{{ log.parts?.length ?? 0 }}</span>
                     </div>
                 </div>
 
@@ -528,12 +527,12 @@
             </div>
             <h3 class="sf-dialog__title">Complete Sifting Batch?</h3>
             <p class="sf-dialog__body">
-                Batch <strong>{{ log?.batchNo }}</strong> will be marked complete across
-                <strong>{{ log?.parts?.length }}</strong> part(s). A WhatsApp notification will be sent.
+                Batch <strong>{{ log?.batchNo || '—' }}</strong> will be marked complete across
+                <strong>{{ log?.parts?.length ?? 0 }}</strong> part(s). A WhatsApp notification will be sent.
                 This <strong>cannot be undone</strong>.
             </p>
             <div class="sf-dialog__summary" *ngIf="log">
-                <div class="sf-dialog__row"><span>Parts</span><strong>{{ log.parts.length }}</strong></div>
+                <div class="sf-dialog__row"><span>Parts</span><strong>{{ log.parts?.length ?? 0 }}</strong></div>
                 <div class="sf-dialog__row"><span>Total Input</span><strong>{{ totalInput | number:'1.0-1' }}
                         kg</strong></div>
                 <div class="sf-dialog__row"><span>Total Output</span><strong>{{ totalOutput | number:'1.0-1' }}

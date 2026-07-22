@@ -24,7 +24,7 @@
           </svg>
         </div>
         <div>
-          <h1 class="brand-title">Operator Sessions</h1>
+          <h1 class="brand-title">Grind Sessions</h1>
           <p class="brand-sub">Batch · Grind · Run Time · Stock · Output</p>
         </div>
       </div>
@@ -187,31 +187,6 @@
         }
       </div>
 
-      <!-- Raw Rice Stock Available -->
-      <div class="sum-card">
-        <div class="sum-card-top">
-          <span class="sum-label">Stock Available</span>
-          <div class="sum-icon sum-icon--amber">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
-                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-              <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-              <line x1="12" y1="22.08" x2="12" y2="12"/>
-            </svg>
-          </div>
-        </div>
-        @if (loading()) {
-          <div class="skel-val"></div>
-          <div class="skel-sub"></div>
-        } @else {
-          <div class="sum-value sum-amber"
-               [class.sum-rose]="summary().totalStockAvailable < 0">
-            {{ fmtKg(summary().totalStockAvailable) }}
-          </div>
-          <div class="sum-sub">Raw Received − Grinded</div>
-        }
-      </div>
-
       <!-- How Much Grinded (Input) -->
       <div class="sum-card">
         <div class="sum-card-top">
@@ -357,95 +332,6 @@
       </section>
     }
 
-    <!-- ── ROW 3: MACHINE RUN TIME (full width) ──────────────────────────── -->
-    <section class="row-full">
-      <div class="panel">
-        <div class="panel-head">
-          <div>
-            <h3 class="panel-title">Machine Run Time Per Day</h3>
-            <p class="panel-sub">Total hours each day the machine was active</p>
-          </div>
-          @if (!loading() && entries().length) {
-            <span class="data-pill">
-              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" fill="none"
-                   viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"/>
-                <polyline points="12 6 12 12 16 14"/>
-              </svg>
-              {{ totalRunDisplay() }} total
-            </span>
-          }
-        </div>
-        <div class="chart-area chart-area--lg">
-          @if (loading()) { <div class="chart-skel"></div> }
-          @else if (runTimeChartData()) {
-            <p-chart type="bar" [data]="runTimeChartData()" [options]="hoursBarOptions" height="100%"></p-chart>
-          } @else {
-            <div class="empty-chart">
-              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none"
-                   viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" opacity=".4">
-                <circle cx="12" cy="12" r="10"/>
-                <polyline points="12 6 12 12 16 14"/>
-              </svg>
-              <p>No session data for this period</p>
-            </div>
-          }
-        </div>
-      </div>
-    </section>
-
-    <!-- ── ROW 4: INPUT/OUTPUT BAR | STOCK AVAILABLE LINE ───────────────── -->
-    <section class="row-two-col">
-
-      <!-- Input · Output · Rejection bar -->
-      <div class="panel">
-        <div class="panel-head">
-          <div>
-            <h3 class="panel-title">Input · Output · Rejection</h3>
-            <p class="panel-sub">Daily grind volume comparison (kg)</p>
-          </div>
-        </div>
-        <div class="chart-area chart-area--md">
-          @if (loading()) { <div class="chart-skel"></div> }
-          @else if (ioBarChartData()) {
-            <p-chart type="bar" [data]="ioBarChartData()" [options]="kgBarOptions" height="100%"></p-chart>
-          } @else {
-            <div class="empty-chart">
-              <i class="pi pi-chart-bar"></i><p>No data</p>
-            </div>
-          }
-        </div>
-      </div>
-
-      <!-- Raw Rice Stock Available trend -->
-      <div class="panel">
-        <div class="panel-head">
-          <div>
-            <h3 class="panel-title">Raw Rice Stock Available</h3>
-            <p class="panel-sub">Remaining stock after each day's grind (kg)</p>
-          </div>
-          @if (!loading() && summary().entriesCount) {
-            <span class="trend-badge"
-                  [class.trend-up]="summary().totalStockAvailable >= 0"
-                  [class.trend-down]="summary().totalStockAvailable < 0">
-              {{ fmtKg(summary().totalStockAvailable) }}
-            </span>
-          }
-        </div>
-        <div class="chart-area chart-area--md">
-          @if (loading()) { <div class="chart-skel"></div> }
-          @else if (stockChartData()) {
-            <p-chart type="line" [data]="stockChartData()" [options]="kgLineOptions" height="100%"></p-chart>
-          } @else {
-            <div class="empty-chart">
-              <i class="pi pi-chart-line"></i><p>No data</p>
-            </div>
-          }
-        </div>
-      </div>
-
-    </section>
-
     <!-- ── ROW 5: SESSION DOUGHNUT | EMPLOYEE SUMMARY ────────────────────── -->
     <section class="row-doughnut-info">
 
@@ -474,20 +360,27 @@
         </div>
 
         @if (!loading() && sessionDoughnutData()) {
-          <div class="comp-stats">
-            @for (sess of [
-              {label:'Morning',   color:'comp-dot--sky',     idx:0},
-              {label:'Mid-day',   color:'comp-dot--emerald', idx:1},
-              {label:'Afternoon', color:'comp-dot--amber',   idx:2},
-              {label:'Evening',   color:'comp-dot--violet',  idx:3}
-            ]; track sess.idx) {
-              <div class="comp-row">
-                <span class="comp-dot" [class]="sess.color"></span>
-                <span class="comp-label">{{ sess.label }}</span>
-                <span class="comp-val">{{ sessionTimes()[sess.idx] | number:'1.2-2' }}h</span>
-              </div>
-            }
-          </div>
+<div class="comp-stats">
+  @for (sess of [
+    {label:'Morning',   color:'#3b82f6', idx:0},
+    {label:'Mid-day',   color:'#10b981', idx:1},
+    {label:'Afternoon', color:'#f59e0b', idx:2},
+    {label:'Evening',   color:'#8b5cf6', idx:3}
+  ]; track sess.idx) {
+    <div class="comp-row">
+      <span class="comp-dot" [style.background]="sess.color"></span>
+      <span class="comp-label">{{ sess.label }}</span>
+      <span class="comp-val">
+        {{ sessionTimes()[sess.idx] | number:'1.2-2' }}h
+        <span class="comp-pct">
+          ({{
+            (sessionTimes()[sess.idx] / sessionTotal() * 100) | number:'1.1-1'
+          }}%)
+        </span>
+      </span>
+    </div>
+  }
+</div>
         }
       </div>
 

@@ -211,12 +211,34 @@ function endOfDaySL(date) {
   d.setTime(d.getTime() + 24 * 60 * 60 * 1000 - 1);
   return d;
 }
-
+async function getSummary() {
+  const result = await SievingLog.aggregate([
+    { $unwind: '$parts' },
+    { $group: {
+      _id: null,
+      totalLogs: { $addToSet: '$_id' },
+      totalParts: { $sum: 1 },
+      totalInput: { $sum: '$parts.input' },
+      totalOutput: { $sum: '$parts.output' },
+      totalRejection: { $sum: '$parts.rejection' },
+    }},
+  ]);
+  const data = result[0] || { totalLogs: [], totalParts: 0, totalInput: 0, totalOutput: 0, totalRejection: 0 };
+  return {
+    totalLogs: data.totalLogs.length,
+    totalParts: data.totalParts,
+    totalInput: data.totalInput || 0,
+    totalOutput: data.totalOutput || 0,
+    totalRejection: data.totalRejection || 0,
+    avgEfficiency: data.totalInput ? (data.totalOutput / data.totalInput) * 100 : 0,
+  };
+}
 module.exports = {
   getAvailableBatches,
   getActiveSievingLog,      
   getOrCreateSievingLog,
   getSievingLogById,
+  getSummary,
   addPart, updatePart, removePart,
   completeSievingLog,
   getAllSievingLogs,

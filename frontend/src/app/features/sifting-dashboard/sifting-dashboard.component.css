@@ -1,0 +1,483 @@
+/* ── Reset & Base ───────────────────────────────────────────────────── */
+.sd-page {
+  min-height: 100vh;
+  background: #f1f5f9;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: #1e293b;
+  padding: 0;
+  margin: 0;
+}
+
+/* ── Topbar ────────────────────────────────────────────────────────────── */
+.sd-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1.75rem;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.sd-topbar__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.sd-topbar__icon {
+  width: 28px;
+  height: 28px;
+  color: #6366f1;
+  flex-shrink: 0;
+}
+
+.sd-topbar__title {
+  font-weight: 700;
+  font-size: 1rem;
+  display: block;
+  color: #111827;
+}
+
+.sd-topbar__sub {
+  font-size: 0.73rem;
+  color: #64748b;
+  display: block;
+  margin-top: 0.05rem;
+}
+
+.sd-topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────────── */
+.sd-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  color: #475569;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.sd-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.sd-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sd-btn--ghost {
+  background: transparent;
+  border-color: transparent;
+}
+
+.sd-btn--ghost:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+}
+
+/* ── Error ────────────────────────────────────────────────────────────── */
+.sd-error {
+  margin: 1rem 1.75rem;
+  padding: 0.75rem 1rem;
+  background: #fef2f2;
+  border-left: 4px solid #f87171;
+  color: #b91c1c;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ── Content ───────────────────────────────────────────────────────────── */
+.sd-content {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* ── KPI Grid ──────────────────────────────────────────────────────────── */
+.sd-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
+}
+
+.sd-kpi {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.sd-kpi__label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #64748b;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.sd-kpi__value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.sd-kpi--blue .sd-kpi__value { color: #2563eb; }
+.sd-kpi--green .sd-kpi__value { color: #059669; }
+.sd-kpi--red .sd-kpi__value { color: #dc2626; }
+.sd-kpi--violet .sd-kpi__value { color: #7c3aed; }
+
+/* ── Panels ────────────────────────────────────────────────────────────── */
+.sd-panel {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  padding: 1.25rem 1.5rem 1.5rem;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.sd-panel__title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0 0 0.75rem 0;
+  color: #1e293b;
+}
+
+/* ── Outstanding Batches ──────────────────────────────────────────────── */
+.sd-panel--outstanding {
+  padding-bottom: 0.5rem;
+}
+
+.sd-panel__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.sd-panel__badge {
+  background: #e0e7ff;
+  color: #4f46e5;
+  padding: 0.2rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sd-outstanding-stats {
+  display: flex;
+  gap: 2rem;
+  padding: 0.5rem 0 1rem;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.sd-stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.sd-stat__label {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.sd-stat__value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.sd-strong {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.sd-progress-bar {
+  width: 100px;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 0.5rem;
+}
+
+.sd-progress-fill {
+  height: 100%;
+  background: #3b82f6;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.sd-progress-label {
+  font-size: 0.8rem;
+  color: #475569;
+}
+
+/* ── Charts Row ────────────────────────────────────────────────────────── */
+.sd-charts-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.25rem;
+}
+
+.sd-chart-wrap {
+  min-height: 200px;
+}
+
+.sd-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  padding: 2rem 0;
+  font-size: 0.9rem;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* ── Tables ────────────────────────────────────────────────────────────── */
+.sd-table-wrap {
+  overflow-x: auto;
+}
+
+.sd-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.sd-table th {
+  text-align: left;
+  padding: 0.6rem 0.5rem;
+  font-weight: 600;
+  color: #64748b;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.sd-table td {
+  padding: 0.6rem 0.5rem;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+.sd-table .num {
+  text-align: right;
+}
+
+.sd-batch {
+  background: #eef2ff;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #4f46e5;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.sd-status {
+  display: inline-block;
+  padding: 0.2rem 0.7rem;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.sd-status--active {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.sd-status--done {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.sd-more {
+  text-align: center;
+  padding: 0.5rem 0;
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
+/* ── Responsive Adjustments ───────────────────────────────────────────── */
+
+/* Tablets and small laptops */
+@media (max-width: 992px) {
+  .sd-topbar {
+    padding: 0.75rem 1.25rem;
+  }
+
+  .sd-content {
+    padding: 1.25rem 1rem;
+  }
+
+  .sd-charts-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Mobile devices */
+@media (max-width: 768px) {
+  .sd-topbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .sd-topbar__brand {
+    justify-content: center;
+  }
+
+  .sd-topbar__actions {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .sd-error {
+    margin: 0.75rem 1rem;
+  }
+
+  .sd-content {
+    padding: 1rem 0.75rem;
+    gap: 1.25rem;
+  }
+
+  .sd-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .sd-kpi {
+    padding: 0.75rem 1rem;
+  }
+
+  .sd-kpi__value {
+    font-size: 1.25rem;
+  }
+
+  .sd-charts-row {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .sd-panel {
+    padding: 1rem 1rem 1.25rem;
+  }
+
+  .sd-panel__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .sd-outstanding-stats {
+    gap: 1rem;
+    flex-direction: column;
+  }
+
+  .sd-table th,
+  .sd-table td {
+    padding: 0.4rem 0.3rem;
+    font-size: 0.78rem;
+  }
+
+  .sd-table .num {
+    text-align: left;
+  }
+
+  .sd-progress-bar {
+    width: 60px;
+  }
+
+  .sd-batch {
+    font-size: 0.7rem;
+    padding: 0.1rem 0.4rem;
+  }
+}
+
+/* Small phones */
+@media (max-width: 480px) {
+  .sd-topbar__title {
+    font-size: 0.9rem;
+  }
+
+  .sd-topbar__sub {
+    font-size: 0.65rem;
+  }
+
+  .sd-kpi-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .sd-kpi {
+    padding: 0.6rem 0.75rem;
+  }
+
+  .sd-kpi__label {
+    font-size: 0.7rem;
+  }
+
+  .sd-kpi__value {
+    font-size: 1rem;
+  }
+
+  .sd-btn {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.7rem;
+  }
+
+  .sd-table th,
+  .sd-table td {
+    font-size: 0.7rem;
+    padding: 0.3rem 0.2rem;
+  }
+
+  .sd-progress-bar {
+    width: 40px;
+    height: 4px;
+  }
+
+  .sd-progress-label {
+    font-size: 0.65rem;
+  }
+
+  .sd-panel {
+    padding: 0.75rem;
+  }
+}

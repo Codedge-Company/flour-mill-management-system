@@ -48,24 +48,24 @@ export interface DashSummary {
   selector: 'app-machine-operators-dashboard',
   standalone: true,
   imports: [CommonModule, FormsModule, DecimalPipe,
-            CalendarModule, ChartModule, SkeletonModule, TooltipModule],
+    CalendarModule, ChartModule, SkeletonModule, TooltipModule],
   templateUrl: './machine-operators-dashboard.component.html',
   styleUrl: './machine-operators-dashboard.component.css',
 })
 export class MachineOperatorsDashboardComponent implements OnInit {
 
   // ── Reactive state ────────────────────────────────────────────────────────
-  loading   = signal(true);
-  error     = signal('');
-  rawLogs   = signal<MachineLog[]>([]);
+  loading = signal(true);
+  error = signal('');
+  rawLogs = signal<MachineLog[]>([]);
 
   // ── Filter ────────────────────────────────────────────────────────────────
-  activePreset    = signal<string>('today');
+  activePreset = signal<string>('today');
   showCustomRange = signal(false);
   showSinglePicker = signal(false);
-  dateFrom        = signal<Date | null>(null);
-  dateTo          = signal<Date | null>(null);
-  singleDate      = signal<Date | null>(null);
+  dateFrom = signal<Date | null>(null);
+  dateTo = signal<Date | null>(null);
+  singleDate = signal<Date | null>(null);
 
   today = new Date();
 
@@ -84,30 +84,30 @@ export class MachineOperatorsDashboardComponent implements OnInit {
     const es = this.entries();
     if (!es.length) return this.emptySummary();
 
-    const totalRaw  = es.reduce((s, e) => s + e.rawRiceReceived, 0);
-    const totalIn   = es.reduce((s, e) => s + e.input, 0);
-    const totalOut  = es.reduce((s, e) => s + e.output, 0);
-    const totalRej  = es.reduce((s, e) => s + (e.rejection ?? 0), 0);
+    const totalRaw = es.reduce((s, e) => s + e.rawRiceReceived, 0);
+    const totalIn = es.reduce((s, e) => s + e.input, 0);
+    const totalOut = es.reduce((s, e) => s + e.output, 0);
+    const totalRej = es.reduce((s, e) => s + (e.rejection ?? 0), 0);
     const totalMins = es.reduce((s, e) => s + e.runTimeMinutes, 0);
-    const batches   = es.filter(e => e.hasBatch).length;
-    const allEmps   = new Set<string>();
+    const batches = es.filter(e => e.hasBatch).length;
+    const allEmps = new Set<string>();
     es.forEach(e => {
       if (e.operatorName && e.operatorName !== 'Unknown') allEmps.add(e.operatorName);
-      if (e.partnerName  && e.partnerName  !== 'Unknown') allEmps.add(e.partnerName);
+      if (e.partnerName && e.partnerName !== 'Unknown') allEmps.add(e.partnerName);
     });
 
     return {
-      entriesCount:        es.length,
-      batchCount:          batches,
-      totalRawReceived:    totalRaw,
+      entriesCount: es.length,
+      batchCount: batches,
+      totalRawReceived: totalRaw,
       totalStockAvailable: totalRaw - totalIn,
-      totalGrinded:        totalIn,
-      totalRunMinutes:     totalMins,
-      totalOutput:         totalOut,
-      totalRejection:      totalRej,
-      avgEfficiency:       totalIn > 0 ? (totalOut / totalIn) * 100 : 0,
-      avgRunHoursPerDay:   es.length > 0 ? totalMins / 60 / es.length : 0,
-      uniqueEmployees:     Array.from(allEmps),
+      totalGrinded: totalIn,
+      totalRunMinutes: totalMins,
+      totalOutput: totalOut,
+      totalRejection: totalRej,
+      avgEfficiency: totalIn > 0 ? (totalOut / totalIn) * 100 : 0,
+      avgRunHoursPerDay: es.length > 0 ? totalMins / 60 / es.length : 0,
+      uniqueEmployees: Array.from(allEmps),
     };
   });
 
@@ -228,28 +228,58 @@ export class MachineOperatorsDashboardComponent implements OnInit {
     );
     if (times.every(t => t === 0)) return null;
     return {
-      labels: ['Morning', 'Mid-day', 'Afternoon', 'Evening'],
+      labels: ['Morning', 'Mid‑day', 'Afternoon', 'Evening'],
       datasets: [{
         data: times.map(t => +(t / 60).toFixed(2)),
-        backgroundColor: ['#0ea5e9', '#10b981', '#f59e0b', '#8b5cf6'],
-        borderWidth: 0,
-        hoverOffset: 8,
+        backgroundColor: [
+          '#3b82f6',   // blue-500
+          '#10b981',   // emerald-500
+          '#f59e0b',   // amber-500
+          '#8b5cf6'    // violet-500
+        ],
+        borderColor: '#ffffff',
+        borderWidth: 2,
+        hoverOffset: 12,
       }],
     };
   });
-
+  sessionTotal = computed(() => {
+    const data = this.sessionDoughnutData();
+    return data ? data.datasets[0].data.reduce((a, b) => a + b, 0) : 0;
+  });
   // ── Chart options ─────────────────────────────────────────────────────────
   readonly hoursBarOptions = this.makeBarOptions('h');
-  readonly kgBarOptions    = this.makeBarOptions('kg');
-  readonly kgLineOptions   = this.makeLineOptions('kg');
+  readonly kgBarOptions = this.makeBarOptions('kg');
+  readonly kgLineOptions = this.makeLineOptions('kg');
   readonly doughnutOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    cutout: '70%',
+    cutout: '72%',                     // slightly larger hole for the central total
     plugins: {
-      legend: { display: false },
-      tooltip: { callbacks: { label: (ctx: any) => ` ${ctx.label}: ${ctx.parsed.toFixed(2)}h` } },
+      legend: {
+        display: false,                // we use our own custom legend below
+      },
+      tooltip: {
+        callbacks: {
+          label: (context: any) => {
+            const label = context.label || '';
+            const value = context.parsed || 0;
+            const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0);
+            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+            return ` ${label}: ${value.toFixed(2)}h (${percentage}%)`;
+          }
+        }
+      }
     },
+    animation: {
+      animateRotate: true,
+      duration: 800,
+      easing: 'easeOutQuart'
+    },
+    hover: {
+      mode: 'index',
+      intersect: true
+    }
   };
 
   // ── Session totals for doughnut legend ────────────────────────────────────
@@ -263,7 +293,7 @@ export class MachineOperatorsDashboardComponent implements OnInit {
     return !!this.dateFrom() && !!this.dateTo();
   }
 
-  constructor(@Inject(MachineLogService) private machineLogSvc: MachineLogService) {}
+  constructor(@Inject(MachineLogService) private machineLogSvc: MachineLogService) { }
 
   ngOnInit(): void {
     this.applyPreset('today');
@@ -337,41 +367,41 @@ export class MachineOperatorsDashboardComponent implements OnInit {
 
   // ── Build entry ───────────────────────────────────────────────────────────
   private buildEntry(log: MachineLog): OperatorEntry {
-    const opName   = (log.operator as any)?.username || (log.operator as any)?.name || 'Unknown';
-    const prName   = (log.partner  as any)?.username || (log.partner  as any)?.name || 'Unknown';
-    const raw      = log.rawRiceReceived ?? 0;
-    const inp      = log.input ?? 0;
-    const out      = log.output ?? 0;
+    const opName = (log.operator as any)?.username || (log.operator as any)?.name || 'Unknown';
+    const prName = (log.partner as any)?.username || (log.partner as any)?.name || 'Unknown';
+    const raw = log.rawRiceReceived ?? 0;
+    const inp = log.input ?? 0;
+    const out = log.output ?? 0;
     const hasBatch = raw > 0;
-    const runMins  = this.calcRunMinutes(log.sessions);
-    const hasRun   = log.sessions.some(s => s.startTime && !s.stopTime);
-    const eff      = inp > 0 ? (out / inp) * 100 : 0;
+    const runMins = this.calcRunMinutes(log.sessions);
+    const hasRun = log.sessions.some(s => s.startTime && !s.stopTime);
+    const eff = inp > 0 ? (out / inp) * 100 : 0;
 
     return {
-      _id:              log._id,
-      date:             log.date,
-      batchNo:          hasBatch ? this.genBatchNo(log, opName, prName) : '—',
+      _id: log._id,
+      date: log.date,
+      batchNo: hasBatch ? this.genBatchNo(log, opName, prName) : '—',
       hasBatch,
-      rawRiceReceived:  raw,
-      input:            inp,
-      output:           out,
-      rejection:        log.rejection,
-      rejectionDate:    log.rejectionDate,
-      stockAvailable:   raw - inp,
-      runTimeMinutes:   runMins,
-      runTimeDisplay:   this.formatRunTime(runMins),
-      operatorName:     opName,
-      partnerName:      prName,
-      efficiency:       eff,
-      sessions:         log.sessions,
-      hasRunning:       hasRun,
+      rawRiceReceived: raw,
+      input: inp,
+      output: out,
+      rejection: log.rejection,
+      rejectionDate: log.rejectionDate,
+      stockAvailable: raw - inp,
+      runTimeMinutes: runMins,
+      runTimeDisplay: this.formatRunTime(runMins),
+      operatorName: opName,
+      partnerName: prName,
+      efficiency: eff,
+      sessions: log.sessions,
+      hasRunning: hasRun,
       completedSessions: log.sessions.filter(s => s.startTime && s.stopTime).length,
-      hasStockEntry:    log.hasStockEntry,
+      hasStockEntry: log.hasStockEntry,
     };
   }
 
   private genBatchNo(log: MachineLog, opName: string, prName: string): string {
-    const d  = new Date(log.date);
+    const d = new Date(log.date);
     const mm = String(d.getMonth() + 1).padStart(2, '0');
     const dd = String(d.getDate()).padStart(2, '0');
     const oi = opName[0]?.toUpperCase() ?? '?';

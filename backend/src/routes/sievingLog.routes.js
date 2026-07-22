@@ -11,5 +11,6 @@ router.post('/:id/complete',         ctrl.completeSievingLog);
 router.post('/:id/parts',            ctrl.addPart);
 router.patch('/:id/parts/:partId',   ctrl.updatePart);
 router.delete('/:id/parts/:partId',  ctrl.removePart);
+router.get('/summary', ctrl.getSummary);
 
 module.exports = router;

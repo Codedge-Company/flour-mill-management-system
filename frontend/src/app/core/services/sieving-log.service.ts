@@ -31,9 +31,9 @@ export interface SievingLog {
   _id: string;
   machineLogId: string;
   batchNo: string;
-  operator: { _id: string; username: string };  
+  operator: { _id: string; username: string } | null;
   date: string;
-  parts: SievingPart[];                         
+  parts?: SievingPart[];
   totalInput: number;
   totalOutput: number;
   totalRejection: number;
@@ -59,8 +59,23 @@ export class SievingLogService {
     return this.http.get<{ success: boolean; data: SievingLog }>(`${this.base}/active`)
       .pipe(
         map(r => r.data ?? null),
-        catchError(() => of(null))   // no active log = not an error
+        catchError(() => of(null))
       );
+  }
+
+  /** Fetch all sieving logs with optional date range & pagination. Returns logs array. */
+  getAllLogs(params?: { from?: string; to?: string; limit?: number }): Observable<SievingLog[]> {
+    const query: any = {};
+    if (params?.from) query.from = params.from;
+    if (params?.to)   query.to   = params.to;
+    if (params?.limit) query.limit = params.limit;
+
+    return this.http.get<{ success: boolean; logs: SievingLog[]; total: number; page: number; limit: number }>(
+      `${this.base}`,
+      { params: query }
+    ).pipe(
+      map(r => r.logs ?? [])
+    );
   }
 
   createLog(machineLogId: string, operatorId: string, date?: Date): Observable<SievingLog> {

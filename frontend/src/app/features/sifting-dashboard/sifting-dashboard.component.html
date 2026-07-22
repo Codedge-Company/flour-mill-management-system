@@ -1,0 +1,214 @@
+<div class="sd-page">
+  <!-- Topbar -->
+  <header class="sd-topbar">
+    <div class="sd-topbar__brand">
+      <svg class="sd-topbar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <line x1="9" y1="3" x2="9" y2="21" />
+      </svg>
+      <div>
+        <span class="sd-topbar__title">Sifting Dashboard</span>
+        <span class="sd-topbar__sub">Sieving summary &amp; analytics</span>
+      </div>
+    </div>
+    <div class="sd-topbar__actions">
+      <button class="sd-btn sd-btn--ghost" (click)="loadData()" [disabled]="loading()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="23 4 23 10 17 10" />
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+        </svg>
+        Refresh
+      </button>
+    </div>
+  </header>
+
+  <!-- Error -->
+  @if (error()) {
+    <div class="sd-error">{{ error() }}</div>
+  }
+
+  <!-- Content -->
+  <main class="sd-content">
+    <!-- KPI Cards -->
+    <section class="sd-kpi-grid">
+      <div class="sd-kpi">
+        <span class="sd-kpi__label">Total Logs</span>
+        @if (loading()) { <p-skeleton width="60px" height="28px" /> }
+        @else { <span class="sd-kpi__value">{{ totalLogs() }}</span> }
+      </div>
+      <div class="sd-kpi">
+        <span class="sd-kpi__label">Total Parts</span>
+        @if (loading()) { <p-skeleton width="60px" height="28px" /> }
+        @else { <span class="sd-kpi__value">{{ totalParts() }}</span> }
+      </div>
+      <div class="sd-kpi sd-kpi--blue">
+        <span class="sd-kpi__label">Total Input</span>
+        @if (loading()) { <p-skeleton width="80px" height="28px" /> }
+        @else { <span class="sd-kpi__value">{{ formatKg(totalInput()) }}</span> }
+      </div>
+      <div class="sd-kpi sd-kpi--green">
+        <span class="sd-kpi__label">Total Output</span>
+        @if (loading()) { <p-skeleton width="80px" height="28px" /> }
+        @else { <span class="sd-kpi__value">{{ formatKg(totalOutput()) }}</span> }
+      </div>
+      <div class="sd-kpi sd-kpi--red">
+        <span class="sd-kpi__label">Total Rejection</span>
+        @if (loading()) { <p-skeleton width="80px" height="28px" /> }
+        @else { <span class="sd-kpi__value">{{ formatKg(totalRejection()) }}</span> }
+      </div>
+      <div class="sd-kpi sd-kpi--violet">
+        <span class="sd-kpi__label">Avg Efficiency</span>
+        @if (loading()) { <p-skeleton width="60px" height="28px" /> }
+        @else { <span class="sd-kpi__value">{{ formatPercent(avgEfficiency()) }}</span> }
+      </div>
+    </section>
+
+    <!-- ── NEW: Outstanding Batches ────────────────────────────────────── -->
+    <section class="sd-panel sd-panel--outstanding">
+      <div class="sd-panel__header">
+        <h3 class="sd-panel__title">Outstanding Batches</h3>
+        <span class="sd-panel__badge">{{ totalOutstandingBatches() }} batches</span>
+      </div>
+
+      @if (loading()) {
+        <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+          @for (i of [1,2,3]; track i) { <p-skeleton width="120px" height="56px" borderRadius="8px" /> }
+        </div>
+      } @else if (outstandingBatches().length === 0) {
+        <div class="sd-empty">✅ All batches are fully sifted. No outstanding stock.</div>
+      } @else {
+        <!-- Quick summary stats -->
+        <div class="sd-outstanding-stats">
+          <div class="sd-stat">
+            <span class="sd-stat__label">Total Remaining Stock</span>
+            <span class="sd-stat__value">{{ formatKg(totalRemainingStock()) }}</span>
+          </div>
+          <div class="sd-stat">
+            <span class="sd-stat__label">Average Remaining / Batch</span>
+            <span class="sd-stat__value">{{ formatKg(totalRemainingStock() / totalOutstandingBatches()) }}</span>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="sd-table-wrap">
+          <table class="sd-table">
+            <thead>
+              <tr>
+                <th>Batch No.</th>
+                <th>Date</th>
+                <th>Operator</th>
+                <th>Partner</th>
+                <th class="num">Total Output (kg)</th>
+                <th class="num">Sifted So Far</th>
+                <th class="num">Remaining Stock</th>
+                <th>Progress</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (batch of outstandingBatches(); track batch._id) {
+                <tr>
+                  <td><span class="sd-batch">{{ batch.batchNo }}</span></td>
+                  <td>{{ formatDate(batch.date) }}</td>
+                  <td>{{ batch.operatorName }}</td>
+                  <td>{{ batch.partnerName }}</td>
+                  <td class="num">{{ formatKg(batch.output) }}</td>
+                  <td class="num">{{ formatKg(batch.totalSievedInput) }}</td>
+                  <td class="num sd-strong">{{ formatKg(batch.remainingStock) }}</td>
+                  <td>
+                    <div class="sd-progress-bar">
+                      <div class="sd-progress-fill"
+                           [style.width.%]="batch.output ? (batch.totalSievedInput / batch.output) * 100 : 0">
+                      </div>
+                    </div>
+                    <span class="sd-progress-label">
+                      {{ batch.output ? ((batch.totalSievedInput / batch.output) * 100).toFixed(0) : 0 }}%
+                    </span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+
+    <!-- Charts Row -->
+    <section class="sd-charts-row">
+      <div class="sd-panel sd-panel--trend">
+        <h3 class="sd-panel__title">Input / Output Trend</h3>
+        <div class="sd-chart-wrap">
+          @if (loading()) { <p-skeleton height="200px" /> }
+          @else if (trendData()) {
+            <p-chart type="bar" [data]="trendData()!" [options]="barOptions" height="200px" />
+          } @else {
+            <div class="sd-empty">No data to display</div>
+          }
+        </div>
+      </div>
+
+      <div class="sd-panel sd-panel--distribution">
+        <h3 class="sd-panel__title">Efficiency Distribution</h3>
+        <div class="sd-chart-wrap">
+          @if (loading()) { <p-skeleton height="200px" /> }
+          @else if (efficiencyDistribution()) {
+            <p-chart type="doughnut" [data]="efficiencyDistribution()!" [options]="doughnutOptions" height="200px" />
+          } @else {
+            <div class="sd-empty">No part data</div>
+          }
+        </div>
+      </div>
+    </section>
+
+    <!-- Recent Logs Table -->
+    <section class="sd-panel sd-panel--table">
+      <h3 class="sd-panel__title">Recent Sifting Logs</h3>
+      <div class="sd-table-wrap">
+        @if (loading()) {
+          <div style="display:flex;flex-direction:column;gap:8px;padding:12px 0;">
+            @for (i of [1,2,3,4,5]; track i) { <p-skeleton height="40px" /> }
+          </div>
+        } @else if (logs().length === 0) {
+          <div class="sd-empty">No logs found for the selected period.</div>
+        } @else {
+          <table class="sd-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Batch</th>
+                <th>Operator</th>
+                <th class="num">Input</th>
+                <th class="num">Output</th>
+                <th class="num">Rejection</th>
+                <th class="num">Efficiency</th>
+                <th class="num">Parts</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (log of logs().slice(0, 10); track log._id) {
+                <tr>
+                  <td>{{ log.date | date:'MMM d, y' }}</td>
+                  <td><span class="sd-batch">{{ log.batchNo }}</span></td>
+                  <td>{{ log.operator?.username || '—' }}</td>
+                  <td class="num">{{ formatKg(log.totalInput) }}</td>
+                  <td class="num">{{ formatKg(log.totalOutput) }}</td>
+                  <td class="num">{{ formatKg(log.totalRejection) }}</td>
+                  <td class="num">{{ log.totalInput > 0 ? (log.totalOutput / log.totalInput * 100 | number:'1.1-1') + '%' : '—' }}</td>
+                  <td class="num">{{ log.parts?.length || 0 }}</td>
+                  <td>
+                    <span class="sd-status" [class.sd-status--done]="log.isCompleted" [class.sd-status--active]="!log.isCompleted">
+                      {{ log.isCompleted ? 'Completed' : 'Active' }}
+                    </span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+          @if (logs().length > 10) {
+            <div class="sd-more">… and {{ logs().length - 10 }} more</div>
+          }
+        }
+      </div>
+    </section>
+  </main>
+</div>

@@ -71,12 +71,20 @@ const getAllSievingLogs = async (req, res) => {
     res.json({ success: true, ...result });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 };
-
+const getSummary = async (req, res) => {
+  try {
+    const summary = await sievingLogService.getSummary();
+    res.json({ success: true, data: summary });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
 module.exports = {
   getAvailableBatches,
   getActiveSievingLog,  
   createSievingLog,
   getSievingLog,
+  getSummary,
   addPart, updatePart, removePart,
   completeSievingLog,
   getAllSievingLogs,

@@ -5,7 +5,7 @@
   --blue: #2563eb;
   --bg: #ffffff;
   --bg-hover: #f8fafc;
-  --bg-active: #2563EB;           /* Dark active like screenshot */
+  --bg-active: #2563EB;
   --text-active: #ffffff;
   --border: #e2e8f0;
   --text: #0f172a;
@@ -48,10 +48,12 @@
   flex-shrink: 0;
 }
 
-.brand-icon {
+.brand-logo {
   width: 36px;
   height: 36px;
-  object-fit: contain;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 8px;
 }
 
@@ -109,9 +111,9 @@
   padding: 8px 12px;
   flex: 1;
   overflow-y: auto;
-  gap: 4px;
   display: flex;
   flex-direction: column;
+  gap: 4px;
 }
 
 .nav-item {
@@ -139,7 +141,6 @@
   font-weight: 600;
 }
 
-/* Icon */
 .nav-icon {
   width: 36px;
   height: 36px;
@@ -154,12 +155,11 @@
   color: var(--text-active);
 }
 
-/* Label */
 .nav-label {
   flex: 1;
 }
 
-/* Collapsed */
+/* ─── Collapsed state (desktop) ────────────────────────────── */
 .sidebar.collapsed .nav-item {
   padding: 11px;
   justify-content: center;
@@ -202,6 +202,7 @@
   justify-content: center;
   font-size: 14px;
   box-shadow: 0 4px 12px rgba(37,99,235,0.25);
+  flex-shrink: 0;
 }
 
 .user-meta {
@@ -228,6 +229,9 @@
   color: var(--text-sub);
   border-radius: 8px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .logout-btn:hover {
@@ -235,25 +239,85 @@
   color: #e11d48;
 }
 
-/* Responsive */
-@media (max-width: 1024px) {
-  .sidebar { width: var(--sidebar-col); }
+/* ─── Responsive: Tablets (collapsed by default) ───────────── */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .sidebar {
+    width: var(--sidebar-col);
+  }
+
   .sidebar .brand-text,
   .sidebar .nav-label,
   .sidebar .nav-badge,
   .sidebar .nav-section-label,
   .sidebar .user-meta,
-  .sidebar .logout-btn { display: none; }
+  .sidebar .logout-btn {
+    display: none;
+  }
+
+  /* When collapsed is false on tablet, still force compact */
+  .sidebar:not(.collapsed) {
+    width: var(--sidebar-col);
+  }
+
+  .sidebar:not(.collapsed) .brand-text,
+  .sidebar:not(.collapsed) .nav-label,
+  .sidebar:not(.collapsed) .nav-badge,
+  .sidebar:not(.collapsed) .nav-section-label,
+  .sidebar:not(.collapsed) .user-meta,
+  .sidebar:not(.collapsed) .logout-btn {
+    display: none;
+  }
 }
 
+/* ─── Responsive: Mobile (slide‑out with full text) ──────────── */
 @media (max-width: 768px) {
   .sidebar {
     width: var(--sidebar-w) !important;
     transform: translateX(-100%);
-    box-shadow: 8px 0 30px rgba(0,0,0,0.18);
+    box-shadow: 8px 0 30px rgba(0, 0, 0, 0.18);
   }
+
   .sidebar.mobile-open {
     transform: translateX(0);
   }
-  .mobile-close-btn { display: flex !important; }
+
+  .mobile-close-btn {
+    display: flex !important;
+  }
+
+  /* Show all text elements when the sidebar is open on mobile */
+  .sidebar.mobile-open .brand-text,
+  .sidebar.mobile-open .nav-label,
+  .sidebar.mobile-open .nav-badge,
+  .sidebar.mobile-open .nav-section-label,
+  .sidebar.mobile-open .user-meta,
+  .sidebar.mobile-open .logout-btn {
+    display: flex !important;   /* or block/inline-flex as needed */
+  }
+
+  /* Override any specific display types for correct layout */
+  .sidebar.mobile-open .brand-text {
+    display: flex !important;
+    flex-direction: column;
+  }
+
+  .sidebar.mobile-open .nav-label {
+    display: inline !important;
+  }
+
+  .sidebar.mobile-open .nav-badge {
+    display: inline !important;
+  }
+
+  .sidebar.mobile-open .nav-section-label {
+    display: block !important;
+  }
+
+  .sidebar.mobile-open .user-meta {
+    display: block !important;
+  }
+
+  .sidebar.mobile-open .logout-btn {
+    display: flex !important;
+  }
 }

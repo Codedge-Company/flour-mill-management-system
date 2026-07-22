@@ -7,6 +7,7 @@ import { CreditPaymentsComponent } from './features/credit-payments/credit-payme
 import { FlowMoneyComponent } from './features/flow-money/flow-money/flow-money.component';
 import { MillingAnalysisComponent } from './features/milling-analysis/milling-analysis.component';
 import { MachineOperatorsDashboardComponent } from './features/machine-operators-dashboard/machine-operators-dashboard.component';
+import { SiftingDashboardComponent } from './features/sifting-dashboard/sifting-dashboard.component';
 
 export const routes: Routes = [
   {
@@ -73,6 +74,7 @@ export const routes: Routes = [
       { path: 'flow-money', component: FlowMoneyComponent },
       { path: 'milling-analysis', component: MillingAnalysisComponent },
       { path: 'operators-dashboard', component: MachineOperatorsDashboardComponent },
+      { path: 'sifting-dashboard', component: SiftingDashboardComponent, canActivate: [adminGuard] },
     ]
   },
   { path: '**', redirectTo: 'dashboard' }
