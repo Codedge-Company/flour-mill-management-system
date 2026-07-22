@@ -5,11 +5,15 @@ const { notifySiftingComplete } = require('./whatsapp.service');
 const NAME_FIELD = 'username';
 
 function buildBatchNo(machineLog) {
-  const d  = new Date(machineLog.date);
+  const d = new Date(machineLog.date);
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
-  const oi = (machineLog.operator?.[NAME_FIELD] || '?')[0].toUpperCase();
-  const pi = (machineLog.partner?.[NAME_FIELD]  || '?')[0].toUpperCase();
+
+  const operatorName = machineLog.operator?.[NAME_FIELD] || '?';
+  const partnerName  = machineLog.partner?.[NAME_FIELD]  || '?';
+  const oi = operatorName[0].toUpperCase();
+  const pi = partnerName[0].toUpperCase();
+
   return `ST-${mm}-${dd}-${oi}${pi}`;
 }
 
@@ -20,8 +24,24 @@ async function getAvailableBatches() {
   })
     .sort({ date: -1 })
     .populate('operator', NAME_FIELD)
-    .populate('partner',  NAME_FIELD)
+    .populate('partner', NAME_FIELD)
     .limit(100);
+
+  // 🔁 Clean up any logs with '??' that now have operator/partner
+  for (const log of machineLogs) {
+    if (log.batchNo && log.batchNo.includes('??') && log.operator && log.partner) {
+      const newBatch = buildBatchNo(log);
+      if (newBatch !== log.batchNo) {
+        log.batchNo = newBatch;
+        await log.save();
+        // Also update SievingLog
+        await SievingLog.updateMany(
+          { machineLogId: log._id },
+          { batchNo: newBatch }
+        );
+      }
+    }
+  }
 
   const mlIds = machineLogs.map(l => l._id);
   const sievingLogs = await SievingLog.find({ machineLogId: { $in: mlIds } });

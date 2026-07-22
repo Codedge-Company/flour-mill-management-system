@@ -106,13 +106,30 @@ async function recordStop(logId, sessionNumber) {
 }
 
 async function updateOperators(logId, operatorId, partnerId) {
-  return MachineLog.findByIdAndUpdate(
+  const log = await MachineLog.findByIdAndUpdate(
     logId,
     { operator: operatorId, partner: partnerId },
     { new: true }
   )
     .populate('operator', NAME_FIELD)
     .populate('partner', NAME_FIELD);
+
+  if (log && log.rawRiceReceived > 0) {
+    const { buildBatchNo } = require('./sievingLog.service');
+    const newBatch = buildBatchNo(log);
+    if (log.batchNo !== newBatch) {
+      log.batchNo = newBatch;
+      await log.save();
+
+      // Also update any SievingLog with the same machineLogId
+      const SievingLog = require('../models/SievingLog');
+      await SievingLog.updateMany(
+        { machineLogId: log._id },
+        { batchNo: newBatch }
+      );
+    }
+  }
+  return log;
 }
 
 async function updateStockEntry(logId, { rawRiceReceived, input, output, rejection, rejectionDate }) {
@@ -120,9 +137,11 @@ async function updateStockEntry(logId, { rawRiceReceived, input, output, rejecti
   if (!existing) return null;
 
   let batchNoUpdate = {};
-  if (!existing.batchNo && rawRiceReceived > 0) {
+  if (rawRiceReceived > 0 && !existing?.batchNo) {
     const { buildBatchNo } = require('./sievingLog.service');
-    const draft = Object.assign(existing, { rawRiceReceived });
+    // Build a draft from existing (or a new object) – buildBatchNo handles missing operator/partner
+    const draft = existing ? { ...existing.toObject(), rawRiceReceived }
+      : { date: dayStart, operator: null, partner: null, rawRiceReceived };
     batchNoUpdate.batchNo = buildBatchNo(draft);
   }
 
@@ -144,7 +163,7 @@ async function updateStockEntry(logId, { rawRiceReceived, input, output, rejecti
 
   if (log) {
     const operatorName = log.operator?.[NAME_FIELD] || 'Unknown';
-    const partnerName  = log.partner?.[NAME_FIELD]  || 'Unknown';
+    const partnerName = log.partner?.[NAME_FIELD] || 'Unknown';
 
     try {
       await notifyStockEntry({
@@ -152,10 +171,10 @@ async function updateStockEntry(logId, { rawRiceReceived, input, output, rejecti
         operator: operatorName,
         partner: partnerName,
         rawRiceReceived: rawRiceReceived ?? 0,
-        input:           input           ?? 0,
-        output:          output          ?? 0,
-        rejection:       rejection       ?? 0,
-        rejectionDate:   rejectionDate   || null,
+        input: input ?? 0,
+        output: output ?? 0,
+        rejection: rejection ?? 0,
+        rejectionDate: rejectionDate || null,
       });
     } catch (err) {
       console.error('[MachineLog] WhatsApp stock notification failed:', err.message);
@@ -198,13 +217,30 @@ async function getAllLogs({ page = 1, limit = 20, from = null, to = null } = {})
 async function upsertStockByDate(date, { rawRiceReceived, input, output, rejection, rejectionDate }) {
   const dayStart = startOfDay(date);
 
-  const existing = await MachineLog.findOne({ date: dayStart });
+  // Populate operator/partner so we can build a correct batch number
+  const existing = await MachineLog.findOne({ date: dayStart })
+    .populate('operator', NAME_FIELD)
+    .populate('partner', NAME_FIELD);
 
   let batchNoUpdate = {};
-  if (existing && existing.operator && existing.partner && !existing.batchNo && rawRiceReceived > 0) {
+  if (rawRiceReceived > 0) {
     const { buildBatchNo } = require('./sievingLog.service');
-    const draft = Object.assign(existing, { rawRiceReceived });
-    batchNoUpdate.batchNo = buildBatchNo(draft);
+
+    // Build a draft from existing or from scratch
+    const draft = existing ? { ...existing.toObject(), rawRiceReceived }
+                           : { date: dayStart, operator: null, partner: null, rawRiceReceived };
+
+    const newBatch = buildBatchNo(draft);
+
+    // Set batchNo if:
+    // - there is no batchNo yet, OR
+    // - current batchNo is '??' and we now have operator/partner (so we can improve it)
+    const shouldSet = !existing?.batchNo || 
+                      (existing?.batchNo?.includes('??') && existing?.operator && existing?.partner);
+
+    if (shouldSet) {
+      batchNoUpdate.batchNo = newBatch;
+    }
   }
 
   const log = await MachineLog.findOneAndUpdate(
@@ -227,7 +263,7 @@ async function upsertStockByDate(date, { rawRiceReceived, input, output, rejecti
     .populate('partner', NAME_FIELD);
 
   const operatorName = log.operator?.[NAME_FIELD] || 'Unassigned';
-  const partnerName  = log.partner?.[NAME_FIELD]  || 'Unassigned';
+  const partnerName = log.partner?.[NAME_FIELD] || 'Unassigned';
 
   try {
     await notifyStockEntry({
@@ -235,10 +271,10 @@ async function upsertStockByDate(date, { rawRiceReceived, input, output, rejecti
       operator: operatorName,
       partner: partnerName,
       rawRiceReceived: rawRiceReceived ?? 0,
-      input:           input           ?? 0,
-      output:          output          ?? 0,
-      rejection:       rejection       ?? 0,
-      rejectionDate:   rejectionDate   || null,
+      input: input ?? 0,
+      output: output ?? 0,
+      rejection: rejection ?? 0,
+      rejectionDate: rejectionDate || null,
     });
   } catch (err) {
     console.error('[MachineLog] WhatsApp stock notification failed:', err.message);
