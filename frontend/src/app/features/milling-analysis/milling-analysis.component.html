@@ -21,7 +21,7 @@
         </div>
         <div>
           <h1 class="brand-title">Milling Analysis</h1>
-          <p class="brand-sub">Raw Rice · Efficiency · Yield · Rejection</p>
+          <p class="brand-sub">Raw Rice · Efficiency · Yield · Yield Loss</p>
         </div>
       </div>
 
@@ -256,10 +256,10 @@
         }
       </div>
 
-      <!-- Total Rejection -->
+      <!-- Total Yield Loss -->
       <div class="sum-card">
         <div class="sum-card-top">
-          <span class="sum-label">Total Rejection</span>
+          <span class="sum-label">Total Yield Loss</span>
           <div class="sum-icon sum-icon--rose">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24"
               stroke="currentColor" stroke-width="2">
@@ -336,7 +336,7 @@
       <div class="metric-sep"></div>
 
       <div class="metric-item">
-        <span class="metric-label">Avg Rejection</span>
+        <span class="metric-label">Avg Yield Loss</span>
         <span class="metric-val bad-val">{{ summary().avgRejectionRate | number:'1.1-1' }}%</span>
       </div>
 
@@ -355,7 +355,7 @@
       <div class="panel">
         <div class="panel-head">
           <div>
-            <h3 class="panel-title">Efficiency &amp; Rejection Rate Over Time</h3>
+            <h3 class="panel-title">Efficiency &amp; Yield Loss Rate Over Time</h3>
             <p class="panel-sub">Daily milling efficiency vs rejection percentage</p>
           </div>
           @if (!loading() && entries().length) {
@@ -379,11 +379,11 @@
     <!-- ── ROW 4: INPUT/OUTPUT BAR | YIELD TREND ─────────────────────────── -->
     <section class="row-two-col">
 
-      <!-- Input vs Output vs Rejection bar -->
+      <!-- Input vs Output vs Yield Loss bar -->
       <div class="panel">
         <div class="panel-head">
           <div>
-            <h3 class="panel-title">Input · Output · Rejection</h3>
+            <h3 class="panel-title">Input · Output · Yield Loss</h3>
             <p class="panel-sub">Daily volume comparison (kg)</p>
           </div>
         </div>
@@ -465,7 +465,7 @@
           </div>
           <div class="comp-row">
             <span class="comp-dot comp-dot--rose"></span>
-            <span class="comp-label">Rejection</span>
+            <span class="comp-label">Yield Loss</span>
             <span class="comp-val neg">{{ fmtKg(summary().totalRejection) }}</span>
           </div>
           <div class="comp-row">
@@ -528,7 +528,7 @@
                 <th class="num">Raw Received</th>
                 <th class="num">Input</th>
                 <th class="num">Output</th>
-                <th class="num">Rejection</th>
+                <th class="num">Yield Loss</th>
                 <th class="num">Efficiency</th>
                 <th class="num">Yield Rate</th>
                 <th class="num">Rej. Rate</th>

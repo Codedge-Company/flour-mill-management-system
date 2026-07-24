@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+
 import { SalesOperatorComponent } from './sales-operator/sales-operator.component';
 
 export const OPERATOR_PORTAL_ROUTES: Routes = [
@@ -34,6 +35,13 @@ export const OPERATOR_PORTAL_ROUTES: Routes = [
         loadComponent: () =>
             import('./sifting-operator/sifting-operator.component')
                 .then(m => m.SiftingOperatorComponent)
+    },
+    // ── Order Management — NEW ────────────────────────────────────────
+    {
+        path: 'order-management',
+        loadComponent: () =>
+            import('./order-management/order-management.component')
+                .then(m => m.OrderManagementPortalComponent)
     },
 
     { path: '', redirectTo: 'machine-operator', pathMatch: 'full' }

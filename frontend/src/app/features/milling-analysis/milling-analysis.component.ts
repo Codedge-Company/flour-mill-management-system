@@ -88,7 +88,7 @@ export class MillingAnalysisComponent implements OnInit {
     { label: 'Date (Oldest)', value: 'date_asc' },
     { label: 'Best Efficiency', value: 'eff_desc' },
     { label: 'Most Output', value: 'output_desc' },
-    { label: 'Most Rejection', value: 'rej_desc' },
+    { label: 'Most Yield Loss', value: 'rej_desc' },
   ];
   selectedSort = signal('date_desc');
   singleDate = signal<Date | null>(null);
@@ -245,7 +245,7 @@ export class MillingAnalysisComponent implements OnInit {
           yAxisID: 'y',
         },
         {
-          label: 'Rejection %',
+          label: 'Yield Loss %',
           data: pts.map(p => p.rejectionRate),
           borderColor: '#e11d48',
           backgroundColor: 'rgba(225,29,72,0.06)',
@@ -260,7 +260,7 @@ export class MillingAnalysisComponent implements OnInit {
     };
   });
 
-  // ── Chart: Input / Output / Rejection bar ──────────────────────────────────
+  // ── Chart: Input / Output / Yield Loss bar ──────────────────────────────────
   readonly ioBarChartData = computed(() => {
     const pts = [...this.entries()].sort((a, b) => a.date.localeCompare(b.date));
     if (!pts.length) return null;
@@ -284,7 +284,7 @@ export class MillingAnalysisComponent implements OnInit {
           stack: 'b',
         },
         {
-          label: 'Rejection (kg)',
+          label: 'Yield Loss (kg)',
           data: pts.map(p => p.rejection),
           backgroundColor: 'rgba(225,29,72,0.70)',
           borderRadius: 4,
@@ -323,7 +323,7 @@ export class MillingAnalysisComponent implements OnInit {
     if (!s.totalInput) return null;
     const loss = Math.max(0, this.totalLoss());
     return {
-      labels: ['Output', 'Rejection', 'Processing Loss'],
+      labels: ['Output', 'Yield Loss', 'Processing Loss'],
       datasets: [{
         data: [s.totalOutput, s.totalRejection, loss],
         backgroundColor: ['rgba(5,150,105,0.80)', 'rgba(225,29,72,0.80)', 'rgba(148,163,184,0.60)'],

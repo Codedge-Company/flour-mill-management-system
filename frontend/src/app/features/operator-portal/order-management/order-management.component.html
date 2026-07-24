@@ -1,0 +1,250 @@
+<div class="om-page">
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       TOPBAR – glass morphism
+  ═══════════════════════════════════════════════════════════════════ -->
+  <header class="om-topbar">
+    <div class="om-topbar__brand">
+      <div class="brand-icon-wrap">
+        <i class="pi pi-shopping-bag"></i>
+      </div>
+      <div>
+        <span class="om-topbar__title">Order Management</span>
+        <span class="om-topbar__sub">Create customer orders with expected date</span>
+      </div>
+    </div>
+    <button class="om-btn om-btn--ghost" (click)="logout()">
+      <i class="pi pi-sign-out"></i> Logout
+    </button>
+  </header>
+
+  <main class="om-content">
+
+    <!-- Success alert -->
+    <div class="om-alert om-alert--success" *ngIf="submitSuccess()">
+      <i class="pi pi-check-circle"></i> {{ submitSuccess() }}
+    </div>
+
+    <!-- ═════════════════════════════════════════════════════════════════
+         CARD 1 – New Order Request
+    ═════════════════════════════════════════════════════════════════ -->
+    <div class="om-card">
+      <div class="om-card-header">
+        <i class="pi pi-plus-circle om-card-header__icon"></i>
+        <span class="om-card-header__title">New Order Request</span>
+      </div>
+
+      <div class="om-card-body" *ngIf="!dataLoading(); else loadingTpl">
+
+        <!-- Customer + Expected Date (grid) -->
+        <div class="om-grid-2 om-mb">
+          <div class="om-field">
+            <label class="om-label">
+              <i class="pi pi-user"></i> Customer <span class="required">*</span>
+            </label>
+            <div class="om-search-wrap">
+              <input type="text" class="om-input" placeholder="Search customer name or code…"
+                [value]="customerSearchText()" (input)="onCustomerSearch($event)" (focus)="customerDropOpen.set(true)"
+                (blur)="onCustomerBlur()" autocomplete="off" />
+              <ul class="om-dropdown" *ngIf="customerDropOpen() && filteredCustomers().length > 0">
+                <li class="om-dropdown__item" *ngFor="let c of filteredCustomers()" (mousedown)="selectCustomer(c)">
+                  <span class="om-dropdown__name">{{ c.name }}</span>
+                  <span class="om-dropdown__code">{{ c.customerCode }}</span>
+                </li>
+              </ul>
+            </div>
+            <span class="om-field-hint" *ngIf="selectedCustomerId()">
+              <i class="pi pi-check-circle"></i> {{ selectedCustomer()!.name }}
+            </span>
+            <span class="om-field-hint" *ngIf="!selectedCustomerId()" style="color: var(--text-muted);">
+              <i class="pi pi-info-circle"></i> Select a customer to enable items
+            </span>
+          </div>
+
+          <div class="om-field">
+            <label class="om-label">
+              <i class="pi pi-calendar"></i> Order Expected Date <span class="required">*</span>
+            </label>
+            <input type="date" class="om-input" [min]="minDateStr" [ngModel]="expectedDateStr()"
+              (ngModelChange)="expectedDateStr.set($event)" />
+          </div>
+        </div>
+
+        <hr class="om-divider" />
+
+        <!-- Sale Items -->
+        <div class="om-items-head">
+          <div class="om-section-label"><i class="pi pi-list"></i> Sale Items</div>
+          <div class="om-items-actions">
+            <span class="om-hint" *ngIf="!selectedCustomerId()">
+              <i class="pi pi-info-circle"></i> Select a customer first
+            </span>
+            <button class="om-btn om-btn--ghost om-btn--sm" (click)="addRow()" [disabled]="!selectedCustomerId()">
+              <i class="pi pi-plus"></i> Add Item
+            </button>
+          </div>
+        </div>
+
+        <!-- Column headers (hidden on mobile) -->
+        <div class="om-col-header">
+          <span class="col-pack">Pack Size</span>
+          <span class="col-avail">Available</span>
+          <span class="col-qty">Qty</span>
+          <span class="col-price">Unit Price</span>
+          <span class="col-total">Line Total</span>
+          <span class="col-rm"></span>
+        </div>
+
+        <div class="om-items-list">
+          <ng-container *ngFor="let row of rows(); let i = index; trackBy: trackRow">
+            <div class="om-item-row">
+              <div class="col-pack">
+                <select class="om-select" [ngModel]="row.packTypeId" (ngModelChange)="onPackChange(i, $event)"
+                  [disabled]="!selectedCustomerId()">
+                  <option [ngValue]="null" disabled>Select pack…</option>
+                  <option *ngFor="let p of getAvailablePacks(i)" [ngValue]="p.packTypeId">
+                    {{ p.packName }} — {{ p.weightKg }}kg
+                  </option>
+                </select>
+              </div>
+              <div class="col-avail">
+                <span class="om-stock">{{ row.packTypeId ? row.availableStock : '—' }}</span>
+              </div>
+              <div class="col-qty">
+                <input type="number" min="1" class="om-input om-input--num" [ngModel]="row.qty"
+                  (ngModelChange)="onQtyChange(i, $event)" [disabled]="!row.packTypeId" />
+              </div>
+              <div class="col-price">
+                <input type="number" min="0" step="0.01" class="om-input om-input--num" [ngModel]="row.unitPrice"
+                  (ngModelChange)="onPriceChange(i, $event)" [disabled]="!row.packTypeId" />
+              </div>
+              <span class="col-total om-line-total">{{ formatLKR(row.lineTotal) }}</span>
+              <div class="col-rm">
+                <button class="om-btn-rm" *ngIf="rows().length > 1" (click)="removeRow(i)">
+                  <i class="pi pi-times"></i>
+                </button>
+              </div>
+            </div>
+            <div class="om-stock-warn" *ngIf="stockWarning(row)">
+              <i class="pi pi-exclamation-triangle"></i> {{ stockWarning(row) }}
+            </div>
+          </ng-container>
+        </div>
+
+        <!-- Quick add row button (only if customer selected) -->
+        <button class="add-row-btn" (click)="addRow()" [disabled]="!selectedCustomerId()">
+          <i class="pi pi-plus"></i> Add another item
+        </button>
+
+        <hr class="om-divider" />
+
+        <!-- Payment Method -->
+        <div class="om-section-label"><i class="pi pi-credit-card"></i> Payment Method</div>
+        <div class="om-payment-tabs om-mb">
+          <button type="button" class="om-payment-tab" [class.active]="paymentMethod() === 'CASH'"
+            (click)="paymentMethod.set('CASH')">
+            <i class="pi pi-money-bill"></i> Cash
+          </button>
+          <button type="button" class="om-payment-tab" [class.active]="paymentMethod() === 'CREDIT'"
+            (click)="paymentMethod.set('CREDIT')">
+            <i class="pi pi-credit-card"></i> Credit
+          </button>
+        </div>
+
+        <!-- Notes -->
+        <div class="om-field om-mb">
+          <label class="om-label"><i class="pi pi-pencil"></i> Notes <span class="om-optional">(optional)</span></label>
+          <textarea class="om-textarea" rows="2" placeholder="Any special instructions…" [ngModel]="notes()"
+            (ngModelChange)="notes.set($event)"></textarea>
+        </div>
+
+        <hr class="om-divider" />
+
+        <!-- Submit -->
+        <div class="om-submit-row">
+          <div class="om-total">
+            <span class="om-total-lbl">Total</span>
+            <span class="om-total-val">{{ formatLKR(totalAmount()) }}</span>
+          </div>
+          <div class="om-submit-actions">
+            <div class="om-submit-err" *ngIf="submitError()">{{ submitError() }}</div>
+            <button class="om-btn om-btn--primary" [disabled]="!canSubmit() || submitting()" (click)="submitOrder()">
+              <i class="pi pi-spin pi-spinner" *ngIf="submitting()"></i>
+              {{ submitting() ? 'Creating…' : 'Create Order' }}
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <ng-template #loadingTpl>
+        <div class="om-loading-state">
+          <i class="pi pi-spin pi-spinner om-spinner--lg"></i>
+          <span>Loading data…</span>
+        </div>
+      </ng-template>
+    </div>
+
+    <!-- ═════════════════════════════════════════════════════════════════
+     CARD 2 – My Orders (enhanced)
+═════════════════════════════════════════════════════════════════ -->
+    <div class="om-card">
+      <div class="om-card-header om-card-header--spaced">
+        <span class="om-card-header__title"><i class="pi pi-list"></i> My Orders</span>
+        <button class="om-btn om-btn--ghost om-btn--sm" (click)="loadMyOrders()">
+          <i class="pi pi-refresh" [class.pi-spin]="ordersLoading()"></i> Refresh
+        </button>
+      </div>
+      <div class="om-card-body">
+        <div class="om-loading-state om-loading-state--sm" *ngIf="ordersLoading()">
+          <i class="pi pi-spin pi-spinner"></i>
+          <span>Loading orders…</span>
+        </div>
+        <div class="om-empty" *ngIf="!ordersLoading() && myOrders().length === 0">
+          <i class="pi pi-inbox"></i>
+          <p>No orders yet. Create your first order above.</p>
+        </div>
+        <div class="om-orders-list" *ngIf="!ordersLoading() && myOrders().length > 0">
+          <div class="om-order-card" *ngFor="let order of myOrders()">
+            <div class="om-order-card__header" (click)="toggleOrderDetail(order._id)">
+              <div class="om-order-card__main">
+                <span class="om-order-no">{{ order.order_no }}</span>
+                <span class="om-order-cust">{{ getCustomerName(order) }}</span>
+              </div>
+              <div class="om-order-card__meta">
+                <span class="om-order-date">{{ order.expected_date | date:'MMM d, y' }}</span>
+                <span class="om-order-status" [class.status-pending]="order.status === 'PENDING'"
+                  [class.status-completed]="order.status === 'COMPLETED'">
+                  {{ order.status }}
+                </span>
+                <span class="om-order-total">{{ formatLKR(order.total_amount) }}</span>
+                <i class="pi pi-chevron-down" [class.pi-chevron-up]="expandedOrderId() === order._id"></i>
+              </div>
+            </div>
+            <!-- Expanded details -->
+            <div class="om-order-card__detail" *ngIf="expandedOrderId() === order._id">
+              <div class="om-order-detail-row">
+                <span><strong>Payment:</strong> {{ order.payment_method }}</span>
+                <span><strong>Items:</strong> {{ order.items.length }}</span>
+                <span *ngIf="order.status === 'COMPLETED'">
+                  <strong>Completed:</strong> {{ order.completed_at | date:'MMM d, y' }}
+                </span>
+              </div>
+              <div class="om-order-items">
+                <div class="om-order-item" *ngFor="let item of order.items">
+                  <span class="item-name">{{ getPackName(item) }}</span>
+                  <span class="item-qty">{{ item.qty }} × {{ formatLKR(item.unit_price) }}</span>
+                  <span class="item-total">{{ formatLKR(item.line_total) }}</span>
+                </div>
+              </div>
+              <div class="om-order-notes" *ngIf="order.notes">
+                <i class="pi pi-pencil"></i> {{ order.notes }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>

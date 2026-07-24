@@ -1,0 +1,241 @@
+<div class="om-root">
+
+  <!-- ═══ TOPBAR ═══════════════════════════════════════════ -->
+  <header class="om-topbar">
+    <div class="topbar-inner">
+      <div class="topbar-brand">
+        <div class="brand-icon">
+          <i class="pi pi-shopping-bag"></i>
+        </div>
+        <div>
+          <h1 class="brand-title">Order Management</h1>
+          <p class="brand-sub">Admin · Oversee all customer orders</p>
+        </div>
+      </div>
+      <div class="topbar-controls">
+        <div class="filter-group">
+          <button class="filter-btn" [class.active]="filterStatus() === 'all'"
+            (click)="filterStatus.set('all')">All</button>
+          <button class="filter-btn" [class.active]="filterStatus() === 'PENDING'"
+            (click)="filterStatus.set('PENDING')">Pending</button>
+          <button class="filter-btn" [class.active]="filterStatus() === 'COMPLETED'"
+            (click)="filterStatus.set('COMPLETED')">Completed</button>
+        </div>
+        <button class="btn-icon" (click)="loadData()" [disabled]="loading()" pTooltip="Refresh"
+          tooltipPosition="bottom">
+          <i class="pi pi-refresh" [class.pi-spin]="loading()"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Error banner -->
+  @if (error()) {
+    <div class="error-banner">
+      <i class="pi pi-exclamation-circle"></i>
+      {{ error() }}
+      <button class="err-retry" (click)="loadData()">Retry</button>
+    </div>
+  }
+
+  <!-- ═══ CONTENT ══════════════════════════════════════════ -->
+  <main class="om-content">
+
+    <!-- KPI Cards (6 columns) -->
+    <section class="cards-row">
+      @if (loading() && !stats()) {
+        @for (i of [1,2,3,4,5,6]; track i) {
+          <div class="sum-card"><div class="skel-val"></div><div class="skel-sub"></div></div>
+        }
+      } @else if (stats()) {
+        <div class="sum-card">
+          <div class="sum-card-top">
+            <span class="sum-label">Total Orders</span>
+            <span class="sum-icon"><i class="pi pi-box"></i></span>
+          </div>
+          <div class="sum-value">{{ stats()!.totalOrders }}</div>
+          <div class="sum-sub">all time</div>
+        </div>
+        <div class="sum-card">
+          <div class="sum-card-top">
+            <span class="sum-label">Pending</span>
+            <span class="sum-icon"><i class="pi pi-clock"></i></span>
+          </div>
+          <div class="sum-value" style="color: #f59e0b;">{{ stats()!.pendingOrders }}</div>
+          <div class="sum-sub">awaiting completion</div>
+        </div>
+        <div class="sum-card">
+          <div class="sum-card-top">
+            <span class="sum-label">Completed</span>
+            <span class="sum-icon"><i class="pi pi-check-circle"></i></span>
+          </div>
+          <div class="sum-value" style="color: #10b981;">{{ stats()!.completedOrders }}</div>
+          <div class="sum-sub">done</div>
+        </div>
+        <div class="sum-card" [class.urgent]="stats()!.overdueOrders > 0">
+          <div class="sum-card-top">
+            <span class="sum-label">Overdue</span>
+            <span class="sum-icon"><i class="pi pi-alarm"></i></span>
+          </div>
+          <div class="sum-value" style="color: #ef4444;">{{ stats()!.overdueOrders }}</div>
+          <div class="sum-sub">past expected date</div>
+        </div>
+        <div class="sum-card">
+          <div class="sum-card-top">
+            <span class="sum-label">On‑Time Rate</span>
+            <span class="sum-icon"><i class="pi pi-chart-bar"></i></span>
+          </div>
+          <div class="sum-value">{{ stats()!.onTimeRate | number:'1.0-1' }}%</div>
+          <div class="sum-sub">{{ stats()!.onTimeCount }} / {{ stats()!.totalOrders - stats()!.pendingOrders }}</div>
+        </div>
+        <div class="sum-card">
+          <div class="sum-card-top">
+            <span class="sum-label">Avg Lead Time</span>
+            <span class="sum-icon"><i class="pi pi-hourglass"></i></span>
+          </div>
+          <div class="sum-value">{{ stats()!.avgLeadTimeDays | number:'1.1-1' }}d</div>
+          <div class="sum-sub">from order to completion</div>
+        </div>
+      }
+    </section>
+
+    <!-- Chart Row -->
+    <section class="row-full">
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h3 class="panel-title">Weekly Order Trend</h3>
+            <p class="panel-sub">Orders placed per week (last 6 weeks)</p>
+          </div>
+        </div>
+        <div class="chart-area">
+          @if (loading() && !weeklyTrendData()) {
+            <div class="chart-skel"></div>
+          } @else if (weeklyTrendData()) {
+            <p-chart type="line" [data]="weeklyTrendData()!" [options]="chartOptions" height="240px"></p-chart>
+          } @else {
+            <div class="empty-chart"><i class="pi pi-chart-line"></i><p>No trend data</p></div>
+          }
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ ORDERS TABLE (Priority‑Focused) ════════════════════════ -->
+    <section class="row-full">
+      <div class="panel panel--table">
+        <div class="panel-head">
+          <div>
+            <h3 class="panel-title">Orders</h3>
+            <p class="panel-sub">{{ filteredOrders().length }} orders</p>
+          </div>
+          <div class="table-controls">
+            <span class="data-pill">{{ filterStatus() === 'all' ? 'All' : filterStatus() }}</span>
+            <span class="priority-hint">
+              <i class="pi pi-info-circle"></i> Sorted by urgency
+            </span>
+          </div>
+        </div>
+        <div class="table-wrap">
+          @if (loading() && filteredOrders().length === 0) {
+            <div style="padding: 20px; display: flex; flex-direction: column; gap: 10px;">
+              @for (i of [1,2,3,4,5]; track i) {
+                <div class="skel-row"></div>
+              }
+            </div>
+          } @else if (filteredOrders().length === 0) {
+            <div class="empty-chart"><i class="pi pi-inbox"></i><p>No orders to display</p></div>
+          } @else {
+            <table class="om-table">
+              <thead>
+                <tr>
+                  <th>Order #</th>
+                  <th>Customer</th>
+                  <th>Expected Date</th>
+                  <th>Priority</th>
+                  <th>Total</th>
+                  <th>Status</th>
+                  <th style="text-align:center;">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (order of filteredOrders(); track order._id) {
+                  <tr class="order-row" 
+                      [class.overdue]="getPriority(order) === 'Overdue'"
+                      [class.due-today]="getPriority(order) === 'Due Today'"
+                      [class.due-soon]="getPriority(order) === 'Due Soon'">
+                    <td class="order-no">{{ order.order_no }}</td>
+                    <td>{{ getCustomerName(order) }}</td>
+                    <td>{{ order.expected_date | date:'MMM d, y' }}</td>
+                    <td>
+                      <span class="priority-badge" [class]="getPriority(order).toLowerCase().replace(' ', '-')">
+                        {{ getPriority(order) }}
+                      </span>
+                    </td>
+                    <td class="num">{{ formatCurrency(getOrderTotal(order)) }}</td>
+                    <td>
+                      <span class="status-badge" [class.status-completed]="order.status === 'COMPLETED'">
+                        {{ order.status }}
+                      </span>
+                    </td>
+                    <td style="text-align:center;">
+                      @if (order.status === 'PENDING') {
+                        <button class="btn-done" (click)="markDone(order)" [disabled]="loading()">
+                          <i class="pi pi-check"></i> Done
+                        </button>
+                      } @else {
+                        <span class="done-label"><i class="pi pi-check-circle"></i> Completed</span>
+                      }
+                    </td>
+                  </tr>
+                  <!-- Expanded detail row -->
+                  <tr class="detail-row" *ngIf="expandedOrderId() === order._id">
+                    <td colspan="7">
+                      <div class="detail-content">
+                        <div class="detail-grid">
+                          <div class="detail-item">
+                            <span class="detail-label">Order Date</span>
+                            <span class="detail-value">{{ order.createdAt | date:'MMM d, y h:mm a' }}</span>
+                          </div>
+                          <div class="detail-item">
+                            <span class="detail-label">Payment</span>
+                            <span class="detail-value">{{ order.payment_method }}</span>
+                          </div>
+                          <div class="detail-item" *ngIf="order.status === 'COMPLETED'">
+                            <span class="detail-label">Completed</span>
+                            <span class="detail-value">{{ order.completed_at | date:'MMM d, y' }}</span>
+                          </div>
+                          <div class="detail-item">
+                            <span class="detail-label">Items</span>
+                            <span class="detail-value">{{ order.items.length }}</span>
+                          </div>
+                        </div>
+                        <div class="detail-items" *ngIf="order.items.length">
+                          <div class="item-header">
+                            <span>Pack</span>
+                            <span>Qty</span>
+                            <span>Unit Price</span>
+                            <span>Total</span>
+                          </div>
+                          <div class="item-row" *ngFor="let item of order.items">
+                            <span>{{ getPackName(item) }}</span>
+                            <span>{{ item.qty }}</span>
+                            <span>{{ formatCurrency(item.unit_price) }}</span>
+                            <span>{{ formatCurrency(item.line_total) }}</span>
+                          </div>
+                        </div>
+                        <div class="detail-notes" *ngIf="order.notes">
+                          <i class="pi pi-pencil"></i> {{ order.notes }}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>

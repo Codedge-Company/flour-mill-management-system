@@ -69,6 +69,12 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./features/budget/budget-management.routes').then(m => m.BudgetManagementRoutes)
       },
+      {
+        path: 'order-management',
+        canActivate: [adminGuard],
+        loadChildren: () =>
+          import('./features/order-Tracking/order-management.routes').then(m => m.orderManagementRoutes)
+      },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       { path: 'credit-payments', component: CreditPaymentsComponent },
       { path: 'flow-money', component: FlowMoneyComponent },
