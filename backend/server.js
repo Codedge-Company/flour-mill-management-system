@@ -36,7 +36,7 @@ const io = new Server(server, {
 
     origin: allowedOrigins,
 
-    methods: ['GET', 'POST'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
 
     credentials: true
 
