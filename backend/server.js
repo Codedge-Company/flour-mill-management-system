@@ -23,15 +23,11 @@ const server = http.createServer(app);
 // ── Allowed Origins ────────────────────────────────────────────────────────
 
 const allowedOrigins = [
-
   'http://localhost:4200',
-
   'http://127.0.0.1:4200',
-
   'https://flour-mill-management-system-nine.vercel.app',
-
-  'https://www.matheeshaflourmill.lk'
-
+  'https://www.matheeshaflourmill.lk',
+  'https://matheeshaflourmill.lk'
 ];
 
 const io = new Server(server, {
