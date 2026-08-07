@@ -24,4 +24,5 @@ router.use('/sale-requests', require('./saleRequest.routes'));
 router.use('/sieving-logs', require('./sievingLog.routes'));
 router.use('/spare-parts', require('./sparePart.routes'));
 router.use('/orders', require('./order.routes'));
+router.use('/permissions', require('./pagePermission.routes'));
 module.exports = router;

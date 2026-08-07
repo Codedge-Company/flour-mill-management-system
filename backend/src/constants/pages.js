@@ -1,0 +1,15 @@
+module.exports.PAGES = [
+    { key: 'dashboard',            label: 'Dashboard' },
+    { key: 'sales',                label: 'Sales' },
+    { key: 'customers',            label: 'Customers' },
+    { key: 'inventory',            label: 'Inventory' },
+    { key: 'material-store',       label: 'Material Store' },
+    { key: 'notifications',        label: 'Notifications' },
+    { key: 'user-management',      label: 'User Management' },
+    { key: 'budget',               label: 'Budget Management' },
+    { key: 'flow-money',           label: 'Flow Money' },
+    { key: 'milling-analysis',     label: 'Milling Analysis' },
+    { key: 'operators-dashboard',  label: 'Grind Sessions' },
+    { key: 'sifting-dashboard',    label: 'Sift Session' },
+    { key: 'order-management',     label: 'Order Management' },
+];

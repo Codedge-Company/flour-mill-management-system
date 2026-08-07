@@ -1,4 +1,3 @@
-// src/app/features/sales/sale-list/sale-list.component.ts
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -40,20 +39,17 @@ export class SaleListComponent implements OnInit {
   error          = signal<string | null>(null);
   successMessage = signal<string | null>(null);
 
-  // ── Filters ───────────────────────────────────────────────────────────────
   filterCustomerId    = signal<string | null>(null);
   filterStatus        = signal<SaleStatus | ''>('');
   filterPaymentStatus = signal<PaymentStatus | ''>('');
   filterDateFrom      = signal('');
   filterDateTo        = signal('');
 
-  // ── Pagination ────────────────────────────────────────────────────────────
   currentPage   = signal(0);
   totalPages    = signal(0);
   totalElements = signal(0);
   pageSize      = 20;
 
-  // ── Dialogs / actions ─────────────────────────────────────────────────────
   cancelTarget  = signal<Sale | null>(null);
   cancelLoading = signal(false);
   deleteTarget  = signal<Sale | null>(null);
@@ -61,11 +57,9 @@ export class SaleListComponent implements OnInit {
   viewSaleId    = signal<string | null>(null);
   downloadingId = signal<string | null>(null);
 
-  // ── Mark-as-paid ──────────────────────────────────────────────────────────
   markPaidTarget  = signal<Sale | null>(null);
   markPaidLoading = signal(false);
 
-  // ── Summary (all-pages totals from backend aggregate) ────────────────────
   filteredRevenue = signal(0);
   filteredCost    = signal(0);
   filteredProfit  = signal(0);
@@ -82,6 +76,43 @@ export class SaleListComponent implements OnInit {
     this.loadCustomers();
     this.load();
   }
+
+  // ── Getters for template ──────────────────────────────────────────────────
+
+  get displaySales(): Sale[] {
+    if (this.isAdmin) {
+      return this.sales();
+    }
+    return this.sales().slice(0, 2);
+  }
+
+  get showTable(): boolean {
+    return this.isAdmin || this.hasActiveFilters;
+  }
+
+  get isAdmin(): boolean {
+    return this.authService.currentUser()?.role === 'ADMIN';
+  }
+
+  get hasActiveFilters(): boolean {
+    return !!(
+      this.filterCustomerId()    ||
+      this.filterStatus()        ||
+      this.filterPaymentStatus() ||
+      this.filterDateFrom()      ||
+      this.filterDateTo()
+    );
+  }
+
+  get pages(): number[] {
+    const total = this.totalPages();
+    const cur   = this.currentPage();
+    const range: number[] = [];
+    for (let i = Math.max(0, cur - 2); i <= Math.min(total - 1, cur + 2); i++) range.push(i);
+    return range;
+  }
+
+  // ── Data loading ──────────────────────────────────────────────────────────
 
   loadCustomers(): void {
     this.customerService.getAll().subscribe({ next: res => this.customers.set(res.data) });
@@ -126,27 +157,9 @@ export class SaleListComponent implements OnInit {
     this.load(0);
   }
 
-  get hasActiveFilters(): boolean {
-    return !!(
-      this.filterCustomerId()    ||
-      this.filterStatus()        ||
-      this.filterPaymentStatus() ||
-      this.filterDateFrom()      ||
-      this.filterDateTo()
-    );
-  }
-
   goToPage(page: number): void {
     if (page < 0 || page >= this.totalPages()) return;
     this.load(page);
-  }
-
-  get pages(): number[] {
-    const total = this.totalPages();
-    const cur   = this.currentPage();
-    const range: number[] = [];
-    for (let i = Math.max(0, cur - 2); i <= Math.min(total - 1, cur + 2); i++) range.push(i);
-    return range;
   }
 
   changePageSize(size: number): void {
@@ -156,6 +169,7 @@ export class SaleListComponent implements OnInit {
   }
 
   // ── Cancel ────────────────────────────────────────────────────────────────
+
   confirmCancel(sale: Sale): void { this.cancelTarget.set(sale); }
   cancelDialog(): void            { this.cancelTarget.set(null); }
 
@@ -179,6 +193,7 @@ export class SaleListComponent implements OnInit {
   }
 
   // ── Delete ────────────────────────────────────────────────────────────────
+
   confirmDelete(sale: Sale): void { this.deleteTarget.set(sale); }
   deleteDialog(): void            { this.deleteTarget.set(null); }
 
@@ -202,6 +217,7 @@ export class SaleListComponent implements OnInit {
   }
 
   // ── Mark as Paid ──────────────────────────────────────────────────────────
+
   confirmMarkPaid(sale: Sale): void { this.markPaidTarget.set(sale); }
   markPaidDialog(): void            { this.markPaidTarget.set(null); }
 
@@ -225,10 +241,12 @@ export class SaleListComponent implements OnInit {
   }
 
   // ── View ──────────────────────────────────────────────────────────────────
+
   openView(sale: Sale): void { this.viewSaleId.set(sale.saleId); }
   closeView(): void          { this.viewSaleId.set(null); }
 
   // ── Invoice ───────────────────────────────────────────────────────────────
+
   downloadInvoice(sale: Sale): void {
     if (this.downloadingId()) return;
     this.downloadingId.set(sale.saleId);
@@ -255,14 +273,12 @@ export class SaleListComponent implements OnInit {
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
-  /** Use all-pages totals from backend aggregate */
   private computeSummary(totals?: any): void {
     if (totals) {
       this.filteredRevenue.set(totals.total_revenue ?? 0);
       this.filteredCost.set(totals.total_cost       ?? 0);
       this.filteredProfit.set(totals.total_profit   ?? 0);
     } else {
-      // Fallback: sum current page only
       const saved = this.sales().filter(s => s.status === 'SAVED');
       this.filteredRevenue.set(saved.reduce((a, s) => a + s.totalRevenue, 0));
       this.filteredCost.set(saved.reduce((a, s)    => a + s.totalCost,    0));
@@ -270,7 +286,6 @@ export class SaleListComponent implements OnInit {
     }
   }
 
-  /** Percentage of credit payment collected (0–100) */
   getPaymentPct(sale: Sale): number {
     if (!sale.totalRevenue) return 0;
     return Math.min(100, Math.round(((sale.totalPaid ?? 0) / sale.totalRevenue) * 100));
@@ -286,10 +301,6 @@ export class SaleListComponent implements OnInit {
       day: '2-digit', month: 'short', year: 'numeric',
       hour: '2-digit', minute: '2-digit'
     });
-  }
-
-  get isAdmin(): boolean {
-    return this.authService.currentUser()?.role === 'ADMIN';
   }
 
   isPendingCredit(sale: Sale): boolean {

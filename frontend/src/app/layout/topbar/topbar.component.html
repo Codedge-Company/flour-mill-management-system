@@ -135,7 +135,7 @@
           <i class="pi pi-user"></i>
           <span>My Profile</span>
         </button>
-        <button class="dropdown-item">
+        <button class="dropdown-item" [routerLink]="['/settings/permissions']" *ngIf="authService.isAdmin()">
           <i class="pi pi-cog"></i>
           <span>Settings</span>
         </button>

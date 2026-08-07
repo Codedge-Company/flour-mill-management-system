@@ -1,17 +1,16 @@
-// sidebar.component.ts
-import { Component, Input, Output, EventEmitter, Signal, computed } from '@angular/core';
+import { Component, Input, Output, EventEmitter, Signal, computed, effect } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
-import { CommonModule }  from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { TooltipModule } from 'primeng/tooltip';
-import { AuthService }   from '../../core/services/auth.service';
+import { AuthService } from '../../core/services/auth.service';
+import { PermissionService } from '../../core/services/permission.service';
 
 interface NavItem {
-  label:     string;
-  route:     string;
-  /** PrimeNG icon class e.g. 'pi-home' */
-  icon:      string;
-  adminOnly?: boolean;
-  badge?:    string | number;
+  label: string;
+  route: string;
+  icon: string;
+  pageKey?: string;
+  badge?: string | number;
 }
 
 @Component({
@@ -19,28 +18,29 @@ interface NavItem {
   standalone: true,
   imports: [CommonModule, RouterLink, RouterLinkActive, TooltipModule],
   templateUrl: './sidebar.component.html',
-  styleUrl:    './sidebar.component.css',
+  styleUrl: './sidebar.component.css',
 })
 export class SidebarComponent {
-  @Input() collapsed    = false;
-  @Input() mobileOpen   = false;
-  @Output() closeMenu   = new EventEmitter<void>();
+  @Input() collapsed = false;
+  @Input() mobileOpen = false;
+  @Output() closeMenu = new EventEmitter<void>();
 
   readonly navItems: NavItem[] = [
-    { label: 'Dashboard',       route: '/dashboard',       icon: 'pi-home' },
-    { label: 'Sales',           route: '/sales',           icon: 'pi-shopping-cart' },
-    { label: 'Customers',       route: '/customers',       icon: 'pi-users' },
-    { label: 'Inventory',       route: '/inventory',       icon: 'pi-box',          adminOnly: true },
-    { label: 'Material Store',  route: '/material-store',  icon: 'pi-warehouse',    adminOnly: true }, // ← NEW
-    { label: 'Notifications',   route: '/notifications',   icon: 'pi-bell' },
-    { label: 'User Management', route: '/user-management', icon: 'pi-user-edit',    adminOnly: true },
-    { label: 'Budget Management', route: '/budget', icon: 'pi-chart-bar',    adminOnly: true },
-    { label: 'Flow Money', route: '/flow-money', icon: 'pi-dollar',    adminOnly: true },
-    { label: 'Milling Analysis', route: '/milling-analysis', icon: 'pi-chart-pie', adminOnly: true },
-    { label: 'Grind Sessions', route: '/operators-dashboard', icon: 'pi-cog', adminOnly: true },
-    { label: 'Sift Session',    route: '/sifting-dashboard', icon: 'pi-filter',     adminOnly: true },
-    { label: 'Order Management', route: '/order-management', icon: 'pi-shopping-bag', adminOnly: true },
+    { label: 'Dashboard',         route: '/dashboard',           icon: 'pi-home',         pageKey: 'dashboard' },
+    { label: 'Sales',             route: '/sales',               icon: 'pi-shopping-cart', pageKey: 'sales' },
+    { label: 'Customers',         route: '/customers',           icon: 'pi-users',        pageKey: 'customers' },
+    { label: 'Inventory',         route: '/inventory',           icon: 'pi-box',          pageKey: 'inventory' },
+    { label: 'Material Store',    route: '/material-store',      icon: 'pi-warehouse',    pageKey: 'material-store' },
+    { label: 'Notifications',     route: '/notifications',       icon: 'pi-bell',         pageKey: 'notifications' },
+    { label: 'User Management',   route: '/user-management',     icon: 'pi-user-edit',    pageKey: 'user-management' },
+    { label: 'Budget Management', route: '/budget',              icon: 'pi-chart-bar',    pageKey: 'budget' },
+    { label: 'Flow Money',        route: '/flow-money',          icon: 'pi-dollar',       pageKey: 'flow-money' },
+    { label: 'Milling Analysis',  route: '/milling-analysis',    icon: 'pi-chart-pie',    pageKey: 'milling-analysis' },
+    { label: 'Grind Sessions',    route: '/operators-dashboard', icon: 'pi-cog',          pageKey: 'operators-dashboard' },
+    { label: 'Sift Session',      route: '/sifting-dashboard',   icon: 'pi-filter',       pageKey: 'sifting-dashboard' },
+    { label: 'Order Management',  route: '/order-management',    icon: 'pi-shopping-bag', pageKey: 'order-management' },
   ];
+
   readonly displayName: Signal<string> = computed(() => {
     const u: any = this.authService.currentUser();
     return (u?.fullName ?? u?.full_name ?? '').trim();
@@ -50,11 +50,26 @@ export class SidebarComponent {
     const name = this.displayName();
     return (name?.charAt(0) || '?').toUpperCase();
   });
-  constructor(readonly authService: AuthService) {}
+
+  constructor(
+    readonly authService: AuthService,
+    readonly permissionService: PermissionService,
+  ) {
+    // Load permissions whenever the authenticated user changes
+    effect(() => {
+      const user = this.authService.currentUser();
+      if (user) {
+        this.permissionService.ensureLoaded().subscribe();
+      } else {
+        // On logout, clear the permission cache
+        this.permissionService.clearCache();
+      }
+    });
+  }
 
   get visibleItems(): NavItem[] {
     return this.navItems.filter(
-      item => !item.adminOnly || this.authService.isAdmin()
+      item => !item.pageKey || this.permissionService.canAccess(item.pageKey)
     );
   }
 }

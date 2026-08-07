@@ -1,0 +1,63 @@
+<div class="permissions-page">
+  <h2>Page Access Permissions</h2>
+
+  @if (loading) {
+    <p class="loading-text">Loading…</p>
+  } @else {
+    <div class="table-wrapper">
+      <table class="permissions-table">
+        <thead>
+          <tr>
+            <th>Page</th>
+            @for (role of roles; track role) {
+              <th>{{ role }}</th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (page of pages; track page.key) {
+            <tr>
+              <td class="page-label">{{ page.label }}</td>
+              @for (role of roles; track role) {
+                <td class="checkbox-cell">
+                  <input type="checkbox"
+                         [checked]="isChecked(role, page.key)"
+                         (change)="toggle(role, page.key)" />
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="button-container">
+      <button pButton
+              type="button"
+              label="Save Changes"
+              [loading]="saving"
+              [disabled]="saving"
+              (click)="save()"
+              class="save-button">
+      </button>
+    </div>
+  }
+
+  <!-- Custom Alert Modal -->
+  @if (modalVisible) {
+    <div class="modal-overlay" (click)="closeModal()">
+      <div class="modal-box" (click)="$event.stopPropagation()">
+        <div class="modal-icon" [class.success]="modalType === 'success'" [class.error]="modalType === 'error'">
+          @if (modalType === 'success') {
+            <span>✓</span>
+          } @else {
+            <span>✗</span>
+          }
+        </div>
+        <h3>{{ modalType === 'success' ? 'Success' : 'Error' }}</h3>
+        <p>{{ modalMessage }}</p>
+        <button class="modal-btn" (click)="closeModal()">OK</button>
+      </div>
+    </div>
+  }
+</div>

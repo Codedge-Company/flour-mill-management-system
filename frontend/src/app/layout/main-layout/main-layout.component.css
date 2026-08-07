@@ -1,17 +1,15 @@
-/* main-layout.component.css */
-
 :host {
-  --sidebar-w:        240px;
-  --sidebar-w-collapsed: 68px;
-  --topbar-h:         60px;
-  --bg-base:          #f4f6fb;
-  --bg-panel:         #ffffff;
-  --border:           #e2e8f0;
-  --blue:             #2563eb;
-  --text-primary:     #0f172a;
-  --text-secondary:   #475569;
-  --radius:           12px;
-  --transition:       .22s cubic-bezier(.4,0,.2,1);
+  --sidebar-w:           260px;          /* ← match sidebar */
+  --sidebar-w-collapsed: 72px;           /* ← match collapsed */
+  --topbar-h:            60px;
+  --bg-base:             #f4f6fb;
+  --bg-panel:            #ffffff;
+  --border:              #e2e8f0;
+  --blue:                #2563eb;
+  --text-primary:        #0f172a;
+  --text-secondary:      #475569;
+  --radius:              12px;
+  --transition:          .22s cubic-bezier(.4,0,.2,1);
 
   display: block;
 }
@@ -29,7 +27,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-width: 0;                   /* prevent flex blowout */
+  min-width: 0;
   margin-left: var(--sidebar-w);
   transition: margin-left var(--transition);
 }
@@ -76,21 +74,19 @@
   inset: 0;
   background: rgba(15,23,42,.35);
   backdrop-filter: blur(2px);
-  z-index: 199;
+  z-index: 999;
   opacity: 0;
   transition: opacity var(--transition);
 }
 
 /* ═══ RESPONSIVE ════════════════════════════════════════════════════════════ */
 
-/* Tablet: collapse sidebar by default */
 @media (max-width: 1024px) {
   .layout-right {
     margin-left: var(--sidebar-w-collapsed);
   }
 }
 
-/* Mobile: sidebar becomes a slide-in drawer */
 @media (max-width: 768px) {
   .layout-right {
     margin-left: 0 !important;
