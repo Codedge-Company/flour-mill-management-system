@@ -2,7 +2,7 @@ import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { tap, map, shareReplay } from 'rxjs/operators';
-import { environment } from '../../../environments/environment';
+import { environment } from '../../../environments/environment.prod';
 import { ApiResponse } from '../models/api-response';
 import { PageDef, RolePermission } from '../models/page-permission';
 import { AuthService } from './auth.service';
