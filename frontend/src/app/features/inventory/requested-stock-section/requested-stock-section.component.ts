@@ -8,11 +8,14 @@ import {
     StockRequest,
 } from '../../../core/services/stock-request.service';
 
+const ACTIVE_STATUSES = ['PENDING', 'APPROVED', 'PARTIALLY_FULFILLED'];
+
 interface RequestUI extends StockRequest {
     editing: boolean;
     editQty: number;
     saving: boolean;
     deleting: boolean;
+    showHistory: boolean;
 }
 
 @Component({
@@ -46,7 +49,7 @@ export class RequestedStockSectionComponent implements OnInit {
         this.stockRequestService.getAll().subscribe({
             next: res => {
                 this.requests = (res.data ?? [])
-                    .filter(r => r.status === 'PENDING' || r.status === 'APPROVED')
+                    .filter(r => ACTIVE_STATUSES.includes(r.status))
                     .sort((a, b) =>
                         new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime()
                     )
@@ -56,6 +59,7 @@ export class RequestedStockSectionComponent implements OnInit {
                         editQty: r.qty,
                         saving: false,
                         deleting: false,
+                        showHistory: false,
                     }));
                 this.loading.set(false);
             },
@@ -67,8 +71,15 @@ export class RequestedStockSectionComponent implements OnInit {
     }
 
     // ── Edit ───────────────────────────────────────────────────────
+    // Only allowed while nothing has been packed yet — the backend
+    // rejects qty edits once a request is PARTIALLY_FULFILLED.
+
+    canEdit(req: RequestUI): boolean {
+        return req.status === 'PENDING' || req.status === 'APPROVED';
+    }
 
     startEdit(req: RequestUI): void {
+        if (!this.canEdit(req)) return;
         req.editing = true;
         req.editQty = req.qty;
     }
@@ -83,11 +94,6 @@ export class RequestedStockSectionComponent implements OnInit {
 
         req.saving = true;
 
-        // Re-create the request with updated qty by patching via a new request.
-        // Since the backend updateStatus only changes status/operator, we handle
-        // qty edits by deleting and re-creating, OR we can call a PATCH if available.
-        // Here we use the most compatible approach: update the local model optimistically
-        // and call the service. Adjust to your actual backend endpoint as needed.
         this.stockRequestService.updateQty(req.stockRequestId, req.editQty).subscribe({
             next: () => {
                 req.qty = req.editQty;
@@ -99,6 +105,10 @@ export class RequestedStockSectionComponent implements OnInit {
                 req.saving = false;
             }
         });
+    }
+
+    toggleHistory(req: RequestUI): void {
+        req.showHistory = !req.showHistory;
     }
 
     // ── Delete ─────────────────────────────────────────────────────
@@ -155,6 +165,7 @@ export class RequestedStockSectionComponent implements OnInit {
         switch (status) {
             case 'PENDING': return 'rs-pill--pending';
             case 'APPROVED': return 'rs-pill--approved';
+            case 'PARTIALLY_FULFILLED': return 'rs-pill--partial';
             default: return '';
         }
     }

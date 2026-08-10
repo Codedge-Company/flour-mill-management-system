@@ -77,3 +77,27 @@ exports.deleteStockRequest = async (req, res, next) => {
         next(e);
     }
 };
+exports.fulfillPart = async (req, res, next) => {
+    try {
+        const { qty, operatorName } = req.body;
+        const { data, isNowComplete } = await stockRequestService.fulfillPart(
+            req.params.id,
+            qty,
+            operatorName
+        );
+
+        if (isNowComplete) {
+            notifyPackingDone({
+                packName: data.pack_name,
+                weightKg: data.weight_kg,
+                qty: data.qty,
+                operatorName: data.operator_name ?? operatorName ?? 'Unknown',
+                time: new Date(),
+            }).catch(err => console.error('[WhatsApp] notifyPackingDone failed:', err.message));
+        }
+
+        res.json({ success: true, data, isNowComplete });
+    } catch (e) {
+        next(e);
+    }
+};

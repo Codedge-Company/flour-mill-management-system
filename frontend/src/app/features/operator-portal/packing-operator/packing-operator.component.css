@@ -178,7 +178,7 @@
     color: #fff;
 }
 
-/* ── Buttons ──────────────────────────────────────────────────────────────── */
+/* ── Buttons (base) ───────────────────────────────────────────────────────── */
 .po-btn {
     display: inline-flex;
     align-items: center;
@@ -192,6 +192,7 @@
     transition: background .15s, box-shadow .15s, transform .1s;
     white-space: nowrap;
     line-height: 1;
+    font-family: inherit;
 }
 
 .po-btn svg {
@@ -207,17 +208,6 @@
 
 .po-btn:not(:disabled):active {
     transform: scale(.97);
-}
-
-.po-btn--done {
-    background: #16a34a;
-    color: #fff;
-    padding: .45rem 1rem;
-    font-size: .82rem;
-}
-
-.po-btn--done:hover:not(:disabled) {
-    background: #15803d;
 }
 
 /* ── Error / Spinner / Empty ──────────────────────────────────────────────── */
@@ -285,139 +275,6 @@
     height: 40px;
 }
 
-/* ── Orders Table ─────────────────────────────────────────────────────────── */
-.po-orders {
-    display: flex;
-    flex-direction: column;
-    /* allow horizontal scroll on small screens */
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
-
-/*
-  6 columns: Pack | Weight | Qty | Status | Requested At | Action
-  Using minmax so columns compress gracefully before we hide them
-*/
-.po-orders__header,
-.po-order-row {
-    display: grid;
-    grid-template-columns:
-        minmax(120px, 2fr)    /* Pack       */
-        minmax(70px,  1fr)    /* Weight     */
-        minmax(50px,  .6fr)   /* Qty        */
-        minmax(90px,  1fr)    /* Status     */
-        minmax(140px, 1.8fr)  /* Requested At */
-        auto;                 /* Action     */
-    gap: .5rem;
-    align-items: center;
-    min-width: 560px;          /* prevent columns collapsing to 0 */
-}
-
-.po-orders__header {
-    padding: .5rem .75rem;
-    font-size: .7rem;
-    font-weight: 700;
-    color: #94a3b8;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    border-bottom: 1px solid #f1f5f9;
-}
-
-.po-order-row {
-    padding: .85rem .75rem;
-    border-bottom: 1px solid #f8fafc;
-    transition: background .15s;
-}
-
-.po-order-row:last-child {
-    border-bottom: none;
-}
-
-.po-order-row:hover {
-    background: #f8fafc;
-}
-
-/* ── Order Row Cells ──────────────────────────────────────────────────────── */
-.po-order-row__cell {
-    display: flex;
-    align-items: center;
-    gap: .4rem;
-    font-size: .875rem;
-    color: #1e293b;
-}
-
-.po-order-row__cell svg {
-    width: 15px;
-    height: 15px;
-    color: #94a3b8;
-    flex-shrink: 0;
-}
-
-.po-order-row__name {
-    font-weight: 600;
-}
-
-.po-order-row__qty {
-    font-weight: 700;
-    font-size: 1rem;
-    color: #0369a1;
-}
-
-.po-order-row__action {
-    justify-content: flex-end;
-}
-
-/* Date cell */
-.po-order-row__date {
-    font-size: .78rem;
-    color: #64748b;
-    white-space: nowrap;
-    gap: 5px;
-}
-
-.po-order-row__date svg {
-    width: 12px;
-    height: 12px;
-    opacity: .55;
-    flex-shrink: 0;
-}
-
-/* ── Chips ────────────────────────────────────────────────────────────────── */
-.po-weight-chip {
-    background: #f0f9ff;
-    color: #0369a1;
-    font-size: .73rem;
-    font-weight: 700;
-    padding: .2rem .55rem;
-    border-radius: 20px;
-    border: 1px solid #bae6fd;
-    white-space: nowrap;
-}
-
-/* ── Status Pills ─────────────────────────────────────────────────────────── */
-.po-pill {
-    display: inline-flex;
-    align-items: center;
-    padding: .22rem .65rem;
-    border-radius: 20px;
-    font-size: .7rem;
-    font-weight: 700;
-    letter-spacing: .03em;
-    white-space: nowrap;
-}
-
-.po-pill--pending {
-    background: #fef9c3;
-    color: #854d0e;
-    border: 1px solid #fde68a;
-}
-
-.po-pill--approved {
-    background: #dcfce7;
-    color: #15803d;
-    border: 1px solid #bbf7d0;
-}
-
 /* ── Fields & Select ──────────────────────────────────────────────────────── */
 .po-field {
     display: flex;
@@ -476,12 +333,375 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════
+   ORDER CARDS
+══════════════════════════════════════════════════════════════════ */
+
+.po-orders {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+    gap: 1rem;
+}
+
+.po-order-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 1rem 1.1rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: .85rem;
+    transition: box-shadow .15s ease, border-color .15s ease;
+    min-width: 0;
+}
+
+.po-order-card:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, .06);
+}
+
+/* ── Top: identity + status ──────────────────────────────────────── */
+.po-order-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .75rem;
+}
+
+.po-order-identity {
+    display: flex;
+    align-items: flex-start;
+    gap: .65rem;
+    min-width: 0;
+}
+
+.po-order-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    color: #0ea5e9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.po-order-icon svg {
+    width: 17px;
+    height: 17px;
+}
+
+.po-order-identity__text {
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+    min-width: 0;
+}
+
+.po-order-name {
+    font-weight: 700;
+    font-size: .95rem;
+    color: #0f172a;
+    overflow-wrap: anywhere;
+}
+
+.po-order-meta {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    flex-wrap: wrap;
+}
+
+.po-order-date {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    font-size: .72rem;
+    color: #64748b;
+    white-space: nowrap;
+}
+
+.po-order-date svg {
+    width: 11px;
+    height: 11px;
+    opacity: .6;
+    flex-shrink: 0;
+}
+
+/* ── Qty summary blocks ──────────────────────────────────────────── */
+.po-order-qty-row {
+    display: flex;
+    align-items: stretch;
+    gap: .5rem;
+    flex-wrap: wrap;
+}
+
+.po-qty-block {
+    flex: 1 1 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .1rem;
+    padding: .55rem .4rem;
+    border-radius: 10px;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    min-width: 80px;
+}
+
+.po-qty-block--muted {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+}
+
+.po-qty-block__value {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #0369a1;
+    line-height: 1.1;
+}
+
+.po-qty-block__value--done {
+    color: #15803d;
+}
+
+.po-qty-block--muted .po-qty-block__value {
+    color: #475569;
+}
+
+.po-qty-block__label {
+    font-size: .62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #94a3b8;
+}
+
+/* ── Progress bar ─────────────────────────────────────────────────── */
+.po-progress {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+}
+
+.po-progress-track {
+    flex: 1;
+    height: 7px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.po-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #0ea5e9, #0284c7);
+    border-radius: 4px;
+    transition: width .25s ease;
+}
+
+.po-progress-label {
+    font-size: .7rem;
+    font-weight: 700;
+    color: #0369a1;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* ── Packing history log ─────────────────────────────────────────── */
+.po-fulfill-log {
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+    padding: .55rem .65rem;
+    background: #f8fafc;
+    border: 1px solid #f1f5f9;
+    border-radius: 10px;
+    max-height: 110px;
+    overflow-y: auto;
+}
+
+.po-fulfill-log__row {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-size: .74rem;
+    color: #475569;
+    flex-wrap: wrap;
+}
+
+.po-fulfill-log__qty {
+    font-weight: 700;
+    color: #0369a1;
+    flex-shrink: 0;
+}
+
+.po-fulfill-log__date {
+    color: #64748b;
+    flex-shrink: 0;
+}
+
+.po-fulfill-log__op {
+    color: #94a3b8;
+    font-style: italic;
+    margin-left: auto;
+}
+
+/* ── Status Pills ─────────────────────────────────────────────────── */
+.po-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: .28rem .7rem;
+    border-radius: 20px;
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .03em;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.po-pill--pending {
+    background: #fef9c3;
+    color: #854d0e;
+    border: 1px solid #fde68a;
+}
+
+.po-pill--approved {
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+}
+
+.po-pill--partial {
+    background: #fff7ed;
+    color: #9a3412;
+    border: 1px solid #fed7aa;
+}
+
+/* ── Chips ────────────────────────────────────────────────────────── */
+.po-weight-chip {
+    background: #f0f9ff;
+    color: #0369a1;
+    font-size: .68rem;
+    font-weight: 700;
+    padding: .18rem .5rem;
+    border-radius: 20px;
+    border: 1px solid #bae6fd;
+    white-space: nowrap;
+}
+
+/* ── Actions ──────────────────────────────────────────────────────── */
+.po-order-actions {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    flex-wrap: wrap;
+}
+
+.po-part-input {
+    flex: 1 1 110px;
+    min-width: 90px;
+    padding: .5rem .65rem;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 9px;
+    font-size: .82rem;
+    outline: none;
+    box-sizing: border-box;
+    -moz-appearance: textfield;
+    font-family: inherit;
+}
+
+.po-part-input::-webkit-outer-spin-button,
+.po-part-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.po-part-input:focus {
+    border-color: #0ea5e9;
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, .12);
+}
+
+.po-btn--part {
+    background: #0ea5e9;
+    color: #fff;
+    padding: .5rem 1rem;
+    font-size: .8rem;
+    flex-shrink: 0;
+}
+
+.po-btn--part:hover:not(:disabled) {
+    background: #0284c7;
+}
+
+.po-btn--done {
+    background: #16a34a;
+    color: #fff;
+    padding: .5rem 1rem;
+    font-size: .8rem;
+    flex-shrink: 0;
+}
+
+.po-btn--done:hover:not(:disabled) {
+    background: #15803d;
+}
+
+/* ── Confirm-full prompt ──────────────────────────────────────────── */
+.po-confirm-full {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .6rem;
+    padding: .6rem .75rem;
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    border-radius: 10px;
+    font-size: .8rem;
+    color: #9a3412;
+    flex-wrap: wrap;
+}
+
+.po-confirm-full__actions {
+    display: flex;
+    gap: .5rem;
+    flex-shrink: 0;
+}
+
+.po-btn--confirm-yes {
+    background: #16a34a;
+    color: #fff;
+    padding: .42rem .85rem;
+    font-size: .76rem;
+}
+
+.po-btn--confirm-yes:hover:not(:disabled) {
+    background: #15803d;
+}
+
+.po-btn--confirm-no {
+    background: #f1f5f9;
+    color: #475569;
+    padding: .42rem .85rem;
+    font-size: .76rem;
+}
+
+.po-btn--confirm-no:hover:not(:disabled) {
+    background: #e2e8f0;
+}
+
+.po-row-error {
+    color: #dc2626;
+    font-size: .74rem;
+    font-weight: 500;
+}
+
+/* ══════════════════════════════════════════════════════════════════
    RESPONSIVE
 ══════════════════════════════════════════════════════════════════ */
 
-/* ── Tablet  (≤ 768px) ────────────────────────────────────────────────────── */
+/* ── Tablet (≤ 768px) ─────────────────────────────────────────────── */
 @media (max-width: 768px) {
-
     .po-content {
         padding: 1.25rem .75rem;
         gap: 1rem;
@@ -496,40 +716,23 @@
         padding: 1rem 1.1rem 1.2rem;
     }
 
-    /* Sort toggle drops below title on tablet */
     .po-sort-toggle {
         margin-left: 0;
         width: 100%;
         margin-top: .4rem;
     }
 
-    /* 5 columns on tablet — drop "Weight" */
-    .po-orders__header,
-    .po-order-row {
-        grid-template-columns:
-            minmax(110px, 2fr)   /* Pack       */
-            minmax(50px,  .6fr)  /* Qty        */
-            minmax(85px,  1fr)   /* Status     */
-            minmax(130px, 1.6fr) /* Requested At */
-            auto;                /* Action     */
-        min-width: 460px;
-    }
-
-    /* hide Weight column (2nd child) */
-    .po-orders__header > span:nth-child(2),
-    .po-order-row > .po-order-row__cell:nth-child(2) {
-        display: none;
+    .po-orders {
+        grid-template-columns: 1fr;
     }
 }
 
-/* ── Mobile  (≤ 520px) ────────────────────────────────────────────────────── */
+/* ── Mobile (≤ 520px) ─────────────────────────────────────────────── */
 @media (max-width: 520px) {
-
     .po-topbar {
         padding: .7rem 1rem;
     }
 
-    /* Hide the date badge to save topbar space */
     .po-date-badge {
         display: none;
     }
@@ -554,7 +757,6 @@
         max-width: 100%;
     }
 
-    /* Sort buttons go full-width row */
     .po-sort-toggle {
         flex-wrap: nowrap;
         width: 100%;
@@ -567,65 +769,49 @@
         font-size: .72rem;
     }
 
-    /*
-      Mobile table: 4 columns — Pack | Qty | Status | Action
-      Date & Weight are hidden; table still scrolls if needed.
-    */
-    .po-orders__header,
-    .po-order-row {
-        grid-template-columns:
-            minmax(100px, 2fr)  /* Pack   */
-            minmax(44px, .55fr) /* Qty    */
-            minmax(80px, 1fr)   /* Status */
-            auto;               /* Action */
-        min-width: 0;
-        gap: .35rem;
+    .po-order-card {
+        padding: .85rem .9rem 1rem;
+        border-radius: 12px;
     }
 
-    /* hide Weight (col 2) and Date (col 5) */
-    .po-orders__header > span:nth-child(2),
-    .po-order-row > .po-order-row__cell:nth-child(2),
-    .po-orders__header > span:nth-child(5),
-    .po-order-row > .po-order-row__date {
-        display: none;
+    .po-order-qty-row {
+        gap: .4rem;
     }
 
-    .po-orders__header {
-        padding: .45rem .6rem;
-        font-size: .65rem;
+    .po-qty-block {
+        padding: .45rem .3rem;
+        min-width: 70px;
     }
 
-    .po-order-row {
-        padding: .75rem .6rem;
+    .po-qty-block__value {
+        font-size: 1rem;
     }
 
-    .po-order-row__cell {
-        font-size: .825rem;
+    .po-order-actions {
+        flex-direction: column;
+        align-items: stretch;
     }
 
-    .po-order-row__qty {
-        font-size: .95rem;
-    }
-
+    .po-part-input,
+    .po-btn--part,
     .po-btn--done {
-        padding: .4rem .75rem;
-        font-size: .78rem;
+        width: 100%;
+        justify-content: center;
     }
 
     .po-weight-chip {
-        font-size: .68rem;
+        font-size: .65rem;
         padding: .15rem .4rem;
     }
 
     .po-pill {
-        font-size: .65rem;
-        padding: .18rem .5rem;
+        font-size: .62rem;
+        padding: .22rem .55rem;
     }
 }
 
-/* ── Small mobile (≤ 380px) ──────────────────────────────────────────────── */
+/* ── Small mobile (≤ 380px) ──────────────────────────────────────── */
 @media (max-width: 380px) {
-
     .po-topbar__sub {
         display: none;
     }
@@ -640,19 +826,18 @@
         gap: 3px;
     }
 
-    /* Collapse Pack name SVG icon on tiny screens */
-    .po-order-row__name svg {
+    .po-order-icon {
         display: none;
     }
 
-    .po-btn--done {
-        padding: .38rem .6rem;
-        font-size: .74rem;
-        gap: .3rem;
+    .po-order-name {
+        font-size: .88rem;
     }
+}
 
-    .po-btn--done svg {
-        width: 13px;
-        height: 13px;
+/* ── Large screens — cap card growth so they don't get too wide ──── */
+@media (min-width: 1200px) {
+    .po-orders {
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     }
 }

@@ -11,15 +11,28 @@ export interface StockRequestPayload {
   qty: number;
 }
 
+export interface StockRequestFulfillment {
+  qty: number;
+  date: string;
+  operatorName?: string | null;
+}
+
 export interface StockRequest {
   stockRequestId: string;
   packTypeId: string;
   packName: string;
   weightKg: number;
-  qty: number;
+  qty: number;                              // original requested qty (fixed)
+  fulfilledQty: number;                     // ← NEW: total packed so far
+  remainingQty: number;                     // ← NEW: qty - fulfilledQty
+  fulfillments: StockRequestFulfillment[];  // ← NEW: dated part entries
   requestedAt: string;
   status: string;
   operatorName?: string | null;
+}
+
+export interface FulfillResult extends ApiResponse<StockRequest> {
+  isNowComplete: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -35,10 +48,7 @@ export class StockRequestService {
       weight_kg: payload.weightKg,
       qty: payload.qty,
     }).pipe(
-      map(res => ({
-        success: true,
-        data: this.mapItem(res.data ?? res),
-      }))
+      map(res => ({ success: true, data: this.mapItem(res.data ?? res) }))
     );
   }
 
@@ -56,24 +66,30 @@ export class StockRequestService {
       status,
       operatorName: operatorName ?? null
     }).pipe(
-      map(res => ({
-        success: true,
-        data: this.mapItem(res.data ?? res),
-      }))
+      map(res => ({ success: true, data: this.mapItem(res.data ?? res) }))
     );
   }
 
-  /** Update the requested quantity for a pending/approved request */
   updateQty(id: string, qty: number): Observable<ApiResponse<StockRequest>> {
     return this.http.patch<any>(`${this.requestStoreUrl}/${id}`, { qty }).pipe(
+      map(res => ({ success: true, data: this.mapItem(res.data ?? res) }))
+    );
+  }
+
+  /** Record a packed batch (partial or final). Backend logs date+qty and flips status automatically. */
+  fulfillPart(id: string, qty: number, operatorName?: string): Observable<FulfillResult> {
+    return this.http.patch<any>(`${this.requestStoreUrl}/${id}/fulfill`, {
+      qty,
+      operatorName: operatorName ?? null
+    }).pipe(
       map(res => ({
         success: true,
         data: this.mapItem(res.data ?? res),
+        isNowComplete: !!res.isNowComplete
       }))
     );
   }
 
-  /** Delete a stock request by ID */
   deleteRequest(id: string): Observable<ApiResponse<void>> {
     return this.http.delete<any>(`${this.requestStoreUrl}/${id}`).pipe(
       map(() => ({ success: true, data: undefined }))
@@ -87,6 +103,14 @@ export class StockRequestService {
       packName: raw.pack_name ?? raw.packName ?? '',
       weightKg: raw.weight_kg ?? raw.weightKg ?? 0,
       qty: raw.qty ?? 0,
+      fulfilledQty: raw.fulfilled_qty ?? raw.fulfilledQty ?? 0,
+      remainingQty: raw.remaining_qty ?? raw.remainingQty
+        ?? Math.max((raw.qty ?? 0) - (raw.fulfilled_qty ?? 0), 0),
+      fulfillments: (raw.fulfillments ?? []).map((f: any) => ({
+        qty: f.qty,
+        date: f.date,
+        operatorName: f.operator_name ?? f.operatorName ?? null,
+      })),
       requestedAt: raw.requested_at ?? raw.requestedAt ?? new Date().toISOString(),
       status: raw.status ?? 'PENDING',
       operatorName: raw.operator_name ?? raw.operatorName ?? null,

@@ -13,8 +13,10 @@ import {
 
 interface OrderUI extends StockRequest {
     completing: boolean;
+    partQtyInput: number | null;
+    confirmingFull: boolean;
+    rowError: string;
 }
-
 type SortDir = 'oldest' | 'newest';
 
 @Component({
@@ -67,25 +69,110 @@ export class PackingOperatorComponent implements OnInit {
         });
     }
 
-    loadOrders(): void {
-        this.ordersLoading = true;
-        this.ordersError = '';
+loadOrders(): void {
+    this.ordersLoading = true;
+    this.ordersError = '';
 
-        this.stockRequestService.getAll().subscribe({
-            next: res => {
-                this._allOrders = (res.data ?? [])
-                    .filter(r => r.status === 'PENDING' || r.status === 'APPROVED')
-                    .map(r => ({ ...r, completing: false }));
-                this.applySort();
-                this.ordersLoading = false;
-            },
-            error: () => {
-                this.ordersError = 'Could not load orders. Please try again.';
-                this.ordersLoading = false;
-            },
-        });
+    this.stockRequestService.getAll().subscribe({
+        next: res => {
+            this._allOrders = (res.data ?? [])
+                .filter(r => r.status === 'PENDING' || r.status === 'APPROVED' || r.status === 'PARTIALLY_FULFILLED')
+                .map(r => ({
+                    ...r,
+                    completing: false,
+                    partQtyInput: null,
+                    confirmingFull: false,
+                    rowError: '',
+                }));
+            this.applySort();
+            this.ordersLoading = false;
+        },
+        error: () => {
+            this.ordersError = 'Could not load orders. Please try again.';
+            this.ordersLoading = false;
+        },
+    });
+}
+
+// ── Part-complete: pack a portion of the remaining qty ──────────────
+submitPart(order: OrderUI): void {
+    order.rowError = '';
+
+    if (!this.selectedOperatorName) {
+        this.operatorError = 'Please select packing operator name first.';
+        return;
+    }
+    this.operatorError = '';
+
+    const partQty = Number(order.partQtyInput);
+    if (!partQty || partQty <= 0) {
+        order.rowError = 'Enter a valid quantity.';
+        return;
+    }
+    if (partQty > order.remainingQty) {
+        order.rowError = `Only ${order.remainingQty} remaining — cannot pack ${partQty}.`;
+        return;
     }
 
+    this.packQty(order, partQty);
+}
+
+// ── Fully complete: pack whatever remains, after confirmation ───────
+askConfirmFull(order: OrderUI): void {
+    if (!this.selectedOperatorName) {
+        this.operatorError = 'Please select packing operator name first.';
+        return;
+    }
+    this.operatorError = '';
+    order.confirmingFull = true;
+}
+
+cancelConfirmFull(order: OrderUI): void {
+    order.confirmingFull = false;
+}
+
+confirmFull(order: OrderUI): void {
+    order.confirmingFull = false;
+    this.packQty(order, order.remainingQty);
+}
+
+// ── Shared: add stock, then log the fulfillment (date + qty) on the request ──
+private packQty(order: OrderUI, qty: number): void {
+    order.completing = true;
+    order.rowError = '';
+
+    this.inventoryService.addStock({
+        packTypeId: order.packTypeId,
+        addQty: qty,
+    }).subscribe({
+        next: () => {
+            this.stockRequestService
+                .fulfillPart(order.stockRequestId, qty, this.selectedOperatorName)
+                .subscribe({
+                    next: (res) => {
+                        order.completing = false;
+                        if (res.isNowComplete) {
+                            this._allOrders = this._allOrders.filter(
+                                o => o.stockRequestId !== order.stockRequestId
+                            );
+                            this.applySort();
+                        } else {
+                            // update this order in place with fresh server data
+                            Object.assign(order, res.data, { partQtyInput: null });
+                        }
+                    },
+                    error: () => {
+                        order.completing = false;
+                        order.rowError = 'Stock added, but failed to record the packed entry.';
+                    },
+                });
+        },
+        error: () => {
+            order.completing = false;
+            order.rowError = 'Failed to add stock. Please try again.';
+        },
+    });
+}
     setSortDir(dir: SortDir): void {
         this.sortDir = dir;
         this.applySort();
@@ -157,11 +244,12 @@ export class PackingOperatorComponent implements OnInit {
         });
     }
 
-    statusColor(status: string): string {
-        switch (status) {
-            case 'PENDING': return 'po-pill--pending';
-            case 'APPROVED': return 'po-pill--approved';
-            default: return '';
-        }
+statusColor(status: string): string {
+    switch (status) {
+        case 'PENDING': return 'po-pill--pending';
+        case 'APPROVED': return 'po-pill--approved';
+        case 'PARTIALLY_FULFILLED': return 'po-pill--partial';
+        default: return '';
     }
+}
 }

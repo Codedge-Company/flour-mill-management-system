@@ -7,7 +7,8 @@
         <div class="dialog-icon">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"
             stroke="currentColor" stroke-width="1.8">
-            <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414A1 1 0 0 1 19 9.414V19a2 2 0 0 1-2 2z"/>
+            <path
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414A1 1 0 0 1 19 9.414V19a2 2 0 0 1-2 2z" />
           </svg>
         </div>
         <div>
@@ -18,8 +19,8 @@
       <button class="btn-close" (click)="onCancel()" aria-label="Close">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24"
           stroke="currentColor" stroke-width="2">
-          <line x1="18" y1="6" x2="6" y2="18"/>
-          <line x1="6" y1="6" x2="18" y2="18"/>
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
         </svg>
       </button>
     </div>
@@ -29,9 +30,10 @@
       <div class="pack-info-icon">
         <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24"
           stroke="currentColor" stroke-width="1.8">
-          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-          <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-          <line x1="12" y1="22.08" x2="12" y2="12"/>
+          <path
+            d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+          <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+          <line x1="12" y1="22.08" x2="12" y2="12" />
         </svg>
       </div>
       <div class="pack-info-details">
@@ -50,15 +52,48 @@
         </div>
       </div>
     </div>
-
+    @if (existingRequestsLoading()) {
+    <div class="remaining-loading">
+      <svg class="spin" xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24"
+        stroke="currentColor" stroke-width="2">
+        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+      </svg>
+      Checking existing requests…
+    </div>
+    } @else if (activeRequests().length > 0) {
+    <div class="remaining-stock-banner">
+      <div class="remaining-stock-header">
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24"
+          stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10" />
+          <polyline points="12 6 12 12 16 14" />
+        </svg>
+        <span>Already in progress for this pack</span>
+      </div>
+      <div class="remaining-stock-stats">
+        <div class="remaining-stat">
+          <span class="remaining-stat-value">{{ totalRemainingRequested() }}</span>
+          <span class="remaining-stat-label">Remaining</span>
+        </div>
+        <div class="remaining-stat-divider"></div>
+        <div class="remaining-stat">
+          <span class="remaining-stat-value remaining-stat-packed">{{ totalAlreadyPacked() }}</span>
+          <span class="remaining-stat-label">Already Packed</span>
+        </div>
+      </div>
+      @if (activeRequests().length > 1) {
+      <span class="remaining-stock-note">across {{ activeRequests().length }} active requests</span>
+      }
+    </div>
+    }
     <!-- Low Stock Warning -->
     @if (item.isLowStock) {
     <div class="stock-warning">
       <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24"
         stroke="currentColor" stroke-width="2">
-        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-        <line x1="12" y1="9" x2="12" y2="13"/>
-        <line x1="12" y1="17" x2="12.01" y2="17"/>
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+        <line x1="12" y1="9" x2="12" y2="13" />
+        <line x1="12" y1="17" x2="12.01" y2="17" />
       </svg>
       <span>Stock is below the minimum threshold — restocking is recommended.</span>
     </div>
@@ -72,18 +107,9 @@
           <span class="form-label-required">*</span>
         </label>
         <div class="input-wrapper">
-          <input
-            id="req-qty"
-            type="number"
-            class="form-input"
-            [class.input-error]="qtyError"
-            placeholder="Enter number of packs"
-            [value]="qty()"
-            (input)="onQtyInput($any($event.target).value)"
-            (keyup.enter)="onSubmit()"
-            min="1"
-            autofocus
-          />
+          <input id="req-qty" type="number" class="form-input" [class.input-error]="qtyError"
+            placeholder="Enter number of packs" [value]="qty()" (input)="onQtyInput($any($event.target).value)"
+            (keyup.enter)="onSubmit()" min="1" autofocus />
           <span class="input-unit">packs</span>
         </div>
         @if (qtyError) {
@@ -112,9 +138,9 @@
     <div class="submit-error">
       <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24"
         stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="10"/>
-        <line x1="12" y1="8" x2="12" y2="12"/>
-        <line x1="12" y1="16" x2="12.01" y2="16"/>
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="8" x2="12" y2="12" />
+        <line x1="12" y1="16" x2="12.01" y2="16" />
       </svg>
       <span>{{ submitError() }}</span>
     </div>
@@ -127,16 +153,16 @@
       </button>
       <button class="btn btn-request" (click)="onSubmit()" [disabled]="loading()">
         @if (loading()) {
-        <svg class="spin" xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
-          viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+        <svg class="spin" xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24"
+          stroke="currentColor" stroke-width="2">
+          <path d="M21 12a9 9 0 1 1-6.219-8.56" />
         </svg>
         Submitting...
         } @else {
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24"
           stroke="currentColor" stroke-width="2">
-          <line x1="22" y1="2" x2="11" y2="13"/>
-          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          <line x1="22" y1="2" x2="11" y2="13" />
+          <polygon points="22 2 15 22 11 13 2 9 22 2" />
         </svg>
         Request Stock
         }

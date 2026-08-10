@@ -1,7 +1,10 @@
-import { Component, Input, Output, EventEmitter, signal, computed } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { InventoryItem } from '../../../core/models/inventory';
-import { StockRequestService } from '../../../core/services/stock-request.service';
+import { StockRequestService, StockRequest } from '../../../core/services/stock-request.service';
+
+const ACTIVE_STATUSES = ['PENDING', 'APPROVED', 'PARTIALLY_FULFILLED'];
+
 @Component({
   selector: 'app-request-stock-dialog',
   standalone: true,
@@ -9,7 +12,7 @@ import { StockRequestService } from '../../../core/services/stock-request.servic
   templateUrl: './request-stock-dialog.component.html',
   styleUrl: './request-stock-dialog.component.css',
 })
-export class RequestStockDialogComponent {
+export class RequestStockDialogComponent implements OnInit {
   @Input({ required: true }) item!: InventoryItem;
   @Output() submitted = new EventEmitter<void>();
   @Output() cancelled = new EventEmitter<void>();
@@ -19,7 +22,20 @@ export class RequestStockDialogComponent {
   submitError = signal<string | null>(null);
   qtyError = '';
 
-  /** Quick-pick options relative to current stock & threshold */
+  // ── NEW: existing in-progress request(s) for this pack type ──
+  existingRequestsLoading = signal(false);
+  activeRequests = signal<StockRequest[]>([]);
+
+  /** Total qty still owed across all active requests for this pack type */
+  totalRemainingRequested = computed(() =>
+    this.activeRequests().reduce((sum, r) => sum + (r.remainingQty ?? 0), 0)
+  );
+
+  /** Total already packed/fulfilled across active requests, for context */
+  totalAlreadyPacked = computed(() =>
+    this.activeRequests().reduce((sum, r) => sum + (r.fulfilledQty ?? 0), 0)
+  );
+
   get quickOptions(): number[] {
     const recommended = this.recommendedQty;
     const opts = new Set([
@@ -34,13 +50,33 @@ export class RequestStockDialogComponent {
       .slice(0, 4);
   }
 
-  /** Minimum recommended packs to reach the threshold */
   get recommendedQty(): number {
     const deficit = (this.item.threshold ?? 0) - (this.item.stockQty ?? 0);
     return Math.max(deficit, 10);
   }
 
   constructor(private stockRequestService: StockRequestService) { }
+
+  ngOnInit(): void {
+    this.loadExistingRequests();
+  }
+
+  private loadExistingRequests(): void {
+    this.existingRequestsLoading.set(true);
+    this.stockRequestService.getAll().subscribe({
+      next: res => {
+        const forThisPack = (res.data ?? []).filter(
+          r => r.packTypeId === this.item.packTypeId && ACTIVE_STATUSES.includes(r.status)
+        );
+        this.activeRequests.set(forThisPack);
+        this.existingRequestsLoading.set(false);
+      },
+      error: () => {
+        // Non-blocking — the dialog still works without this info
+        this.existingRequestsLoading.set(false);
+      },
+    });
+  }
 
   onQtyInput(value: string): void {
     const parsed = parseInt(value, 10);
@@ -68,7 +104,6 @@ export class RequestStockDialogComponent {
   onSubmit(): void {
     const qtyVal = this.qty();
 
-    // Validate
     if (!qtyVal || qtyVal <= 0) {
       this.qtyError = 'Please enter a valid quantity greater than 0.';
       return;

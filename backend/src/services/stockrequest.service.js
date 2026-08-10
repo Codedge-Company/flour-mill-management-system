@@ -7,6 +7,13 @@ const mapRequest = (doc) => ({
     pack_name: doc.pack_name,
     weight_kg: doc.weight_kg,
     qty: doc.qty,
+    fulfilled_qty: doc.fulfilled_qty ?? 0,
+    remaining_qty: Math.max(doc.qty - (doc.fulfilled_qty ?? 0), 0),
+    fulfillments: (doc.fulfillments ?? []).map(f => ({
+        qty: f.qty,
+        date: f.date,
+        operator_name: f.operator_name ?? null,
+    })),
     requested_at: doc.requested_at,
     requested_by: doc.requested_by ?? null,
     status: doc.status,
@@ -26,6 +33,8 @@ const create = async ({ pack_type_id, pack_name, weight_kg, qty }, userId = null
         pack_name: packType.pack_name,
         weight_kg: packType.weight_kg,
         qty: Number(qty),
+        fulfilled_qty: 0,
+        fulfillments: [],
         requested_at: new Date(),
         requested_by: userId ?? null,
         status: 'PENDING',
@@ -54,7 +63,7 @@ const getById = async (id) => {
 };
 
 const updateStatus = async (id, status, operatorName = null) => {
-    const validStatuses = ['PENDING', 'APPROVED', 'FULFILLED', 'REJECTED'];
+    const validStatuses = ['PENDING', 'APPROVED', 'PARTIALLY_FULFILLED', 'FULFILLED', 'REJECTED'];
     if (!validStatuses.includes(status)) {
         throw Object.assign(
             new Error(`Invalid status. Must be one of: ${validStatuses.join(', ')}`),
@@ -63,7 +72,6 @@ const updateStatus = async (id, status, operatorName = null) => {
     }
 
     const updateData = { status };
-
     if (status === 'FULFILLED') {
         updateData.operator_name = operatorName || null;
     }
@@ -78,14 +86,10 @@ const updateStatus = async (id, status, operatorName = null) => {
     return mapRequest(doc);
 };
 
-/** Update requested quantity — only allowed while PENDING or APPROVED */
 const updateQty = async (id, qty) => {
     const parsed = Number(qty);
     if (!parsed || parsed < 1) {
-        throw Object.assign(
-            new Error('Quantity must be at least 1'),
-            { statusCode: 400 }
-        );
+        throw Object.assign(new Error('Quantity must be at least 1'), { statusCode: 400 });
     }
 
     const doc = await RequestedStock.findOneAndUpdate(
@@ -104,9 +108,65 @@ const updateQty = async (id, qty) => {
     return mapRequest(doc);
 };
 
+/**
+ * Record a packed batch (partial or final), with date + qty logged.
+ * qty = amount packed in THIS action, not the running total.
+ * Auto-flips status to FULFILLED once fulfilled_qty reaches the requested qty,
+ * otherwise PARTIALLY_FULFILLED.
+ */
+const fulfillPart = async (id, qty, operatorName = null) => {
+    const partQty = Number(qty);
+    if (!partQty || partQty <= 0) {
+        throw Object.assign(new Error('Packed quantity must be a positive number'), { statusCode: 400 });
+    }
+
+    const existing = await RequestedStock.findById(id).lean();
+    if (!existing) throw Object.assign(new Error('Stock request not found'), { statusCode: 404 });
+
+    if (['FULFILLED', 'REJECTED'].includes(existing.status)) {
+        throw Object.assign(
+            new Error(`Cannot add packed quantity — request is already ${existing.status}`),
+            { statusCode: 400 }
+        );
+    }
+
+    const currentFulfilled = existing.fulfilled_qty ?? 0;
+    const newFulfilled = currentFulfilled + partQty;
+
+    if (newFulfilled > existing.qty) {
+        throw Object.assign(
+            new Error(`Packed qty exceeds remaining. Remaining: ${existing.qty - currentFulfilled}`),
+            { statusCode: 400 }
+        );
+    }
+
+    const isNowComplete = newFulfilled >= existing.qty;
+
+    const doc = await RequestedStock.findByIdAndUpdate(
+        id,
+        {
+            $inc: { fulfilled_qty: partQty },
+            $push: {
+                fulfillments: {
+                    qty: partQty,
+                    date: new Date(),
+                    operator_name: operatorName ?? null,
+                },
+            },
+            $set: {
+                status: isNowComplete ? 'FULFILLED' : 'PARTIALLY_FULFILLED',
+                ...(isNowComplete ? { operator_name: operatorName ?? existing.operator_name ?? null } : {}),
+            },
+        },
+        { new: true }
+    ).lean();
+
+    return { data: mapRequest(doc), isNowComplete };
+};
+
 const remove = async (id) => {
     const doc = await RequestedStock.findByIdAndDelete(id).lean();
     if (!doc) throw Object.assign(new Error('Stock request not found'), { statusCode: 404 });
 };
 
-module.exports = { create, getAll, getById, updateStatus, updateQty, remove };
+module.exports = { create, getAll, getById, updateStatus, updateQty, fulfillPart, remove };
