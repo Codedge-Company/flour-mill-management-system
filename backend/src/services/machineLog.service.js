@@ -3,7 +3,6 @@ const MachineLog = require('../models/MachineLog');
 const User = require('../models/User');
 const { notifyMachineStart, notifyMachineStop, notifyStockEntry } = require('./whatsapp.service');
 
-// ✅ Change 'username' to match your actual User model field
 const NAME_FIELD = 'username';
 
 async function getOrCreateLog(date, operatorId, partnerId) {
@@ -114,7 +113,10 @@ async function updateOperators(logId, operatorId, partnerId) {
     .populate('operator', NAME_FIELD)
     .populate('partner', NAME_FIELD);
 
-  if (log && log.rawRiceReceived > 0) {
+  // ✅ Rebuild the batch number now that operator/partner are known.
+  // This is the path that fixes "ST-06-19-??" once the operator/partner
+  // get assigned AFTER a stock entry was already saved.
+  if (log && log.input > 0) {
     const { buildBatchNo } = require('./sievingLog.service');
     const newBatch = buildBatchNo(log);
     if (log.batchNo !== newBatch) {
@@ -137,11 +139,9 @@ async function updateStockEntry(logId, { rawRiceReceived, input, output, rejecti
   if (!existing) return null;
 
   let batchNoUpdate = {};
-  if (rawRiceReceived > 0 && !existing?.batchNo) {
+  if (input > 0 && !existing.batchNo) {          // ✅ Input, not rawRiceReceived/output
     const { buildBatchNo } = require('./sievingLog.service');
-    // Build a draft from existing (or a new object) – buildBatchNo handles missing operator/partner
-    const draft = existing ? { ...existing.toObject(), rawRiceReceived }
-      : { date: dayStart, operator: null, partner: null, rawRiceReceived };
+    const draft = { ...existing.toObject(), input };
     batchNoUpdate.batchNo = buildBatchNo(draft);
   }
 
@@ -184,7 +184,6 @@ async function updateStockEntry(logId, { rawRiceReceived, input, output, rejecti
   return log;
 }
 
-
 async function getAllLogs({ page = 1, limit = 20, from = null, to = null } = {}) {
   const skip = (page - 1) * limit;
 
@@ -217,12 +216,10 @@ async function getAllLogs({ page = 1, limit = 20, from = null, to = null } = {})
 async function upsertStockByDate(date, { rawRiceReceived, input, output, rejection, rejectionDate }) {
   const dayStart = startOfDay(date);
 
-  // Populate operator/partner so we can build a correct batch number
   const existing = await MachineLog.findOne({ date: dayStart })
     .populate('operator', NAME_FIELD)
     .populate('partner', NAME_FIELD);
 
-  // Build update object only for fields that are provided (not null/undefined)
   const updateFields = {};
   if (rawRiceReceived !== undefined && rawRiceReceived !== null && rawRiceReceived > 0) {
     updateFields.rawRiceReceived = rawRiceReceived;
@@ -233,7 +230,6 @@ async function upsertStockByDate(date, { rawRiceReceived, input, output, rejecti
   if (output !== undefined && output !== null && output > 0) {
     updateFields.output = output;
   }
-  // Rejection can be 0, so allow it (but skip if null/undefined)
   if (rejection !== undefined && rejection !== null) {
     updateFields.rejection = rejection;
   }
@@ -241,20 +237,25 @@ async function upsertStockByDate(date, { rawRiceReceived, input, output, rejecti
     updateFields.rejectionDate = rejectionDate;
   }
 
-  // Only mark hasStockEntry if at least one stock field was provided
   if (Object.keys(updateFields).length > 0) {
     updateFields.hasStockEntry = true;
   }
 
-  // Generate batchNo only if rawRiceReceived is provided and >0
+  // ✅ Batch number is generated/repaired off Input, not rawRiceReceived/output.
+  // If operator/partner are still missing at this point, buildBatchNo falls
+  // back to '?' for each — that gets corrected later by updateOperators()
+  // (or by the cleanup pass in getAvailableBatches) once they're assigned.
   let batchNoUpdate = {};
-  if (rawRiceReceived !== undefined && rawRiceReceived !== null && rawRiceReceived > 0) {
+  if (input !== undefined && input !== null && input > 0) {
     const { buildBatchNo } = require('./sievingLog.service');
-    const draft = existing ? { ...existing.toObject(), rawRiceReceived } 
-                           : { date: dayStart, operator: null, partner: null, rawRiceReceived };
+    const draft = existing
+      ? { ...existing.toObject(), input }
+      : { date: dayStart, operator: null, partner: null, input };
     const newBatch = buildBatchNo(draft);
-    // Only set batchNo if it doesn't exist or currently has '??' and we have operator/partner
-    if (!existing?.batchNo || (existing?.batchNo?.includes('??') && existing?.operator && existing?.partner)) {
+    if (
+      !existing?.batchNo ||
+      (existing?.batchNo?.includes('??') && existing?.operator && existing?.partner)
+    ) {
       batchNoUpdate.batchNo = newBatch;
     }
   }
@@ -270,7 +271,6 @@ async function upsertStockByDate(date, { rawRiceReceived, input, output, rejecti
     .populate('operator', NAME_FIELD)
     .populate('partner', NAME_FIELD);
 
-  // Send WhatsApp notification if any stock fields were provided
   if (Object.keys(updateFields).length > 0) {
     const operatorName = log.operator?.[NAME_FIELD] || 'Unassigned';
     const partnerName = log.partner?.[NAME_FIELD] || 'Unassigned';
@@ -293,11 +293,8 @@ async function upsertStockByDate(date, { rawRiceReceived, input, output, rejecti
   return log;
 }
 
-// ── NEW: Raw Rice Stock summary for the Material Store dashboard ───────────
-// Running balance = every rawRiceReceived ever logged, minus every input
-// ever logged. e.g. received 10,000kg total, used 1,000kg total → 9,000kg
-// remaining. No opening-balance concept — it's a pure running total across
-// all MachineLog documents.
+// Raw Rice Stock summary for the Material Store dashboard — unchanged,
+// this is raw-material inventory, a separate concern from batch/sifting.
 async function getRawRiceStockSummary() {
   const agg = await MachineLog.aggregate([
     {
@@ -324,7 +321,6 @@ async function getRawRiceStockSummary() {
   return { totalReceived, totalInput, currentBalance, recentEntries };
 }
 
-// Sri Lanka is UTC+5:30. Dates are stored as midnight SL time = 18:30 UTC previous day.
 function startOfDaySL(date) {
   const d = new Date(date);
   d.setUTCHours(0, 0, 0, 0);

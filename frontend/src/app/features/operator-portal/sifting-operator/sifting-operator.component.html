@@ -98,18 +98,18 @@
                                 <div class="sf-stock-bar__label">
                                     <span>Sifted so far</span>
                                     <span>{{ selectedBatch.totalSievedInput | number:'1.0-1' }} / {{
-                                        selectedBatch.output | number:'1.0-1' }} kg</span>
+                                        selectedBatch.input | number:'1.0-1' }} kg</span>
                                 </div>
                                 <div class="sf-stock-bar">
                                     <div class="sf-stock-bar__fill"
-                                        [style.width.%]="selectedBatch.output ? (selectedBatch.totalSievedInput / selectedBatch.output) * 100 : 0">
+                                        [style.width.%]="selectedBatch.input ? (selectedBatch.totalSievedInput / selectedBatch.input) * 100 : 0">
                                     </div>
                                 </div>
                             </div>
                             <div class="sf-stock-stats">
                                 <div class="sf-stock-stat">
-                                    <span class="sf-stock-stat__lbl">Milled Output</span>
-                                    <span class="sf-stock-stat__val sf-val--blue">{{ selectedBatch.output |
+                                    <span class="sf-stock-stat__lbl">Mill Input</span>
+                                    <span class="sf-stock-stat__val sf-val--blue">{{ selectedBatch.input |
                                         number:'1.0-1' }} kg</span>
                                 </div>
                                 <div class="sf-stock-stat">

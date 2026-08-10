@@ -19,7 +19,7 @@ function buildBatchNo(machineLog) {
 
 async function getAvailableBatches() {
   const machineLogs = await MachineLog.find({
-    rawRiceReceived: { $gt: 0 },
+    input: { $gt: 0 },          // ✅ batch eligibility now keyed on Input
     hasStockEntry: true,
   })
     .sort({ date: -1 })
@@ -28,13 +28,14 @@ async function getAvailableBatches() {
     .limit(100);
 
   // 🔁 Clean up any logs with '??' that now have operator/partner
+  // (covers the case: stock entered first with no operator/partner,
+  // operators assigned later — batchNo gets corrected here as a safety net)
   for (const log of machineLogs) {
     if (log.batchNo && log.batchNo.includes('??') && log.operator && log.partner) {
       const newBatch = buildBatchNo(log);
       if (newBatch !== log.batchNo) {
         log.batchNo = newBatch;
         await log.save();
-        // Also update SievingLog
         await SievingLog.updateMany(
           { machineLogId: log._id },
           { batchNo: newBatch }
@@ -59,9 +60,9 @@ async function getAvailableBatches() {
     const batchNo = log.batchNo || buildBatchNo(log);
     if (!log.batchNo) MachineLog.findByIdAndUpdate(log._id, { batchNo }).exec();
 
-    const milledOutput   = log.output ?? 0;
-    const sieved         = sievedMap[log._id.toString()] || { totalInput: 0 };
-    const remainingStock = Math.max(0, milledOutput - sieved.totalInput);
+    const millInput       = log.input ?? 0;                             // ✅ ceiling = Input
+    const sieved          = sievedMap[log._id.toString()] || { totalInput: 0 };
+    const remainingStock  = Math.max(0, millInput - sieved.totalInput);
 
     return {
       _id:              log._id,
@@ -78,7 +79,6 @@ async function getAvailableBatches() {
   });
 }
 
-// ✅ NEW — fetch the most recent incomplete sieving log (any operator, today)
 async function getActiveSievingLog() {
   const todayStart = startOfDay(new Date());
   const todayEnd   = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
@@ -173,7 +173,6 @@ async function completeSievingLog(id) {
   const totalOutput    = log.parts.reduce((s, p) => s + (p.output    ?? 0), 0);
   const totalRejection = log.parts.reduce((s, p) => s + (p.rejection ?? 0), 0);
 
-  // Save first so the log is marked complete even if WhatsApp fails
   await log.save();
 
   try {
@@ -189,7 +188,7 @@ async function completeSievingLog(id) {
       completedAt: log.completedAt,
     });
     log.completionNotified = true;
-    await log.save();  // persist the notified flag
+    await log.save();
   } catch (err) {
     console.error('[SievingLog] WhatsApp notification failed:', err.message);
   }
@@ -255,7 +254,7 @@ async function getSummary() {
 }
 module.exports = {
   getAvailableBatches,
-  getActiveSievingLog,      
+  getActiveSievingLog,
   getOrCreateSievingLog,
   getSievingLogById,
   getSummary,
