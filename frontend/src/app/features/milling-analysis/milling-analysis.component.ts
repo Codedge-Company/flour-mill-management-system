@@ -1,59 +1,114 @@
 // src/app/features/milling-analysis/milling-analysis.component.ts
+//
+// UNIFIED MILLING ANALYSIS PAGE
+// ─────────────────────────────
+// Replaces having 3 separate dashboards (Grinding / Sifting / Packing) with
+// ONE page that has a shared date filter (All / Today / Yesterday / 7 Days /
+// 30 Days / single date / custom range) and a tab switcher between the three
+// sections. Data is fetched once per refresh and filtered client-side so
+// switching tabs or date presets never triggers a network round-trip.
+//
+// ⚠️ ADJUST BEFORE USE:
+//   - Import paths for the 3 services below (MachineLogService,
+//     SievingLogService, StockRequestService) — update to match your
+//     actual folder structure if different.
+//   - Field names on StockRequest (packName, qty, fulfilledQty,
+//     fulfillments[].date, requestedAt) — these come from the
+//     StockRequestService you already have; rename only if your model
+//     differs.
+
 import {
   Component, OnInit, signal, computed, ChangeDetectionStrategy
 } from '@angular/core';
-import { CommonModule, DecimalPipe, DatePipe, PercentPipe } from '@angular/common';
+import { CommonModule, DecimalPipe, DatePipe, TitleCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
-
-import { ButtonModule } from 'primeng/button';
 import { CalendarModule } from 'primeng/calendar';
 import { ChartModule } from 'primeng/chart';
-import { InputNumberModule } from 'primeng/inputnumber';
-import { InputTextModule } from 'primeng/inputtext';
-import { InputTextareaModule } from 'primeng/inputtextarea';
 import { SkeletonModule } from 'primeng/skeleton';
 import { TooltipModule } from 'primeng/tooltip';
-import { ConfirmDialogModule } from 'primeng/confirmdialog';
-import { ConfirmationService } from 'primeng/api';
-import { DropdownModule } from 'primeng/dropdown';
 
-import { environment } from '../../../environments/environment.prod';
-import { LkrCurrencyPipe } from '../../shared/pipes/lkr-currency.pipe';
+import { MachineLogService, MachineLog, MachineSession } from '../../core/services/machine-log.service';
+import { SievingLogService, SievingLog } from '../../core/services/sieving-log.service';
+import { StockRequestService, StockRequest } from '../../core/services/stock-request.service';
 
-// ── Models ────────────────────────────────────────────────────────────────────
+// ── Tab type ──────────────────────────────────────────────────────────────
+export type MillingTab = 'grinding' | 'sifting' | 'packing';
 
-export interface StockEntry {
+// ── Row models (post-processing, ready for the template) ───────────────────
+export interface GrindEntry {
   _id: string;
   date: string;
-  hasStockEntry: boolean;
-  rawRiceReceived: number | null;
-  input: number | null;
-  output: number | null;
-  rejection: number | null;
-  rejectionDate: string | null;
-  // Computed on frontend
-  efficiency?: number;
-  rejectionRate?: number;
-  yieldRate?: number;
+  batchNo: string;
+  hasBatch: boolean;
+  operatorName: string;
+  partnerName: string;
+  rawRiceReceived: number;
+  input: number;
+  output: number;
+  rejection: number;
+  runTimeMinutes: number;
+  runTimeDisplay: string;
+  efficiency: number;
+  hasRunning: boolean;
 }
 
-export interface MillingSummary {
+export interface SiftEntry {
+  _id: string;
+  date: string;
+  batchNo: string;
+  operatorName: string;
+  input: number;
+  output: number;
+  rejection: number;
+  efficiency: number;
+  isCompleted: boolean;
+  partsCount: number;
+}
+
+export interface PackEntry {
+  stockRequestId: string;
+  date: string;          // requestedAt
+  packName: string;
+  weightKg: number;
+  ordered: number;       // qty
+  completed: number;     // fulfilledQty (all-time, NOT date filtered)
+  completedInRange: number; // sum of fulfillments whose date falls in the active filter
+  remaining: number;
+  status: string;
+  operatorName: string;
+}
+
+// ── Summaries ────────────────────────────────────────────────────────────
+export interface GrindSummary {
+  entriesCount: number;
+  batchCount: number;
   totalRawReceived: number;
   totalInput: number;
   totalOutput: number;
   totalRejection: number;
+  totalRunMinutes: number;
   avgEfficiency: number;
-  avgRejectionRate: number;
-  avgYieldRate: number;
-  entriesCount: number;
-  bestEfficiencyDate: string | null;
-  worstEfficiencyDate: string | null;
+  uniqueOperators: string[];
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+export interface SiftSummary {
+  entriesCount: number;
+  batchCount: number;
+  totalInput: number;
+  totalOutput: number;
+  totalRejection: number;
+  avgEfficiency: number;
+  uniqueOperators: string[];
+  completedCount: number;
+}
+
+export interface PackSummary {
+  requestCount: number;
+  totalOrdered: number;
+  totalCompletedInRange: number;
+  totalRemaining: number;
+  completionRate: number; // completedInRange / ordered (for requests touched in range)
+}
 
 @Component({
   selector: 'app-milling-analysis',
@@ -61,466 +116,447 @@ export interface MillingSummary {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule, FormsModule,
-    ButtonModule, CalendarModule, ChartModule,
-    InputNumberModule, InputTextModule, InputTextareaModule,
-    SkeletonModule, TooltipModule, ConfirmDialogModule, DropdownModule,
-    DecimalPipe, DatePipe, PercentPipe,
+    CalendarModule, ChartModule, SkeletonModule, TooltipModule,
+    DecimalPipe, DatePipe, TitleCasePipe,
   ],
-  providers: [ConfirmationService],
   templateUrl: './milling-analysis.component.html',
   styleUrl: './milling-analysis.component.css',
 })
 export class MillingAnalysisComponent implements OnInit {
 
-  // ── State ──────────────────────────────────────────────────────────────────
-  loading = signal(false);
-  error = signal<string | null>(null);
-  entries = signal<StockEntry[]>([]);
+  // ── Tab state ──────────────────────────────────────────────────────────
+  activeTab = signal<MillingTab>('grinding');
+  setTab(tab: MillingTab): void { this.activeTab.set(tab); }
 
+  // ── Loading / error (one flag per source so a slow one doesn't block others) ──
+  loadingGrind = signal(true);
+  loadingSift = signal(true);
+  loadingPack = signal(true);
+  loading = computed(() => this.loadingGrind() || this.loadingSift() || this.loadingPack());
+
+  error = signal<string | null>(null);
+
+  // ── Raw data (fetched once, filtered client-side) ─────────────────────
+  rawMachineLogs = signal<MachineLog[]>([]);
+  rawSievingLogs = signal<SievingLog[]>([]);
+  rawStockRequests = signal<StockRequest[]>([]);
+
+  // ── Shared date filter ──────────────────────────────────────────────────
   today = new Date();
+  activePreset = signal<string>('all');
   dateFrom = signal<Date | null>(null);
   dateTo = signal<Date | null>(null);
-  activePreset = signal<string>('all');
-  showCustomRange = signal(false);
-
-  sortOptions = [
-    { label: 'Date (Newest)', value: 'date_desc' },
-    { label: 'Date (Oldest)', value: 'date_asc' },
-    { label: 'Best Efficiency', value: 'eff_desc' },
-    { label: 'Most Output', value: 'output_desc' },
-    { label: 'Most Yield Loss', value: 'rej_desc' },
-  ];
-  selectedSort = signal('date_desc');
   singleDate = signal<Date | null>(null);
   showSinglePicker = signal(false);
+  showCustomRange = signal(false);
 
-  constructor(private http: HttpClient) { }
-
-  ngOnInit() { this.setPreset('all'); }
-
-  // ── Data loading ────────────────────────────────────────────────────────────
-  private fmtDate(d: Date): string {
-    // Use local date parts so "today" in SL doesn't shift to yesterday in UTC
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
+  get isCustomRangeValid(): boolean {
+    return !!this.dateFrom() && !!this.dateTo();
   }
-  load() {
-    this.loading.set(true);
+
+  constructor(
+    private machineLogSvc: MachineLogService,
+    private sievingLogSvc: SievingLogService,
+    private stockRequestSvc: StockRequestService,
+  ) {}
+
+  ngOnInit(): void {
+    this.setPreset('all');
+    this.loadAll();
+  }
+
+  // ── Data loading (fetch everything once; filtering happens in computed()) ──
+  loadAll(): void {
     this.error.set(null);
 
-    // Always fetch all pages by using a high limit; date filtering is done server-side
-    let params = new HttpParams().set('limit', '500').set('page', '1');
+    this.loadingGrind.set(true);
+    this.machineLogSvc.getAllLogs({ limit: 1000 }).subscribe({
+      next: res => { this.rawMachineLogs.set(res.logs || []); this.loadingGrind.set(false); },
+      error: () => { this.error.set('Failed to load grinding logs.'); this.loadingGrind.set(false); },
+    });
 
-    if (this.dateFrom()) params = params.set('from', this.fmtDate(this.dateFrom()!));
-    if (this.dateTo()) params = params.set('to', this.fmtDate(this.dateTo()!));
+    this.loadingSift.set(true);
+    this.sievingLogSvc.getAllLogs({ limit: 1000 }).subscribe({
+      next: logs => { this.rawSievingLogs.set(logs || []); this.loadingSift.set(false); },
+      error: () => { this.error.set('Failed to load sifting logs.'); this.loadingSift.set(false); },
+    });
 
-    this.http.get<{ success: boolean; logs: any[]; total: number }>(
-      `${environment.apiUrl}/machine-logs`, { params }
-    ).subscribe({
-      next: (res) => {
-        const raw = (res.logs ?? [])
-          .filter((l: any) => l.hasStockEntry)
-          .map((l: any) => this.enrichEntry(l));
-        this.entries.set(raw);
-        this.loading.set(false);
-      },
-      error: (err) => {
-        this.error.set(err?.error?.message ?? 'Failed to load milling data');
-        this.loading.set(false);
-      },
+    this.loadingPack.set(true);
+    this.stockRequestSvc.getAll().subscribe({
+      next: res => { this.rawStockRequests.set(res.data || []); this.loadingPack.set(false); },
+      error: () => { this.error.set('Failed to load packing requests.'); this.loadingPack.set(false); },
     });
   }
 
-  private enrichEntry(l: any): StockEntry {
-    const input = l.input ?? 0;
-    const output = l.output ?? 0;
-    const rejection = l.rejection ?? 0;
-    const received = l.rawRiceReceived ?? 0;
+  refresh(): void { this.loadAll(); }
 
-    const efficiency = input > 0 ? (output / input) * 100 : 0;
-    const rejectionRate = input > 0 ? (rejection / input) * 100 : 0;
-    const yieldRate = received > 0 ? (output / received) * 100 : 0;
-
-    return {
-      _id: l._id,
-      date: l.date,
-      hasStockEntry: l.hasStockEntry,
-      rawRiceReceived: received,
-      input,
-      output,
-      rejection,
-      rejectionDate: l.rejectionDate ?? null,
-      efficiency: +efficiency.toFixed(2),
-      rejectionRate: +rejectionRate.toFixed(2),
-      yieldRate: +yieldRate.toFixed(2),
-    };
+  // ── Date range helper (date-only comparison, inclusive) ─────────────────
+  private inRange(dateStr: string | null | undefined): boolean {
+    if (!dateStr) return false;
+    const from = this.dateFrom();
+    const to = this.dateTo();
+    if (!from && !to) return true; // "all"
+    const d = new Date(dateStr);
+    d.setHours(0, 0, 0, 0);
+    if (from) {
+      const f = new Date(from); f.setHours(0, 0, 0, 0);
+      if (d < f) return false;
+    }
+    if (to) {
+      const t = new Date(to); t.setHours(23, 59, 59, 999);
+      if (d.getTime() > t.getTime()) return false;
+    }
+    return true;
   }
 
-  // ── Sorted entries ──────────────────────────────────────────────────────────
-  readonly sortedEntries = computed(() => {
-    const list = [...this.entries()];
-    switch (this.selectedSort()) {
-      case 'date_asc': return list.sort((a, b) => a.date.localeCompare(b.date));
-      case 'eff_desc': return list.sort((a, b) => (b.efficiency ?? 0) - (a.efficiency ?? 0));
-      case 'output_desc': return list.sort((a, b) => (b.output ?? 0) - (a.output ?? 0));
-      case 'rej_desc': return list.sort((a, b) => (b.rejection ?? 0) - (a.rejection ?? 0));
-      default: return list.sort((a, b) => b.date.localeCompare(a.date));
-    }
-  });
-
-  // ── Summary ─────────────────────────────────────────────────────────────────
-  readonly summary = computed<MillingSummary>(() => {
-    const e = this.entries();
-    if (!e.length) return {
-      totalRawReceived: 0, totalInput: 0, totalOutput: 0, totalRejection: 0,
-      avgEfficiency: 0, avgRejectionRate: 0, avgYieldRate: 0,
-      entriesCount: 0, bestEfficiencyDate: null, worstEfficiencyDate: null,
-    };
-
-    const totalRawReceived = e.reduce((s, x) => s + (x.rawRiceReceived ?? 0), 0);
-    const totalInput = e.reduce((s, x) => s + (x.input ?? 0), 0);
-    const totalOutput = e.reduce((s, x) => s + (x.output ?? 0), 0);
-    const totalRejection = e.reduce((s, x) => s + (x.rejection ?? 0), 0);
-
-    const avgEfficiency = e.reduce((s, x) => s + (x.efficiency ?? 0), 0) / e.length;
-    const avgRejectionRate = e.reduce((s, x) => s + (x.rejectionRate ?? 0), 0) / e.length;
-    const avgYieldRate = e.reduce((s, x) => s + (x.yieldRate ?? 0), 0) / e.length;
-
-    const sorted = [...e].sort((a, b) => (b.efficiency ?? 0) - (a.efficiency ?? 0));
-    const bestEff = sorted[0]?.date ?? null;
-    const worstEff = sorted[sorted.length - 1]?.date ?? null;
-
-    return {
-      totalRawReceived, totalInput, totalOutput, totalRejection,
-      avgEfficiency: +avgEfficiency.toFixed(2),
-      avgRejectionRate: +avgRejectionRate.toFixed(2),
-      avgYieldRate: +avgYieldRate.toFixed(2),
-      entriesCount: e.length,
-      bestEfficiencyDate: bestEff,
-      worstEfficiencyDate: worstEff,
-    };
-  });
-
-  readonly totalLoss = computed(() =>
-    (this.summary().totalInput ?? 0) - (this.summary().totalOutput ?? 0) - (this.summary().totalRejection ?? 0)
+  // ════════════════════════════════════════════════════════════════════════
+  // GRINDING
+  // ════════════════════════════════════════════════════════════════════════
+  grindEntries = computed<GrindEntry[]>(() =>
+    this.rawMachineLogs()
+      .filter(log => this.inRange(log.date))
+      .map(log => this.buildGrindEntry(log))
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
   );
 
-  readonly overallEfficiency = computed(() => {
-    const s = this.summary();
-    return s.totalInput > 0 ? +((s.totalOutput / s.totalInput) * 100).toFixed(2) : 0;
-  });
-
-  readonly overallRejectionRate = computed(() => {
-    const s = this.summary();
-    return s.totalInput > 0 ? +((s.totalRejection / s.totalInput) * 100).toFixed(2) : 0;
-  });
-
-  readonly efficiencyStatus = computed(() => {
-    const e = this.overallEfficiency();
-    if (e >= 90) return 'excellent';
-    if (e >= 80) return 'good';
-    if (e >= 70) return 'fair';
-    return 'poor';
-  });
-
-  // ── Chart: Efficiency over time ─────────────────────────────────────────────
-  readonly efficiencyChartData = computed(() => {
-    const pts = [...this.entries()].sort((a, b) => a.date.localeCompare(b.date));
-    if (!pts.length) return null;
+  grindSummary = computed<GrindSummary>(() => {
+    const es = this.grindEntries();
+    if (!es.length) {
+      return {
+        entriesCount: 0, batchCount: 0, totalRawReceived: 0, totalInput: 0,
+        totalOutput: 0, totalRejection: 0, totalRunMinutes: 0, avgEfficiency: 0,
+        uniqueOperators: [],
+      };
+    }
+    const totalRaw = es.reduce((s, e) => s + e.rawRiceReceived, 0);
+    const totalIn = es.reduce((s, e) => s + e.input, 0);
+    const totalOut = es.reduce((s, e) => s + e.output, 0);
+    const totalRej = es.reduce((s, e) => s + e.rejection, 0);
+    const totalMins = es.reduce((s, e) => s + e.runTimeMinutes, 0);
+    const batches = es.filter(e => e.hasBatch).length;
+    const ops = new Set<string>();
+    es.forEach(e => {
+      if (e.operatorName && e.operatorName !== 'Unknown') ops.add(e.operatorName);
+      if (e.partnerName && e.partnerName !== 'Unknown') ops.add(e.partnerName);
+    });
     return {
-      labels: pts.map(p => new Date(p.date).toLocaleDateString('en-LK', { month: 'short', day: 'numeric' })),
+      entriesCount: es.length,
+      batchCount: batches,
+      totalRawReceived: totalRaw,
+      totalInput: totalIn,
+      totalOutput: totalOut,
+      totalRejection: totalRej,
+      totalRunMinutes: totalMins,
+      avgEfficiency: totalIn > 0 ? (totalOut / totalIn) * 100 : 0,
+      uniqueOperators: Array.from(ops),
+    };
+  });
+
+  grindTrendData = computed(() => {
+    const es = [...this.grindEntries()].reverse();
+    if (!es.length) return null;
+    return {
+      labels: es.map(e => this.fmtDateLabel(e.date)),
       datasets: [
         {
-          label: 'Efficiency %',
-          data: pts.map(p => p.efficiency),
-          borderColor: '#2563eb',
-          backgroundColor: 'rgba(37,99,235,0.10)',
-          fill: true,
-          tension: 0.4,
-          pointRadius: pts.length > 60 ? 0 : 4,
-          pointHoverRadius: 6,
-          borderWidth: 2.5,
-          yAxisID: 'y',
+          label: 'Input (kg)', data: es.map(e => e.input),
+          backgroundColor: 'rgba(37,99,235,.75)', borderRadius: 4, borderSkipped: false,
         },
         {
-          label: 'Yield Loss %',
-          data: pts.map(p => p.rejectionRate),
-          borderColor: '#e11d48',
-          backgroundColor: 'rgba(225,29,72,0.06)',
-          fill: true,
-          tension: 0.4,
-          pointRadius: pts.length > 60 ? 0 : 4,
-          pointHoverRadius: 6,
-          borderWidth: 2,
-          yAxisID: 'y',
+          label: 'Output (kg)', data: es.map(e => e.output),
+          backgroundColor: 'rgba(5,150,105,.75)', borderRadius: 4, borderSkipped: false,
         },
       ],
     };
   });
 
-  // ── Chart: Input / Output / Yield Loss bar ──────────────────────────────────
-  readonly ioBarChartData = computed(() => {
-    const pts = [...this.entries()].sort((a, b) => a.date.localeCompare(b.date));
-    if (!pts.length) return null;
+  private buildGrindEntry(log: MachineLog): GrindEntry {
+    const opName = (log.operator as any)?.username || (log.operator as any)?.name || 'Unknown';
+    const prName = (log.partner as any)?.username || (log.partner as any)?.name || 'Unknown';
+    const raw = log.rawRiceReceived ?? 0;
+    const inp = log.input ?? 0;
+    const out = log.output ?? 0;
+    const rej = log.rejection ?? 0;
+    const hasBatch = raw > 0;
+    const runMins = this.calcRunMinutes(log.sessions);
+    const hasRun = (log.sessions || []).some(s => s.startTime && !s.stopTime);
+    const eff = inp > 0 ? (out / inp) * 100 : 0;
+
     return {
-      labels: pts.map(p => new Date(p.date).toLocaleDateString('en-LK', { month: 'short', day: 'numeric' })),
+      _id: log._id,
+      date: log.date,
+      batchNo: hasBatch ? this.genBatchNo(log, opName, prName) : '—',
+      hasBatch,
+      operatorName: opName,
+      partnerName: prName,
+      rawRiceReceived: raw,
+      input: inp,
+      output: out,
+      rejection: rej,
+      runTimeMinutes: runMins,
+      runTimeDisplay: this.formatRunTime(runMins),
+      efficiency: eff,
+      hasRunning: hasRun,
+    };
+  }
+
+  private genBatchNo(log: MachineLog, opName: string, prName: string): string {
+    const d = new Date(log.date);
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const oi = opName[0]?.toUpperCase() ?? '?';
+    const pi = prName[0]?.toUpperCase() ?? '?';
+    return `ST-${mm}-${dd}-${oi}${pi}`;
+  }
+
+  private calcRunMinutes(sessions: MachineSession[] | undefined): number {
+    return (sessions || []).reduce((total, s) => {
+      if (s.startTime && s.stopTime) {
+        return total + (new Date(s.stopTime).getTime() - new Date(s.startTime).getTime()) / 60000;
+      }
+      return total;
+    }, 0);
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // SIFTING
+  // ════════════════════════════════════════════════════════════════════════
+  siftEntries = computed<SiftEntry[]>(() =>
+    this.rawSievingLogs()
+      .filter(log => this.inRange(log.date))
+      .map(log => this.buildSiftEntry(log))
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  );
+
+  siftSummary = computed<SiftSummary>(() => {
+    const es = this.siftEntries();
+    if (!es.length) {
+      return {
+        entriesCount: 0, batchCount: 0, totalInput: 0, totalOutput: 0,
+        totalRejection: 0, avgEfficiency: 0, uniqueOperators: [], completedCount: 0,
+      };
+    }
+    const totalIn = es.reduce((s, e) => s + e.input, 0);
+    const totalOut = es.reduce((s, e) => s + e.output, 0);
+    const totalRej = es.reduce((s, e) => s + e.rejection, 0);
+    const ops = new Set<string>();
+    es.forEach(e => { if (e.operatorName && e.operatorName !== '—') ops.add(e.operatorName); });
+    return {
+      entriesCount: es.length,
+      batchCount: new Set(es.map(e => e.batchNo)).size,
+      totalInput: totalIn,
+      totalOutput: totalOut,
+      totalRejection: totalRej,
+      avgEfficiency: totalIn > 0 ? (totalOut / totalIn) * 100 : 0,
+      uniqueOperators: Array.from(ops),
+      completedCount: es.filter(e => e.isCompleted).length,
+    };
+  });
+
+  siftTrendData = computed(() => {
+    const es = [...this.siftEntries()].reverse();
+    if (!es.length) return null;
+    return {
+      labels: es.map(e => this.fmtDateLabel(e.date)),
       datasets: [
         {
-          label: 'Input (kg)',
-          data: pts.map(p => p.input),
-          backgroundColor: 'rgba(37,99,235,0.75)',
-          borderRadius: 4,
-          borderSkipped: false,
-          stack: 'a',
+          label: 'Flour Input (kg)', data: es.map(e => e.input),
+          backgroundColor: 'rgba(99,102,241,.65)', borderRadius: 4, borderSkipped: false,
         },
         {
-          label: 'Output (kg)',
-          data: pts.map(p => p.output),
-          backgroundColor: 'rgba(5,150,105,0.75)',
-          borderRadius: 4,
-          borderSkipped: false,
-          stack: 'b',
+          label: 'Flour Output (kg)', data: es.map(e => e.output),
+          backgroundColor: 'rgba(16,185,129,.65)', borderRadius: 4, borderSkipped: false,
         },
         {
-          label: 'Yield Loss (kg)',
-          data: pts.map(p => p.rejection),
-          backgroundColor: 'rgba(225,29,72,0.70)',
-          borderRadius: 4,
-          borderSkipped: false,
-          stack: 'b',
+          label: 'Rejection (kg)', data: es.map(e => e.rejection),
+          backgroundColor: 'rgba(225,29,72,.55)', borderRadius: 4, borderSkipped: false,
         },
       ],
     };
   });
 
-  // ── Chart: Raw Rice Received trend ─────────────────────────────────────────
-  readonly rawRiceChartData = computed(() => {
-    const pts = [...this.entries()].sort((a, b) => a.date.localeCompare(b.date));
-    if (!pts.length) return null;
+  private buildSiftEntry(log: SievingLog): SiftEntry {
+    const opName = log.operator?.username || '—';
+    const inp = log.totalInput ?? 0;
+    const out = log.totalOutput ?? 0;
+    const rej = log.totalRejection ?? 0;
     return {
-      labels: pts.map(p => new Date(p.date).toLocaleDateString('en-LK', { month: 'short', day: 'numeric' })),
+      _id: log._id,
+      date: log.date,
+      batchNo: log.batchNo || '—',
+      operatorName: opName,
+      input: inp,
+      output: out,
+      rejection: rej,
+      efficiency: inp > 0 ? (out / inp) * 100 : 0,
+      isCompleted: !!log.isCompleted,
+      partsCount: log.parts?.length || 0,
+    };
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // PACKING
+  // ════════════════════════════════════════════════════════════════════════
+  // "Ordered" = requests whose requestedAt falls in the active date range.
+  // "Completed" = sum of that request's fulfillments whose OWN date falls in
+  // the active range (so a bag packed today counts today, even if the order
+  // itself was placed last week).
+  packEntries = computed<PackEntry[]>(() => {
+    const preset = this.activePreset();
+    return this.rawStockRequests()
+      .filter(r => preset === 'all' ? true : this.inRange(r.requestedAt))
+      .map(r => this.buildPackEntry(r))
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  });
+
+  packSummary = computed<PackSummary>(() => {
+    const es = this.packEntries();
+    if (!es.length) {
+      return { requestCount: 0, totalOrdered: 0, totalCompletedInRange: 0, totalRemaining: 0, completionRate: 0 };
+    }
+    const totalOrdered = es.reduce((s, e) => s + e.ordered, 0);
+    const totalCompletedInRange = es.reduce((s, e) => s + e.completedInRange, 0);
+    const totalRemaining = es.reduce((s, e) => s + e.remaining, 0);
+    return {
+      requestCount: es.length,
+      totalOrdered,
+      totalCompletedInRange,
+      totalRemaining,
+      completionRate: totalOrdered > 0 ? (totalCompletedInRange / totalOrdered) * 100 : 0,
+    };
+  });
+
+  packTrendData = computed(() => {
+    const es = [...this.packEntries()].reverse();
+    if (!es.length) return null;
+    return {
+      labels: es.map(e => this.fmtDateLabel(e.date)),
       datasets: [
         {
-          label: 'Raw Rice Received (kg)',
-          data: pts.map(p => p.rawRiceReceived),
-          borderColor: '#d97706',
-          backgroundColor: 'rgba(217,119,6,0.12)',
-          fill: true,
-          tension: 0.35,
-          pointRadius: pts.length > 60 ? 0 : 4,
-          pointHoverRadius: 6,
-          borderWidth: 2.5,
+          label: 'Ordered (bags)', data: es.map(e => e.ordered),
+          backgroundColor: 'rgba(217,119,6,.7)', borderRadius: 4, borderSkipped: false,
+        },
+        {
+          label: 'Completed (bags)', data: es.map(e => e.completedInRange),
+          backgroundColor: 'rgba(5,150,105,.7)', borderRadius: 4, borderSkipped: false,
         },
       ],
     };
   });
 
-  // ── Chart: Doughnut output composition ─────────────────────────────────────
-  readonly compositionDoughnutData = computed(() => {
-    const s = this.summary();
-    if (!s.totalInput) return null;
-    const loss = Math.max(0, this.totalLoss());
+  private buildPackEntry(r: StockRequest): PackEntry {
+    const completedInRange = (r.fulfillments || [])
+      .filter(f => this.inRange(f.date))
+      .reduce((s, f) => s + (f.qty || 0), 0);
+
     return {
-      labels: ['Output', 'Yield Loss', 'Processing Loss'],
-      datasets: [{
-        data: [s.totalOutput, s.totalRejection, loss],
-        backgroundColor: ['rgba(5,150,105,0.80)', 'rgba(225,29,72,0.80)', 'rgba(148,163,184,0.60)'],
-        borderColor: ['#059669', '#e11d48', '#94a3b8'],
-        borderWidth: 2,
-        hoverOffset: 10,
-      }],
+      stockRequestId: r.stockRequestId,
+      date: r.requestedAt,
+      packName: r.packName,
+      weightKg: r.weightKg,
+      ordered: r.qty ?? 0,
+      completed: r.fulfilledQty ?? 0,
+      completedInRange,
+      remaining: r.remainingQty ?? Math.max((r.qty ?? 0) - (r.fulfilledQty ?? 0), 0),
+      status: r.status,
+      operatorName: r.operatorName || '—',
     };
-  });
+  }
 
-  // ── Chart: Yield rate scatter / line ───────────────────────────────────────
-  readonly yieldTrendData = computed(() => {
-    const pts = [...this.entries()].sort((a, b) => a.date.localeCompare(b.date));
-    if (!pts.length) return null;
-    return {
-      labels: pts.map(p => new Date(p.date).toLocaleDateString('en-LK', { month: 'short', day: 'numeric' })),
-      datasets: [
-        {
-          label: 'Yield Rate %',
-          data: pts.map(p => p.yieldRate),
-          borderColor: '#059669',
-          backgroundColor: (ctx: any) => {
-            const chart = ctx.chart;
-            const { chartArea } = chart;
-            if (!chartArea) return 'rgba(5,150,105,0.12)';
-            const g = chart.ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-            g.addColorStop(0, 'rgba(5,150,105,0.25)');
-            g.addColorStop(1, 'rgba(5,150,105,0.01)');
-            return g;
-          },
-          fill: true,
-          tension: 0.4,
-          pointRadius: pts.length > 60 ? 0 : 4,
-          pointHoverRadius: 6,
-          borderWidth: 2.5,
-        },
-      ],
-    };
-  });
-
-  // ── Chart options ───────────────────────────────────────────────────────────
-  readonly percentLineOptions = computed(() => ({
-    responsive: true, maintainAspectRatio: false,
-    interaction: { mode: 'index' as const, intersect: false },
-    plugins: {
-      legend: { labels: { color: '#475569', font: { size: 12 }, boxWidth: 14 } },
-      tooltip: {
-        backgroundColor: '#1e293b', titleColor: '#f8fafc', bodyColor: '#cbd5e1',
-        callbacks: {
-          label: (ctx: any) => ` ${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(1)}%`,
-        },
-      },
-    },
-    scales: {
-      x: {
-        ticks: { color: '#94a3b8', maxTicksLimit: 10, maxRotation: 0, font: { size: 11 } },
-        grid: { color: 'rgba(226,232,240,0.6)' },
-      },
-      y: {
-        min: 0, max: 100,
-        ticks: { color: '#94a3b8', font: { size: 11 }, callback: (v: number) => `${v}%` },
-        grid: { color: 'rgba(226,232,240,0.6)' },
-      },
-    },
-  }));
-
-  readonly kgBarOptions = computed(() => ({
-    responsive: true, maintainAspectRatio: false,
-    interaction: { mode: 'index' as const, intersect: false },
-    plugins: {
-      legend: { labels: { color: '#475569', font: { size: 12 }, boxWidth: 14 } },
-      tooltip: {
-        backgroundColor: '#1e293b', titleColor: '#f8fafc', bodyColor: '#cbd5e1',
-        callbacks: {
-          label: (ctx: any) => ` ${ctx.dataset.label}: ${ctx.parsed.y?.toLocaleString()} kg`,
-        },
-      },
-    },
-    scales: {
-      x: {
-        ticks: { color: '#94a3b8', maxTicksLimit: 10, maxRotation: 0, font: { size: 11 } },
-        grid: { display: false },
-      },
-      y: {
-        ticks: {
-          color: '#94a3b8', font: { size: 11 },
-          callback: (v: number) => v >= 1000 ? `${(v / 1000).toFixed(1)}t` : `${v}kg`,
-        },
-        grid: { color: 'rgba(226,232,240,0.6)' },
-      },
-    },
-  }));
-
-  readonly kgLineOptions = computed(() => ({
-    responsive: true, maintainAspectRatio: false,
-    interaction: { mode: 'index' as const, intersect: false },
-    plugins: {
-      legend: { labels: { color: '#475569', font: { size: 12 }, boxWidth: 14 } },
-      tooltip: {
-        backgroundColor: '#1e293b', titleColor: '#f8fafc', bodyColor: '#cbd5e1',
-        callbacks: {
-          label: (ctx: any) => ` ${ctx.dataset.label}: ${ctx.parsed.y?.toLocaleString()} kg`,
-        },
-      },
-    },
-    scales: {
-      x: {
-        ticks: { color: '#94a3b8', maxTicksLimit: 10, maxRotation: 0, font: { size: 11 } },
-        grid: { color: 'rgba(226,232,240,0.6)' },
-      },
-      y: {
-        ticks: {
-          color: '#94a3b8', font: { size: 11 },
-          callback: (v: number) => v >= 1000 ? `${(v / 1000).toFixed(1)}t` : `${v}kg`,
-        },
-        grid: { color: 'rgba(226,232,240,0.6)' },
-      },
-    },
-  }));
-
-  readonly doughnutOptions = {
+  // ════════════════════════════════════════════════════════════════════════
+  // SHARED CHART OPTIONS
+  // ════════════════════════════════════════════════════════════════════════
+  readonly kgBarOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    interaction: { mode: 'index' as const, intersect: false },
     plugins: {
-      legend: {
-        position: 'bottom' as const,
-        labels: { color: '#475569', padding: 14, boxWidth: 12, font: { size: 11 } },
-      },
+      legend: { position: 'bottom' as const, labels: { font: { family: 'DM Sans', size: 11 }, boxWidth: 10, padding: 12 } },
       tooltip: {
         backgroundColor: '#1e293b', titleColor: '#f8fafc', bodyColor: '#cbd5e1',
-        callbacks: {
-          label: (ctx: any) => {
-            const v: number = ctx.parsed;
-            return ` ${ctx.label}: ${v.toLocaleString()} kg`;
-          },
-        },
+        callbacks: { label: (ctx: any) => ` ${ctx.dataset.label}: ${ctx.parsed.y?.toLocaleString()}` },
       },
     },
-    cutout: '64%',
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { family: 'DM Sans', size: 11 }, color: '#94a3b8', maxRotation: 45 } },
+      y: { grid: { color: 'rgba(0,0,0,.05)' }, ticks: { font: { family: 'DM Sans', size: 11 }, color: '#94a3b8' } },
+    },
   };
 
-  // ── Date presets ─────────────────────────────────────────────────────────────
-setPreset(preset: string) {
-  this.activePreset.set(preset);
-  this.showCustomRange.set(false);
-  this.showSinglePicker.set(false);
-  this.singleDate.set(null);
- 
-  const now = new Date();
-  switch (preset) {
-    case 'all':
-      this.dateFrom.set(null); this.dateTo.set(null); break;
-    case 'today':
-      this.dateFrom.set(new Date(now)); this.dateTo.set(new Date(now)); break;
-    case 'yesterday': {
-      const y = new Date(now); y.setDate(y.getDate() - 1);
-      this.dateFrom.set(y); this.dateTo.set(y); break;
-    }
-    case '7d': {
-      const f = new Date(now); f.setDate(f.getDate() - 6);
-      this.dateFrom.set(f); this.dateTo.set(now); break;
-    }
-    case '30d': {
-      const f = new Date(now); f.setDate(f.getDate() - 29);
-      this.dateFrom.set(f); this.dateTo.set(now); break;
+  // ════════════════════════════════════════════════════════════════════════
+  // DATE PRESETS (shared across all 3 tabs)
+  // ════════════════════════════════════════════════════════════════════════
+  setPreset(preset: string): void {
+    this.activePreset.set(preset);
+    this.showCustomRange.set(false);
+    this.showSinglePicker.set(false);
+    this.singleDate.set(null);
+
+    const now = new Date();
+    switch (preset) {
+      case 'all':
+        this.dateFrom.set(null); this.dateTo.set(null); break;
+      case 'today':
+        this.dateFrom.set(new Date(now)); this.dateTo.set(new Date(now)); break;
+      case 'yesterday': {
+        const y = new Date(now); y.setDate(y.getDate() - 1);
+        this.dateFrom.set(y); this.dateTo.set(y); break;
+      }
+      case '7d': {
+        const f = new Date(now); f.setDate(f.getDate() - 6);
+        this.dateFrom.set(f); this.dateTo.set(now); break;
+      }
+      case '30d': {
+        const f = new Date(now); f.setDate(f.getDate() - 29);
+        this.dateFrom.set(f); this.dateTo.set(now); break;
+      }
     }
   }
-  this.load();
-}
- applySingleDate(date: Date | null) {
-  if (!date) return;
-  this.singleDate.set(date);
-  this.activePreset.set('single');
-  this.showSinglePicker.set(false);
-  this.dateFrom.set(date);
-  this.dateTo.set(date);
-  this.load();
-}
- 
-toggleSinglePicker() {
-  this.showSinglePicker.update(v => !v);
-  this.showCustomRange.set(false);
-}
- 
 
-  toggleCustomRange() { this.showCustomRange.update(v => !v); }
+  applySingleDate(date: Date | null): void {
+    if (!date) return;
+    this.singleDate.set(date);
+    this.activePreset.set('single');
+    this.showSinglePicker.set(false);
+    this.dateFrom.set(date);
+    this.dateTo.set(date);
+  }
 
-  applyCustomRange() {
+  toggleSinglePicker(): void {
+    this.showSinglePicker.update(v => !v);
+    this.showCustomRange.set(false);
+  }
+
+  toggleCustomRange(): void {
+    this.showCustomRange.update(v => !v);
+    this.showSinglePicker.set(false);
+  }
+
+  applyCustomRange(): void {
+    if (!this.isCustomRangeValid) return;
     this.activePreset.set('custom');
     this.showCustomRange.set(false);
-    this.load();
   }
 
-  get isCustomRangeValid() { return !!(this.dateFrom() && this.dateTo()); }
+  // ── Utilities ─────────────────────────────────────────────────────────
+  fmtKg(v: number | null | undefined): string {
+    if (v == null || isNaN(+v)) return '—';
+    const n = +v;
+    return n >= 1000
+      ? (n / 1000).toFixed(2) + ' t'
+      : n.toLocaleString('en-LK', { maximumFractionDigits: 1 }) + ' kg';
+  }
 
-  fmtKg(v: number) {
-    if (v >= 1000) return `${(v / 1000).toFixed(2)} t`;
-    return `${v.toLocaleString()} kg`;
+  formatRunTime(minutes: number): string {
+    if (!minutes || minutes < 1) return '0m';
+    const h = Math.floor(minutes / 60);
+    const m = Math.round(minutes % 60);
+    if (h > 0 && m > 0) return `${h}h ${m}m`;
+    if (h > 0) return `${h}h`;
+    return `${m}m`;
+  }
+
+  fmtDateLabel(dateStr: string): string {
+    return new Date(dateStr).toLocaleDateString('en-LK', { day: 'numeric', month: 'short' });
   }
 }

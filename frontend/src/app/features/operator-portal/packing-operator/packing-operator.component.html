@@ -184,7 +184,8 @@
                         <!-- Qty summary -->
                         <div class="po-order-qty-row">
                             <div class="po-qty-block">
-                                <span class="po-qty-block__value">{{ order.remainingQty ?? order.qty }}</span>
+                                <!-- FIXED: removed fallback -->
+                                <span class="po-qty-block__value">{{ order.remainingQty }}</span>
                                 <span class="po-qty-block__label">Remaining</span>
                             </div>
                             <div class="po-qty-block" *ngIf="order.fulfilledQty > 0">
@@ -221,7 +222,7 @@
                         <!-- Actions -->
                         <div class="po-order-actions" *ngIf="!order.confirmingFull">
                             <input type="number" class="po-part-input" placeholder="Qty packed now" min="1"
-                                [max]="order.remainingQty ?? order.qty" [(ngModel)]="order.partQtyInput"
+                                [max]="order.remainingQty" [(ngModel)]="order.partQtyInput"
                                 [disabled]="order.completing" />
 
                             <button class="po-btn po-btn--part" (click)="submitPart(order)"
@@ -243,7 +244,8 @@
 
                         <!-- Confirm-full-complete inline prompt -->
                         <div class="po-confirm-full" *ngIf="order.confirmingFull">
-                            <span>Mark remaining {{ order.remainingQty ?? order.qty }} pcs as fully packed?</span>
+                            <!-- FIXED: removed fallback -->
+                            <span>Mark remaining {{ order.remainingQty }} pcs as fully packed?</span>
                             <div class="po-confirm-full__actions">
                                 <button class="po-btn po-btn--confirm-yes" (click)="confirmFull(order)"
                                     [disabled]="order.completing">

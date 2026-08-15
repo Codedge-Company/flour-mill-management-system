@@ -36,8 +36,8 @@ export class SidebarComponent {
     { label: 'Budget Management', route: '/budget',              icon: 'pi-chart-bar',    pageKey: 'budget' },
     { label: 'Flow Money',        route: '/flow-money',          icon: 'pi-dollar',       pageKey: 'flow-money' },
     { label: 'Milling Analysis',  route: '/milling-analysis',    icon: 'pi-chart-pie',    pageKey: 'milling-analysis' },
-    { label: 'Grind Sessions',    route: '/operators-dashboard', icon: 'pi-cog',          pageKey: 'operators-dashboard' },
-    { label: 'Sift Session',      route: '/sifting-dashboard',   icon: 'pi-filter',       pageKey: 'sifting-dashboard' },
+    // { label: 'Grind Sessions',    route: '/operators-dashboard', icon: 'pi-cog',          pageKey: 'operators-dashboard' },
+    // { label: 'Sift Session',      route: '/sifting-dashboard',   icon: 'pi-filter',       pageKey: 'sifting-dashboard' },
     { label: 'Order Management',  route: '/order-management',    icon: 'pi-shopping-bag', pageKey: 'order-management' },
   ];
 
