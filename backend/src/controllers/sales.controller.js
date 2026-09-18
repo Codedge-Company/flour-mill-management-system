@@ -2,6 +2,7 @@ const salesService = require('../services/sales.service');
 const printerService = require('../services/printer.service');
 const invoicePrinterService = require('../services/invoicePrinter.service');
 const InvoiceLink = require('../models/InvoiceLink');
+const path = require('path');
 
 const RECEIPT_PRINTER_NAME = process.env.RECEIPT_PRINTER_NAME || '80 Printer Series';
 const INVOICE_PRINTER_NAME = process.env.INVOICE_PRINTER_NAME || 'A4 Printer';
@@ -127,9 +128,10 @@ exports.downloadInvoiceByToken = async (req, res) => {
     if (!entry || Date.now() > entry.expires_at.getTime()) {
         return res.status(404).send('Link expired or not found.');
     }
+    const fullPath = path.join(__dirname, '../../tmp', entry.file_path);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="${entry.filename}"`);
-    res.sendFile(entry.file_path, (err) => {
+    res.sendFile(fullPath, (err) => {
         if (err) console.error('[Invoice Download] sendFile failed:', err.message);
     });
 };

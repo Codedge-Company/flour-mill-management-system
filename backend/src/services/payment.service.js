@@ -201,7 +201,7 @@ const sendPaymentSlipToCustomer = async (sale, customer, payment, totalPaid, bal
   const token = crypto.randomBytes(16).toString('hex');
   await InvoiceLink.create({
     token,
-    file_path: filePath,
+    file_path: require('path').basename(filePath),
     filename: `Payment-${payment.payment_no}.pdf`,
     expires_at: new Date(Date.now() + INVOICE_LINK_TTL_MS),
   });
