@@ -139,6 +139,10 @@
           <i class="pi pi-cog"></i>
           <span>Settings</span>
         </button>
+        <button class="dropdown-item" [routerLink]="['/whatsapp-connect']" *ngIf="authService.isAdmin()">
+          <i class="pi pi-whatsapp"></i>
+          <span>WhatsApp</span>
+        </button>
 
         <div class="dropdown-divider"></div>
 

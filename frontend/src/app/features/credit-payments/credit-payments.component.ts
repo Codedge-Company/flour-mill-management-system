@@ -166,4 +166,18 @@ export class CreditPaymentsComponent implements OnInit {
     this.successMessage.set(msg);
     setTimeout(() => this.successMessage.set(null), 3500);
   }
+  printDueSlip(s: SaleCreditSummary): void {
+  this.paymentSvc.printDueSlip(s.sale.saleId).subscribe({
+    next: () => this.showSuccess(`Due payment slip for ${s.sale.saleNo} sent to printer.`),
+    error: () => this.error.set('Failed to print due slip.'),
+  });
+}
+printCustomerDueSlip(): void {
+  const id = this.selectedId();
+  if (!id) return;
+  this.paymentSvc.printCustomerDueSlip(id).subscribe({
+    next: () => this.showSuccess('Overall due slip sent to printer.'),
+    error: err => this.error.set(err?.error?.message ?? 'Failed to print overall due slip.'),
+  });
+}
 }

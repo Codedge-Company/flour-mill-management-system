@@ -17,6 +17,14 @@ export class PermissionService {
   private loadRequest$: Observable<string[]> | null = null;
   private lastLoadedUserId: number | null = null;   // 👈 use number (matches userId)
 
+  // Ordered the same as the sidebar nav — first match wins when redirecting
+  // a user to the first page they're actually allowed to see.
+  private readonly navOrder: string[] = [
+    'dashboard', 'sales', 'customers', 'inventory', 'material-store',
+    'notifications', 'user-management', 'budget', 'flow-money',
+    'milling-analysis', 'order-management',
+  ];
+
   constructor(private http: HttpClient, private authService: AuthService) {}
 
   /** Loads the current user's allowed pages, fetching fresh if user changed or not cached. */
@@ -66,6 +74,20 @@ export class PermissionService {
   canAccess(pageKey: string): boolean {
     if (this.authService.isAdmin()) return true;
     return this._myPages().includes(pageKey);
+  }
+
+  /**
+   * Returns the route path ('/sales', '/dashboard', etc.) of the first page
+   * this user can access, in nav order — or null if they have none.
+   * Call this only after ensureLoaded() has resolved (or for an admin,
+   * where it's not needed since canAccess() always returns true for them).
+   */
+  getFirstAccessibleRoute(): string | null {
+    if (this.authService.isAdmin()) return '/dashboard';
+    for (const key of this.navOrder) {
+      if (this.canAccess(key)) return '/' + key;
+    }
+    return null;
   }
 
   getAllPages(): Observable<ApiResponse<PageDef[]>> {

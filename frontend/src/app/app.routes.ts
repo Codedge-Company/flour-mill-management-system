@@ -8,6 +8,7 @@ import { FlowMoneyComponent } from './features/flow-money/flow-money/flow-money.
 import { MillingAnalysisComponent } from './features/milling-analysis/milling-analysis.component';
 import { MachineOperatorsDashboardComponent } from './features/machine-operators-dashboard/machine-operators-dashboard.component';
 import { SiftingDashboardComponent } from './features/sifting-dashboard/sifting-dashboard.component';
+import { WhatsappConnectComponent } from './features/settings/whatsapp-connect/whatsapp-connect.component';
 
 export const routes: Routes = [
   {
@@ -28,6 +29,8 @@ export const routes: Routes = [
     children: [
       {
         path: 'dashboard',
+        canActivate: [pagePermissionGuard],
+        data: { pageKey: 'dashboard' },
         loadChildren: () =>
           import('./features/dashboard/dashboard.routes').then(m => m.dashboardRoutes)
       },
@@ -116,7 +119,12 @@ export const routes: Routes = [
         data: { pageKey: 'sifting-dashboard' },
         component: SiftingDashboardComponent
       },
-    ]
+      {
+        path: 'whatsapp-connect',
+        canActivate: [pagePermissionGuard],
+        data: { pageKey: 'settings' },
+        component: WhatsappConnectComponent
+      },]
   },
   { path: '**', redirectTo: 'dashboard' }
 ];

@@ -1,5 +1,9 @@
 const salesService = require('../services/sales.service');
+const printerService = require('../services/printer.service');
+const invoicePrinterService = require('../services/invoicePrinter.service');
 
+const RECEIPT_PRINTER_NAME = process.env.RECEIPT_PRINTER_NAME || '80 Printer Series';
+const INVOICE_PRINTER_NAME = process.env.INVOICE_PRINTER_NAME || 'A4 Printer';
 
 exports.getAllSales = async (req, res, next) => {
     try {
@@ -10,12 +14,10 @@ exports.getAllSales = async (req, res, next) => {
     } catch (e) { next(e); }
 };
 
-
 exports.getSaleById = async (req, res, next) => {
     try { res.json({ success: true, data: await salesService.getById(req.params.id) }); }
     catch (e) { next(e); }
 };
-
 
 exports.createSale = async (req, res, next) => {
     try {
@@ -23,32 +25,38 @@ exports.createSale = async (req, res, next) => {
             ...req.body,
             use_default_price: req.body.use_default_price ?? false,
         };
-        res.status(201).json({ success: true, data: await salesService.createSale(payload, req.user) });
+        const sale = await salesService.createSale(payload, req.user);
+
+        printerService.printSale(sale, 'thermal', { printerName: RECEIPT_PRINTER_NAME })
+            .catch(err => console.error('[Print] Receipt failed:', err.message));
+
+        if (sale.customer_id && typeof sale.customer_id === 'object') {
+            invoicePrinterService.printInvoiceSilently(sale, sale.customer_id, { printerName: INVOICE_PRINTER_NAME })
+                .catch(err => console.error('[Print] Invoice failed:', err.message));
+        }
+
+        // ── NEW: WhatsApp notification ──
+        salesService.notifySaleCreated(sale)
+            .catch(err => console.error('[WhatsApp] Sale notify failed:', err.message));
+
+        res.status(201).json({ success: true, data: sale });
     } catch (e) {
-        // Surface the price rule warning as a structured 409 so Angular can intercept it
         if (e.code === 'NO_CUSTOMER_PRICE_RULE') {
-            return res.status(409).json({
-                success: false,
-                code:    e.code,
-                message: e.message,
-            });
+            return res.status(409).json({ success: false, code: e.code, message: e.message });
         }
         next(e);
     }
 };
-
 
 exports.updateSale = async (req, res, next) => {
     try { res.json({ success: true, data: await salesService.updateSale(req.params.id, req.body) }); }
     catch (e) { next(e); }
 };
 
-
 exports.cancelSale = async (req, res, next) => {
     try { res.json({ success: true, data: await salesService.cancelSale(req.params.id) }); }
     catch (e) { next(e); }
 };
-
 
 exports.deleteSale = async (req, res, next) => {
     try {
@@ -57,13 +65,44 @@ exports.deleteSale = async (req, res, next) => {
     } catch (e) { next(e); }
 };
 
-
-/**
- * PATCH /sales/:id/mark-paid
- * Marks a CREDIT sale's payment_status as PAID.
- * Only ADMIN role can do this (enforced in the router).
- */
 exports.markAsPaid = async (req, res, next) => {
     try { res.json({ success: true, data: await salesService.markAsPaid(req.params.id) }); }
     catch (e) { next(e); }
+};
+
+// ── Manual reprint (used by "Print Receipt / Print Invoice" buttons) ───────
+exports.reprintReceipt = async (req, res, next) => {
+    try {
+        const sale = await salesService.getById(req.params.id);
+        const result = await printerService.printSale(sale, 'thermal', { printerName: RECEIPT_PRINTER_NAME });
+        res.json({ success: result.success, data: result });
+    } catch (e) { next(e); }
+};
+
+exports.reprintInvoice = async (req, res, next) => {
+    try {
+        const sale = await salesService.getById(req.params.id);
+        const customer = sale.customer_id;
+        const result = await invoicePrinterService.printInvoiceSilently(sale, customer, { printerName: INVOICE_PRINTER_NAME });
+        res.json({ success: true, data: result });
+    } catch (e) { next(e); }
+};
+exports.printStoreRoomReceipt = async (req, res, next) => {
+    try {
+        const sale = await salesService.getById(req.params.id);
+        const result = await printerService.printStoreRoomReceipt(sale, { printerName: RECEIPT_PRINTER_NAME });
+        res.json({ success: result.success, data: result });
+    } catch (e) { next(e); }
+};
+
+exports.printDeliveryNote = async (req, res, next) => {
+    try {
+        const { vehicleNo } = req.body;
+        if (!vehicleNo) {
+            return res.status(422).json({ success: false, message: 'vehicleNo is required' });
+        }
+        const sale = await salesService.getById(req.params.id);
+        const result = await printerService.printDeliveryNote(sale, vehicleNo, { printerName: RECEIPT_PRINTER_NAME });
+        res.json({ success: result.success, data: result });
+    } catch (e) { next(e); }
 };

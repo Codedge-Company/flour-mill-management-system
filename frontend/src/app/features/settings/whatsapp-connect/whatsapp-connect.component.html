@@ -1,0 +1,16 @@
+<div class="whatsapp-connect">
+  <h2>WhatsApp Notifications</h2>
+
+  <div *ngIf="ready" class="status-connected">
+    ✅ Connected — machine and stock notifications will be sent automatically.
+  </div>
+
+  <div *ngIf="!ready && qrImage" class="status-scanning">
+    <p>Open WhatsApp on your phone → Settings → Linked Devices → Link a Device, then scan:</p>
+    <img [src]="qrImage" alt="Scan with WhatsApp" width="280" />
+  </div>
+
+  <div *ngIf="!ready && !qrImage" class="status-loading">
+    Generating QR code...
+  </div>
+</div>

@@ -1,9 +1,9 @@
-// src/app/features/auth/login/login.component.ts (updated error handling without console)
 import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
+import { PermissionService } from '../../../core/services/permission.service';
 
 @Component({
   selector: 'app-login',
@@ -22,9 +22,9 @@ export class LoginComponent {
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
+    private permissionService: PermissionService,
     private router: Router
   ) {
-    // redirect if already logged in
     if (this.authService.isLoggedIn()) {
       this.router.navigate(['/dashboard']);
     }
@@ -39,22 +39,36 @@ export class LoginComponent {
 
   togglePassword(): void { this.showPass.update(v => !v); }
 
-// src/app/features/auth/login/login.component.ts
-onSubmit(): void {
-  if (this.form.invalid || this.loading()) return;
+  onSubmit(): void {
+    if (this.form.invalid || this.loading()) return;
 
-  this.error.set(null);
-  this.loading.set(true);
+    this.error.set(null);
+    this.loading.set(true);
 
-  this.authService.login(this.form.value).subscribe({
-    next: () => {
-      this.loading.set(false);
-      this.router.navigate(['/dashboard']);
-    },
-    error: (err) => {
-      this.loading.set(false);
-      this.error.set(err.message || 'An unexpected error occurred. Please try again.');
-    }
-  });
-}
+    this.authService.login(this.form.value).subscribe({
+      next: () => {
+        if (this.authService.isAdmin()) {
+          this.loading.set(false);
+          this.router.navigate(['/dashboard']);
+          return;
+        }
+
+        this.permissionService.ensureLoaded().subscribe({
+          next: () => {
+            this.loading.set(false);
+            const target = this.permissionService.getFirstAccessibleRoute() ?? '/dashboard';
+            this.router.navigate([target]);
+          },
+          error: () => {
+            this.loading.set(false);
+            this.router.navigate(['/dashboard']); // guard redirects further if not allowed
+          }
+        });
+      },
+      error: (err) => {
+        this.loading.set(false);
+        this.error.set(err.message || 'An unexpected error occurred. Please try again.');
+      }
+    });
+  }
 }

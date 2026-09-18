@@ -3,6 +3,7 @@ const Payment  = require('../models/Payment');
 const Sale     = require('../models/Sale');
 const mongoose = require('mongoose');
 const { generateSequence } = require('../utils/sequence');
+const { sendWhatsApp } = require('./whatsapp.service');
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -25,6 +26,20 @@ const syncSalePaymentStatus = async (sale_id) => {
     await sale.save();
   }
   return { totalPaid, newStatus, balanceDue: Math.max(0, sale.total_revenue - totalPaid) };
+};
+
+// ── WhatsApp notification on payment recorded ───────────────────────────────
+const notifyPaymentRecorded = async (payment, sale, balanceDue) => {
+  const message =
+    `💵 *Payment Received*\n` +
+    `📋 Sale No: ${sale.sale_no}\n` +
+    `👤 Customer: ${sale.customer_id?.name || 'N/A'}\n` +
+    `🧾 Payment No: ${payment.payment_no}\n` +
+    `💰 Amount Paid: LKR ${Number(payment.amount).toFixed(2)}\n` +
+    `📉 Balance Remaining: LKR ${Number(balanceDue).toFixed(2)}\n` +
+    `🕐 ${new Date(payment.payment_date).toLocaleString('en-LK')}`;
+
+  return sendWhatsApp(message);
 };
 
 // ── public API ────────────────────────────────────────────────────────────────
@@ -57,12 +72,33 @@ const addPayment = async ({ sale_id, amount, payment_date, notes }, user) => {
     recorded_by: user?._id,
   });
 
-  await syncSalePaymentStatus(sale_id);
+  const { balanceDue } = await syncSalePaymentStatus(sale_id);
+
+  // ── WhatsApp notification (fire-and-forget) ──
+  notifyPaymentRecorded(payment, sale, balanceDue)
+    .catch(err => console.error('[WhatsApp] Payment notify failed:', err.message));
 
   return Payment.findById(payment._id)
     .populate('sale_id',     'sale_no total_revenue')
     .populate('customer_id', 'name customer_code')
     .populate('recorded_by', 'full_name username');
+};
+
+// ── Due payment slip print ───────────────────────────────────────────────────
+const printDueSlip = async (sale_id) => {
+  const printerService = require('./printer.service');
+  const sale = await Sale.findById(sale_id).populate('customer_id');
+  if (!sale) throw Object.assign(new Error('Sale not found'), { statusCode: 404 });
+
+  const totalPaid = await getTotalPaid(sale_id);
+  const balanceDue = Math.max(0, sale.total_revenue - totalPaid);
+
+  return printerService.printDueSlip({
+    sale,
+    customer: sale.customer_id,
+    totalPaid,
+    balanceDue,
+  });
 };
 
 const getBySale = (sale_id) =>
@@ -118,4 +154,22 @@ const remove = async (id) => {
   await syncSalePaymentStatus(p.sale_id);
 };
 
-module.exports = { addPayment, getBySale, getByCustomer, getCreditSummaryByCustomer, getById, remove, getTotalPaid };
+// ── Customer-wide due slip (all pending CREDIT sales) ────────────────────────
+const printCustomerDueSlip = async (customer_id) => {
+  const printerService = require('./printer.service');
+  const Customer = require('../models/Customer');
+
+  const customer = await Customer.findById(customer_id);
+  if (!customer) throw Object.assign(new Error('Customer not found'), { statusCode: 404 });
+
+  const summaries = await getCreditSummaryByCustomer(customer_id);
+  const pending = summaries.filter(s => !s.isPaid);
+
+  if (pending.length === 0) {
+    throw Object.assign(new Error('No pending balances for this customer'), { statusCode: 400 });
+  }
+
+  return printerService.printCustomerDueSlip({ customer, summaries: pending });
+};
+
+module.exports = { addPayment, getBySale, getByCustomer, getCreditSummaryByCustomer, getById, remove, getTotalPaid, printDueSlip, printCustomerDueSlip };

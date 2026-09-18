@@ -15,7 +15,11 @@ export const pagePermissionGuard: CanActivateFn = (route) => {
   return permissionService.ensureLoaded().pipe(
     map(() => {
       if (permissionService.canAccess(pageKey)) return true;
-      router.navigate(['/dashboard']);
+
+      // Don't hardcode '/dashboard' — the user might not have dashboard
+      // access either, which would infinite-loop back into this guard.
+      const fallback = permissionService.getFirstAccessibleRoute();
+      router.navigate([fallback ?? '/auth/login']);
       return false;
     })
   );

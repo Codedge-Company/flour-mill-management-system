@@ -15,6 +15,7 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
 import { InvoicePdfService } from '../../../core/services/invoice-pdf.service';
 import { Router } from '@angular/router';
 import { SaleDetailDialogComponent } from '../sale-detail/sale-detail-dialog.component';
+import { VehicleNoDialogComponent } from './vehicle-no-dialog/vehicle-no-dialog.component';
 
 @Component({
   selector: 'app-sale-list',
@@ -27,50 +28,52 @@ import { SaleDetailDialogComponent } from '../sale-detail/sale-detail-dialog.com
     LkrCurrencyPipe,
     StatusBadgePipe,
     ConfirmDialogComponent,
-    SaleDetailDialogComponent
+    SaleDetailDialogComponent,
+    VehicleNoDialogComponent   
   ],
   templateUrl: './sale-list.component.html',
   styleUrl: './sale-list.component.css'
 })
 export class SaleListComponent implements OnInit {
-  sales          = signal<Sale[]>([]);
-  customers      = signal<Customer[]>([]);
-  loading        = signal(true);
-  error          = signal<string | null>(null);
+  sales = signal<Sale[]>([]);
+  customers = signal<Customer[]>([]);
+  loading = signal(true);
+  error = signal<string | null>(null);
   successMessage = signal<string | null>(null);
 
-  filterCustomerId    = signal<string | null>(null);
-  filterStatus        = signal<SaleStatus | ''>('');
+  filterCustomerId = signal<string | null>(null);
+  filterStatus = signal<SaleStatus | ''>('');
   filterPaymentStatus = signal<PaymentStatus | ''>('');
-  filterDateFrom      = signal('');
-  filterDateTo        = signal('');
+  filterDateFrom = signal('');
+  filterDateTo = signal('');
 
-  currentPage   = signal(0);
-  totalPages    = signal(0);
+  currentPage = signal(0);
+  totalPages = signal(0);
   totalElements = signal(0);
-  pageSize      = 20;
+  pageSize = 20;
 
-  cancelTarget  = signal<Sale | null>(null);
+  cancelTarget = signal<Sale | null>(null);
   cancelLoading = signal(false);
-  deleteTarget  = signal<Sale | null>(null);
+  deleteTarget = signal<Sale | null>(null);
   deleteLoading = signal(false);
-  viewSaleId    = signal<string | null>(null);
+  viewSaleId = signal<string | null>(null);
   downloadingId = signal<string | null>(null);
 
-  markPaidTarget  = signal<Sale | null>(null);
+  markPaidTarget = signal<Sale | null>(null);
   markPaidLoading = signal(false);
 
   filteredRevenue = signal(0);
-  filteredCost    = signal(0);
-  filteredProfit  = signal(0);
+  filteredCost = signal(0);
+  filteredProfit = signal(0);
+  deliveryTarget = signal<Sale | null>(null);
 
   constructor(
-    private saleService:     SaleService,
+    private saleService: SaleService,
     private customerService: CustomerService,
-    private invoicePdf:      InvoicePdfService,
-    private authService:     AuthService,
-    private router:          Router
-  ) {}
+    private invoicePdf: InvoicePdfService,
+    private authService: AuthService,
+    private router: Router
+  ) { }
 
   ngOnInit(): void {
     this.loadCustomers();
@@ -96,17 +99,17 @@ export class SaleListComponent implements OnInit {
 
   get hasActiveFilters(): boolean {
     return !!(
-      this.filterCustomerId()    ||
-      this.filterStatus()        ||
+      this.filterCustomerId() ||
+      this.filterStatus() ||
       this.filterPaymentStatus() ||
-      this.filterDateFrom()      ||
+      this.filterDateFrom() ||
       this.filterDateTo()
     );
   }
 
   get pages(): number[] {
     const total = this.totalPages();
-    const cur   = this.currentPage();
+    const cur = this.currentPage();
     const range: number[] = [];
     for (let i = Math.max(0, cur - 2); i <= Math.min(total - 1, cur + 2); i++) range.push(i);
     return range;
@@ -123,18 +126,18 @@ export class SaleListComponent implements OnInit {
     this.error.set(null);
 
     const filters: SaleFilters = {};
-    if (this.filterCustomerId())    filters.customerId    = this.filterCustomerId()!;
-    if (this.filterStatus())        filters.status        = this.filterStatus() as SaleStatus;
+    if (this.filterCustomerId()) filters.customerId = this.filterCustomerId()!;
+    if (this.filterStatus()) filters.status = this.filterStatus() as SaleStatus;
     if (this.filterPaymentStatus()) filters.paymentStatus = this.filterPaymentStatus() as PaymentStatus;
-    if (this.filterDateFrom())      filters.dateFrom      = this.filterDateFrom();
-    if (this.filterDateTo())        filters.dateTo        = this.filterDateTo();
+    if (this.filterDateFrom()) filters.dateFrom = this.filterDateFrom();
+    if (this.filterDateTo()) filters.dateTo = this.filterDateTo();
 
     this.saleService.getSales(filters, page, this.pageSize).subscribe({
       next: (res) => {
         const paged = res.data;
         this.sales.set(paged.content);
-        this.currentPage.set(paged.page          || 0);
-        this.totalPages.set(paged.totalPages      || 0);
+        this.currentPage.set(paged.page || 0);
+        this.totalPages.set(paged.totalPages || 0);
         this.totalElements.set(paged.totalElements || 0);
         this.computeSummary(paged.totals);
         this.loading.set(false);
@@ -171,7 +174,7 @@ export class SaleListComponent implements OnInit {
   // ── Cancel ────────────────────────────────────────────────────────────────
 
   confirmCancel(sale: Sale): void { this.cancelTarget.set(sale); }
-  cancelDialog(): void            { this.cancelTarget.set(null); }
+  cancelDialog(): void { this.cancelTarget.set(null); }
 
   onCancelSale(): void {
     const sale = this.cancelTarget();
@@ -195,7 +198,7 @@ export class SaleListComponent implements OnInit {
   // ── Delete ────────────────────────────────────────────────────────────────
 
   confirmDelete(sale: Sale): void { this.deleteTarget.set(sale); }
-  deleteDialog(): void            { this.deleteTarget.set(null); }
+  deleteDialog(): void { this.deleteTarget.set(null); }
 
   onDeleteSale(): void {
     const sale = this.deleteTarget();
@@ -219,7 +222,7 @@ export class SaleListComponent implements OnInit {
   // ── Mark as Paid ──────────────────────────────────────────────────────────
 
   confirmMarkPaid(sale: Sale): void { this.markPaidTarget.set(sale); }
-  markPaidDialog(): void            { this.markPaidTarget.set(null); }
+  markPaidDialog(): void { this.markPaidTarget.set(null); }
 
   onMarkAsPaid(): void {
     const sale = this.markPaidTarget();
@@ -243,7 +246,7 @@ export class SaleListComponent implements OnInit {
   // ── View ──────────────────────────────────────────────────────────────────
 
   openView(sale: Sale): void { this.viewSaleId.set(sale.saleId); }
-  closeView(): void          { this.viewSaleId.set(null); }
+  closeView(): void { this.viewSaleId.set(null); }
 
   // ── Invoice ───────────────────────────────────────────────────────────────
 
@@ -252,7 +255,7 @@ export class SaleListComponent implements OnInit {
     this.downloadingId.set(sale.saleId);
     forkJoin({
       saleDetail: this.saleService.getById(sale.saleId),
-      customer:   this.customerService.getById(sale.customerId)
+      customer: this.customerService.getById(sale.customerId)
     }).subscribe({
       next: ({ saleDetail, customer }) => {
         try {
@@ -276,13 +279,13 @@ export class SaleListComponent implements OnInit {
   private computeSummary(totals?: any): void {
     if (totals) {
       this.filteredRevenue.set(totals.total_revenue ?? 0);
-      this.filteredCost.set(totals.total_cost       ?? 0);
-      this.filteredProfit.set(totals.total_profit   ?? 0);
+      this.filteredCost.set(totals.total_cost ?? 0);
+      this.filteredProfit.set(totals.total_profit ?? 0);
     } else {
       const saved = this.sales().filter(s => s.status === 'SAVED');
       this.filteredRevenue.set(saved.reduce((a, s) => a + s.totalRevenue, 0));
-      this.filteredCost.set(saved.reduce((a, s)    => a + s.totalCost,    0));
-      this.filteredProfit.set(saved.reduce((a, s)  => a + s.totalProfit,  0));
+      this.filteredCost.set(saved.reduce((a, s) => a + s.totalCost, 0));
+      this.filteredProfit.set(saved.reduce((a, s) => a + s.totalProfit, 0));
     }
   }
 
@@ -306,4 +309,48 @@ export class SaleListComponent implements OnInit {
   isPendingCredit(sale: Sale): boolean {
     return sale.paymentMethod === 'CREDIT' && sale.paymentStatus === 'PENDING';
   }
+  printReceipt(sale: Sale): void {
+    this.saleService.reprintReceipt(sale.saleId).subscribe({
+      next: () => this.showSuccess(`Receipt for ${sale.saleNo} sent to printer.`),
+      error: () => this.error.set('Failed to print receipt.'),
+    });
+  }
+  printInvoice(sale: Sale): void {
+    this.saleService.reprintInvoice(sale.saleId).subscribe({
+      next: () => this.showSuccess(`Invoice for ${sale.saleNo} sent to printer.`),
+      error: () => this.error.set('Failed to print invoice.'),
+    });
+  }
+  printStoreRoom(sale: Sale): void {
+  this.saleService.printStoreRoomReceipt(sale.saleId).subscribe({
+    next: () => this.showSuccess(`Store room receipt for ${sale.saleNo} sent to printer.`),
+    error: () => this.error.set('Failed to print store room receipt.'),
+  });
+}
+
+printDelivery(sale: Sale): void {
+  const vehicleNo = window.prompt('Enter vehicle number for the delivery note:');
+  if (!vehicleNo || !vehicleNo.trim()) return;
+  this.saleService.printDeliveryNote(sale.saleId, vehicleNo.trim()).subscribe({
+    next: () => this.showSuccess(`Delivery note for ${sale.saleNo} sent to printer.`),
+    error: () => this.error.set('Failed to print delivery note.'),
+  });
+}
+openDeliveryDialog(sale: Sale): void {
+  this.deliveryTarget.set(sale);
+}
+
+closeDeliveryDialog(): void {
+  this.deliveryTarget.set(null);
+}
+
+onDeliveryConfirmed(vehicleNo: string): void {
+  const sale = this.deliveryTarget();
+  if (!sale) return;
+  this.deliveryTarget.set(null);
+  this.saleService.printDeliveryNote(sale.saleId, vehicleNo).subscribe({
+    next: () => this.showSuccess(`Delivery note for ${sale.saleNo} sent to printer.`),
+    error: () => this.error.set('Failed to print delivery note.'),
+  });
+}
 }

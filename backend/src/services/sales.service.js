@@ -11,7 +11,7 @@ const costService = require('./cost.service');
 const { calculateProfit } = require('../utils/calculateProfit');
 const { generateSequence } = require('../utils/sequence');
 const Payment = require('../models/Payment');
-const { notifyLowStock } = require('./whatsapp.service'); // ← NEW
+const { notifyLowStock, sendWhatsApp } = require('./whatsapp.service');
 
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -361,7 +361,29 @@ const getAllPaginated = async (page = 0, size = 20, filters = {}) => {
         },
     };
 };
+// ── WhatsApp notification on sale creation ──────────────────────────────────
+const notifySaleCreated = async (sale) => {
+  const itemLines = (sale.items || []).map(i => {
+    const p = i.pack_type_id;
+    const label = typeof p === 'object' ? `${p.pack_name} (${p.weight_kg}kg)` : 'Item';
+    return `  • ${label} x${i.qty} = LKR ${Number(i.line_revenue).toFixed(2)}`;
+  }).join('\n');
 
+  const payLine = sale.payment_method === 'CREDIT'
+    ? 'CREDIT (Payment Pending)'
+    : `${sale.payment_method} (Paid)`;
+
+  const message =
+    `🧾 *New Sale Recorded*\n` +
+    `📋 Sale No: ${sale.sale_no}\n` +
+    `👤 Customer: ${sale.customer_id?.name || 'N/A'} (${sale.customer_id?.customer_code || ''})\n` +
+    `💳 Payment: ${payLine}\n` +
+    `📦 Items:\n${itemLines}\n` +
+    `💰 Total: LKR ${Number(sale.total_revenue).toFixed(2)}\n` +
+    `🕐 ${new Date(sale.sale_datetime).toLocaleString('en-LK')}`;
+
+  return sendWhatsApp(message);
+};
 
 // ── Update ────────────────────────────────────────────────────────────────────
 
@@ -440,4 +462,4 @@ const updateSale = async (id, { customer_id, payment_method, sale_datetime, item
 };
 
 
-module.exports = { getAllPaginated, getAll, getById, createSale, cancelSale, remove, updateSale, markAsPaid };
+module.exports = { getAllPaginated, getAll, getById, createSale, cancelSale, remove, updateSale, markAsPaid, notifySaleCreated };

@@ -262,7 +262,19 @@ async function notifyLowStock({ itemName, category, currentQty, unit, thresholdQ
     `🔔 Please restock soon.`
   );
 }
+// ── WhatsApp notification on payment recorded ───────────────────────────────
+const notifyPaymentRecorded = async (payment, sale, balanceDue) => {
+  const message =
+    `💵 *Payment Received*\n` +
+    `📋 Sale No: ${sale.sale_no}\n` +
+    `👤 Customer: ${sale.customer_id?.name || 'N/A'}\n` +
+    `🧾 Payment No: ${payment.payment_no}\n` +
+    `💰 Amount Paid: LKR ${Number(payment.amount).toFixed(2)}\n` +
+    `📉 Balance Remaining: LKR ${Number(balanceDue).toFixed(2)}\n` +
+    `🕐 ${new Date(payment.payment_date).toLocaleString('en-LK')}`;
 
+  return sendWhatsApp(message);
+};
 module.exports = {
   notifyMachineStart,
   notifyMachineStop,
@@ -272,4 +284,5 @@ module.exports = {
   notifyStockEntry,
   notifySiftingComplete,
   notifyLowStock,
+  notifyPaymentRecorded
 };

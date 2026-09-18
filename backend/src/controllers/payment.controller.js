@@ -38,3 +38,17 @@ exports.remove = async (req, res, next) => {
     res.json({ success: true, message: 'Payment deleted' });
   } catch (e) { next(e); }
 };
+exports.printDueSlip = async (req, res, next) => {
+  try {
+    const result = await paymentService.printDueSlip(req.params.sale_id);
+    res.json({ success: result.success, data: result });
+  } catch (e) { next(e); }
+};
+
+
+exports.printCustomerDueSlip = async (req, res, next) => {
+  try {
+    const result = await paymentService.printCustomerDueSlip(req.params.customer_id);
+    res.json({ success: result.success, data: result });
+  } catch (e) { next(e); }
+};

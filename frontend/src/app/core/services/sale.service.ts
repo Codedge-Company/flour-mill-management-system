@@ -136,4 +136,17 @@ export class SaleService {
   deleteSale(saleId: string): Observable<ApiResponse<void>> {
     return this.http.delete<ApiResponse<void>>(`${this.apiUrl}/${saleId}`);
   }
+  reprintReceipt(saleId: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/${saleId}/reprint-receipt`, {});
+  }
+  reprintInvoice(saleId: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/${saleId}/reprint-invoice`, {});
+  }
+  printStoreRoomReceipt(saleId: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/${saleId}/print-storeroom`, {});
+  }
+
+  printDeliveryNote(saleId: string, vehicleNo: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/${saleId}/print-delivery`, { vehicleNo });
+  }
 }

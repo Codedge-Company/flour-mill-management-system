@@ -24,5 +24,7 @@ router.get('/customer/:customer_id/credit-summary', ctrl.getCreditSummary);
 
 // Delete (admin only)
 router.delete('/:id', authorizeRole('ADMIN'), ctrl.remove);
+router.post('/due-slip/:sale_id', ctrl.printDueSlip);
+router.post('/due-slip/customer/:customer_id', ctrl.printCustomerDueSlip); 
 
 module.exports = router;

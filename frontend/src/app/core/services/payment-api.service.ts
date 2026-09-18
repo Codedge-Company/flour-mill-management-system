@@ -8,7 +8,7 @@ import { ApiResponse } from '../models/api-response';
 @Injectable({ providedIn: 'root' })
 export class PaymentApiService {
   private readonly base = environment.apiUrl + '/payments';
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   addPayment(req: AddPaymentRequest): Observable<ApiResponse<Payment>> {
     return this.http.post<any>(this.base, {
@@ -22,13 +22,17 @@ export class PaymentApiService {
       map(res => ({ success: true, data: (res.data ?? []).map((p: any) => this.mapPayment(p)) }))
     );
   }
-
+  printDueSlip(saleId: string): Observable<any> {
+    return this.http.post<any>(`${this.base}/due-slip/${saleId}`, {});
+  }
   getCreditSummary(customerId: string): Observable<ApiResponse<SaleCreditSummary[]>> {
     return this.http.get<any>(this.base + '/customer/' + customerId + '/credit-summary').pipe(
       map(res => ({ success: true, data: (res.data ?? []).map((r: any) => this.mapSummary(r)) }))
     );
   }
-
+printCustomerDueSlip(customerId: string): Observable<any> {
+  return this.http.post<any>(`${this.base}/due-slip/customer/${customerId}`, {});
+}
   deletePayment(id: string): Observable<ApiResponse<void>> {
     return this.http.delete<ApiResponse<void>>(this.base + '/' + id);
   }
@@ -75,4 +79,5 @@ export class PaymentApiService {
       totalPaid: raw.totalPaid, balanceDue: raw.balanceDue, isPaid: raw.isPaid,
     };
   }
+
 }
