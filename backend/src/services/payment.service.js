@@ -2,9 +2,14 @@
 const Payment  = require('../models/Payment');
 const Sale     = require('../models/Sale');
 const mongoose = require('mongoose');
+const crypto   = require('crypto');
+const InvoiceLink = require('../models/InvoiceLink');
 const { generateSequence } = require('../utils/sequence');
-const { sendWhatsApp } = require('./whatsapp.service');
+const { sendWhatsApp, sendWhatsAppTextTo } = require('./whatsapp.service');
+const { formatPhoneForWhatsApp } = require('../utils/phone');
 
+const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || 'https://matheeshaflourmill.lk';
+const INVOICE_LINK_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 const getTotalPaid = async (sale_id) => {
@@ -72,11 +77,14 @@ const addPayment = async ({ sale_id, amount, payment_date, notes }, user) => {
     recorded_by: user?._id,
   });
 
-  const { balanceDue } = await syncSalePaymentStatus(sale_id);
+  const { balanceDue, totalPaid: totalPaidAfter } = await syncSalePaymentStatus(sale_id);
 
-  // ── WhatsApp notification (fire-and-forget) ──
+  // ── WhatsApp notifications (fire-and-forget) ──
   notifyPaymentRecorded(payment, sale, balanceDue)
     .catch(err => console.error('[WhatsApp] Payment notify failed:', err.message));
+
+  sendPaymentSlipToCustomer(sale, sale.customer_id, payment, totalPaidAfter, balanceDue)
+    .catch(err => console.error('[WhatsApp] Payment slip send failed:', err.message));
 
   return Payment.findById(payment._id)
     .populate('sale_id',     'sale_no total_revenue')
@@ -171,5 +179,43 @@ const printCustomerDueSlip = async (customer_id) => {
 
   return printerService.printCustomerDueSlip({ customer, summaries: pending });
 };
+// ── Send the due/payment slip PDF straight to the customer's WhatsApp ──────
+// ⚠️ Same placeholder situation as sales.service.js - printDueSlip() below
+// currently sends to a physical printer (per printerService.printDueSlip).
+// This needs a Buffer-returning counterpart. Paste printer.service.js and
+// I'll wire the exact function name.
+const sendPaymentSlipToCustomer = async (sale, customer, payment, totalPaid, balanceDue) => {
+  const phone = formatPhoneForWhatsApp(customer?.phone);
+  if (!phone) {
+    console.warn(`[WhatsApp] Customer ${customer?.customer_code || customer?._id} has no usable phone - skipping payment slip send.`);
+    return;
+  }
 
-module.exports = { addPayment, getBySale, getByCustomer, getCreditSummaryByCustomer, getById, remove, getTotalPaid, printDueSlip, printCustomerDueSlip };
+  const printerService = require('./printer.service');
+  const isFullyPaid = balanceDue <= 0.001;
+
+  const filePath = await printerService.buildDueSlipPdfFile({
+    sale, customer, payment, totalPaid, balanceDue, isFullyPaid,
+  });
+
+  const token = crypto.randomBytes(16).toString('hex');
+  await InvoiceLink.create({
+    token,
+    file_path: filePath,
+    filename: `Payment-${payment.payment_no}.pdf`,
+    expires_at: new Date(Date.now() + INVOICE_LINK_TTL_MS),
+  });
+
+  const link = `${PUBLIC_BASE_URL}/api/sales/invoices/${token}`;
+
+  const message = isFullyPaid
+    ? `✅ Hi ${customer.name}, your order *${sale.sale_no}* is now *fully paid*. Thank you!\n` +
+      `🧾 Payment of LKR ${Number(payment.amount).toFixed(2)} received.\n` +
+      `📄 Receipt: ${link}\n\nThis link is valid for 24 hours.`
+    : `💵 Hi ${customer.name}, we've received your payment of LKR ${Number(payment.amount).toFixed(2)} for sale *${sale.sale_no}*.\n` +
+      `📉 Outstanding balance: *LKR ${balanceDue.toFixed(2)}*\n` +
+      `📄 Details: ${link}\n\nThis link is valid for 24 hours. Please settle the remaining balance at your earliest convenience.`;
+
+  await sendWhatsAppTextTo(phone, message);
+};
+module.exports = { addPayment, getBySale, getByCustomer, getCreditSummaryByCustomer, getById, remove, getTotalPaid, printDueSlip, printCustomerDueSlip, sendPaymentSlipToCustomer };

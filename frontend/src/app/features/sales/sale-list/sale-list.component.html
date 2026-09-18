@@ -110,7 +110,7 @@
 
   <!-- ── Summary strip ──────────────────────────────────────────────────── -->
   <!-- Only visible to ADMIN users -->
-  @if (!loading() && sales().length > 0 && isAdmin) {
+  @if (!loading() && sales().length > 0) {
   <div class="summary-strip">
 
     <div class="summary-item">
@@ -157,6 +157,7 @@
       <span class="summary-val muted">{{ filteredCost() | lkrCurrency }}</span>
     </div>
 
+    @if (isAdmin) {
     <div class="summary-divider"></div>
 
     <div class="summary-item">
@@ -172,6 +173,7 @@
         {{ filteredProfit() | lkrCurrency }}
       </span>
     </div>
+    }
 
     @if (filterPaymentStatus() === 'PENDING') {
     <div class="summary-divider"></div>
@@ -219,7 +221,7 @@
             <th>Credit Progress</th>
             <th class="num">Revenue</th>
             <th class="num">Cost</th>
-            <th class="num">Profit</th>
+            @if (isAdmin) { <th class="num">Profit</th> }
             <th>Status</th>
             <th>Actions</th>
           </tr>
@@ -227,7 +229,7 @@
         <tbody>
           @for (n of [1,2,3,4,5]; track n) {
           <tr>
-            @for (c of [1,2,3,4,5,6,7,8,9,10,11]; track c) {
+            @for (c of skeletonCols; track c) {
             <td>
               <div class="sk-cell"></div>
             </td>
@@ -272,7 +274,7 @@
             <th>Credit Progress</th>
             <th class="num">Revenue</th>
             <th class="num">Cost</th>
-            <th class="num">Profit</th>
+              @if (isAdmin) { <th class="num">Profit</th> }
             <th>Status</th>
             <th style="width:150px;">Actions</th>
           </tr>
@@ -331,12 +333,14 @@
             <td class="num font-semibold">{{ sale.totalRevenue | lkrCurrency }}</td>
             <!-- Cost -->
             <td class="num text-secondary">{{ sale.totalCost | lkrCurrency }}</td>
-            <!-- Profit -->
+            <!-- Profit (admin only) -->
+            @if (isAdmin) {
             <td class="num">
               <span class="profit-cell" [class.negative]="sale.totalProfit < 0">
                 {{ sale.totalProfit | lkrCurrency }}
               </span>
             </td>
+            }
             <!-- Sale Status -->
             <td>
               <span [class]="(sale.status | statusBadge).cssClass">
@@ -446,7 +450,7 @@
     }
 
     <!-- Pagination – only for ADMIN -->
-    @if (isAdmin && totalPages() > 1) {
+     @if (totalPages() > 1) {
     <div class="pagination">
       <button class="btn btn-ghost btn-sm" [disabled]="currentPage() === 0" (click)="goToPage(0)">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24"

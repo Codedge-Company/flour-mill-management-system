@@ -1,0 +1,16 @@
+{
+  "ignore": [
+    "tmp/*",
+    "tmp/**",
+    ".wwebjs_auth/*",
+    ".wwebjs_auth/**",
+    ".wwebjs_cache/*",
+    ".wwebjs_cache/**",
+    "node_modules/*"
+  ],
+  "watch": [
+    "src/",
+    "server.js"
+  ],
+  "ext": "js,mjs,cjs,json"
+}

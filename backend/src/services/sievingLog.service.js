@@ -60,9 +60,12 @@ async function getAvailableBatches() {
     const batchNo = log.batchNo || buildBatchNo(log);
     if (!log.batchNo) MachineLog.findByIdAndUpdate(log._id, { batchNo }).exec();
 
-    const millInput       = log.input ?? 0;                             // ✅ ceiling = Input
+    // Ceiling for sifting must be the grinding OUTPUT (flour produced), not
+    // the raw rice Input - the sifter processes what came out of the mill,
+    // not what went into it.
+    const millOutput      = log.output ?? 0;
     const sieved          = sievedMap[log._id.toString()] || { totalInput: 0 };
-    const remainingStock  = Math.max(0, millInput - sieved.totalInput);
+    const remainingStock  = Math.max(0, millOutput - sieved.totalInput);
 
     return {
       _id:              log._id,

@@ -82,17 +82,15 @@ export class SaleListComponent implements OnInit {
 
   // ── Getters for template ──────────────────────────────────────────────────
 
+  // All roles now see the full sales list like admin - only the Profit
+  // figures are restricted, not the row count or which sales are visible.
   get displaySales(): Sale[] {
-    if (this.isAdmin) {
-      return this.sales();
-    }
-    return this.sales().slice(0, 2);
+    return this.sales();
   }
 
   get showTable(): boolean {
-    return this.isAdmin || this.hasActiveFilters;
+    return true;
   }
-
   get isAdmin(): boolean {
     return this.authService.currentUser()?.role === 'ADMIN';
   }
@@ -106,7 +104,11 @@ export class SaleListComponent implements OnInit {
       this.filterDateTo()
     );
   }
-
+   get skeletonCols(): number[] {
+    const base = 10; // Sale No, Customer, Date, Method, Pay Status, Credit Progress, Revenue, Cost, Status, Actions
+    const count = this.isAdmin ? base + 1 : base; // +1 for Profit
+    return Array.from({ length: count }, (_, i) => i + 1);
+  }
   get pages(): number[] {
     const total = this.totalPages();
     const cur = this.currentPage();

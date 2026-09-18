@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
 const logger = require('../utils/logger');
+const PDFDocument = require('pdfkit');
 
 const ESC = 0x1B;
 const GS = 0x1D;
@@ -254,7 +255,62 @@ const formatDueSlip = ({ sale, customer, totalPaid, balanceDue }) => {
 
   return L.join('\r\n');
 };
+// ── DUE SLIP AS A REAL PDF (for WhatsApp) ────────────────────────────────
+// The existing printDueSlip()/formatDueSlip() above produce raw ESC/POS
+// text for the physical thermal printer - that's not a usable document for
+// WhatsApp. This builds an actual A4 PDF with the same figures, styled like
+// invoicePrinter.service.js's invoice, and returns it as a Buffer.
+function buildDueSlipPdf({ sale, customer, totalPaid, balanceDue }) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+    doc.on('data', (chunk) => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
 
+    doc.fontSize(18).text(COMPANY_NAME.toUpperCase(), { align: 'center' });
+    doc.fontSize(10).text(COMPANY_ADDRESS, { align: 'center' });
+    doc.text(COMPANY_EMAIL, { align: 'center' });
+    doc.moveDown();
+    doc.fontSize(14).text('Due Payment Slip', { align: 'center' });
+    doc.moveDown();
+
+    doc.fontSize(10);
+    doc.text(`Sale No: ${sale.sale_no || 'N/A'}`);
+    doc.text(`Date: ${new Date(sale.sale_datetime).toLocaleDateString('en-LK')}`);
+    doc.text(`Customer: ${customer?.name || 'N/A'} (${customer?.customer_code || ''})`);
+    doc.moveDown();
+
+    doc.moveTo(50, doc.y).lineTo(530, doc.y).stroke();
+    doc.moveDown(0.5);
+
+    doc.font('Helvetica').fontSize(11);
+    doc.text(`Invoice Total:`, 50, doc.y, { continued: true, width: 300 });
+    doc.text(`LKR ${safeToFixed(sale.total_revenue)}`, { align: 'right' });
+    doc.text(`Paid So Far:`, 50, doc.y, { continued: true, width: 300 });
+    doc.text(`LKR ${safeToFixed(totalPaid)}`, { align: 'right' });
+
+    doc.moveDown(0.5);
+    doc.moveTo(50, doc.y).lineTo(530, doc.y).stroke();
+    doc.moveDown(0.5);
+
+    doc.font('Helvetica-Bold').fontSize(13);
+    doc.text(`Balance Due:`, 50, doc.y, { continued: true, width: 300 });
+    doc.text(`LKR ${safeToFixed(balanceDue)}`, { align: 'right' });
+
+    doc.moveDown(1.5);
+    doc.font('Helvetica').fontSize(10).text('Please settle at your earliest convenience. Thank you!', { align: 'center' });
+
+    doc.end();
+  });
+}
+
+async function generateDueSlipPdfBuffer({ sale, customer, payment, balanceDue }) {
+  const totalPaid = payment
+    ? balanceDue + Number(payment.amount) // reconstruct running total from this payment + remaining balance
+    : (sale.total_revenue - balanceDue);
+  return buildDueSlipPdf({ sale, customer, totalPaid, balanceDue });
+}
 const printDueSlip = async (data, options = {}) => {
   logger.info(`printDueSlip: ${data?.sale?.sale_no || 'N/A'}`);
   try {
@@ -450,6 +506,155 @@ const printCustomerDueSlip = async (data, options = {}) => {
     return { success: false, error: err.message };
   }
 };
+const INK = '#141414';
+const INK_SOFT = '#3C3C3C';
+const GRAY = '#6E6E6E';
+const GRAY_LIGHT = '#828282';
+const LINE = '#D2D2D2';
+const PAID_COLOR = '#16A34A';
+const DUE_COLOR = '#B41414';
+const PAID_FILL = '#F0FDF4';
+const DUE_FILL = '#FEF2F2';
+
+const fmt = (value) =>
+  Number(value ?? 0).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+const formatDateTime = (d) =>
+  new Date(d).toLocaleString('en-LK', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: true,
+  });
+
+const formatDateOnly = (d) =>
+  new Date(d).toLocaleDateString('en-LK', { day: '2-digit', month: 'short', year: 'numeric' });
+
+function buildDueSlipPdfFile({ sale, customer, payment, totalPaid, balanceDue, isFullyPaid }) {
+  return new Promise((resolve, reject) => {
+    const tempDir = path.join(__dirname, '../../tmp');
+    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+    const filePath = path.join(tempDir, `payment_${payment?.payment_no || sale.sale_no}_${Date.now()}.pdf`);
+
+    const doc = new PDFDocument({ size: 'A4', margin: 40 });
+    const stream = fs.createWriteStream(filePath);
+    doc.pipe(stream);
+
+    const mL = 40;
+    const pageW = doc.page.width;
+    const rEdge = pageW - 40;
+
+    // ── Header ──────────────────────────────────────────────────────────────
+    doc.font('Helvetica-Bold').fontSize(13.5).fillColor(INK);
+    doc.text(COMPANY_NAME, mL, 40);
+
+    doc.fontSize(24);
+    doc.text(isFullyPaid ? 'PAYMENT RECEIPT' : 'PAYMENT SLIP', mL, 36, { width: rEdge - mL, align: 'right' });
+
+    doc.font('Helvetica').fontSize(9).fillColor(GRAY);
+    doc.text(COMPANY_ADDRESS, mL, 55);
+    doc.text(COMPANY_EMAIL, mL, 67);
+
+    doc.fillColor(INK_SOFT);
+    doc.text(`# ${sale.sale_no}`, mL, 58, { width: rEdge - mL, align: 'right' });
+
+    doc.font('Helvetica-Bold').fontSize(9);
+    doc.text(isFullyPaid ? 'Status' : 'Balance Due', mL, 74, { width: rEdge - mL, align: 'right' });
+    doc.fontSize(13).fillColor(isFullyPaid ? PAID_COLOR : DUE_COLOR);
+    doc.text(
+      isFullyPaid ? 'FULLY PAID' : `LKR ${fmt(balanceDue)}`,
+      mL, 88, { width: rEdge - mL, align: 'right' }
+    );
+
+    doc.moveTo(mL, 100).lineTo(rEdge, 100).lineWidth(0.5).strokeColor(LINE).stroke();
+
+    // ── Bill To + Meta ───────────────────────────────────────────────────────
+    const b2Y = 116;
+    doc.font('Helvetica').fontSize(8.5).fillColor(GRAY_LIGHT);
+    doc.text('Customer', mL, b2Y);
+
+    doc.font('Helvetica-Bold').fontSize(10.5).fillColor(INK);
+    doc.text(customer?.name || 'N/A', mL, b2Y + 13);
+
+    let leftEndY = b2Y + 13;
+    if (customer?.customer_code) {
+      doc.font('Helvetica').fontSize(9).fillColor(INK_SOFT);
+      doc.text(customer.customer_code, mL, b2Y + 27);
+      leftEndY = b2Y + 27;
+    }
+
+    const metaRows = [
+      ['Sale Date :', formatDateOnly(sale.sale_datetime)],
+      ['Payment No :', payment?.payment_no || 'N/A'],
+      // ── Payment date AND time ──
+      ['Payment Date/Time :', payment ? formatDateTime(payment.payment_date) : 'N/A'],
+    ];
+    doc.font('Helvetica').fontSize(9);
+    metaRows.forEach(([label, value], i) => {
+      const ry = b2Y + i * 16;
+      doc.fillColor(GRAY).text(label, mL, ry, { width: 300, align: 'right' });
+      doc.fillColor(INK_SOFT).text(value, mL, ry, { width: rEdge - mL, align: 'right' });
+    });
+
+    // ── Payment amount highlight box ────────────────────────────────────────
+    let y = Math.max(leftEndY, b2Y + 3 * 16) + 22;
+    const boxW = rEdge - mL;
+    const boxH = 40;
+
+    doc.rect(mL, y, boxW, boxH).fill(payment ? PAID_FILL : '#F5F5F5');
+    doc.font('Helvetica').fontSize(9).fillColor(GRAY);
+    doc.text('Amount Received', mL + 16, y + 8);
+    doc.font('Helvetica-Bold').fontSize(16).fillColor(PAID_COLOR);
+    doc.text(`LKR ${fmt(payment?.amount)}`, mL + 16, y + 19);
+
+    doc.font('Helvetica').fontSize(9).fillColor(GRAY);
+    doc.text('Received', mL, y + 8, { width: boxW - 16, align: 'right' });
+    doc.font('Helvetica-Bold').fontSize(11).fillColor(INK_SOFT);
+    doc.text(payment ? formatDateTime(payment.payment_date) : '—', mL, y + 21, { width: boxW - 16, align: 'right' });
+
+    y += boxH + 18;
+
+    // ── Totals block ─────────────────────────────────────────────────────────
+    const totLblW = 130, totValW = 110;
+    const totLeft = rEdge - totLblW - totValW;
+    const totRowH = 20;
+
+    const totalsRows = [
+      { label: 'Invoice Total', value: `LKR ${fmt(sale.total_revenue)}`, fill: '#FFFFFF', color: INK_SOFT, bold: false },
+      { label: 'Total Paid So Far', value: `LKR ${fmt(totalPaid)}`, fill: PAID_FILL, color: PAID_COLOR, bold: false },
+      {
+        label: isFullyPaid ? 'Status' : 'Balance Due',
+        value: isFullyPaid ? 'FULLY PAID' : `LKR ${fmt(balanceDue)}`,
+        fill: isFullyPaid ? PAID_FILL : DUE_FILL,
+        color: isFullyPaid ? PAID_COLOR : DUE_COLOR,
+        bold: true,
+      },
+    ];
+
+    totalsRows.forEach((row) => {
+      doc.rect(totLeft, y, totLblW + totValW, totRowH).fill(row.fill);
+      doc.font(row.bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(9.5).fillColor(row.color);
+      doc.text(row.label, totLeft, y + 5, { width: totLblW, align: 'right' });
+      doc.text(row.value, totLeft + totLblW, y + 5, { width: totValW, align: 'right' });
+      y += totRowH;
+    });
+
+    // ── Notes ────────────────────────────────────────────────────────────────
+    y += 20;
+    doc.moveTo(mL, y).lineTo(rEdge, y).strokeColor(LINE).lineWidth(0.5).stroke();
+    doc.font('Helvetica-Bold').fontSize(9).fillColor(GRAY);
+    doc.text('Notes', mL, y + 14);
+    doc.font('Helvetica').fontSize(9).fillColor(INK_SOFT);
+    doc.text(
+      isFullyPaid
+        ? 'Thank you for settling this order in full!'
+        : 'Please settle the remaining balance at your earliest convenience. Thank you!',
+      mL, y + 27
+    );
+
+    doc.end();
+    stream.on('finish', () => resolve(filePath));
+    stream.on('error', reject);
+  });
+}
 module.exports = {
   formatSaleReceipt, printSale,
   formatStoreRoomReceipt, printStoreRoomReceipt,
@@ -458,4 +663,6 @@ module.exports = {
   formatCustomerDueSlip, printCustomerDueSlip,   
   testPrinter, printToWindowsPrinterUSB,
   buildBarcodeCode39, COMMANDS, safeToFixed,
+  buildDueSlipPdf, generateDueSlipPdfBuffer, 
+  buildDueSlipPdfFile,
 };

@@ -3,7 +3,7 @@ const router = express.Router();
 const salesController = require('../controllers/sales.controller');
 const { authenticate } = require('../middlewares/auth.middleware');
 const { authorizeRole } = require('../middlewares/role.middleware');
-
+router.get('/invoices/:token', salesController.downloadInvoiceByToken);
 router.use(authenticate);
 
 router.get('/', salesController.getAllSales);

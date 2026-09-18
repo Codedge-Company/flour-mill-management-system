@@ -1,6 +1,6 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { map } from 'rxjs/operators';
+import { map, catchError, of } from 'rxjs';
 import { PermissionService } from '../services/permission.service';
 import { AuthService } from '../services/auth.service';
 
@@ -16,11 +16,17 @@ export const pagePermissionGuard: CanActivateFn = (route) => {
     map(() => {
       if (permissionService.canAccess(pageKey)) return true;
 
-      // Don't hardcode '/dashboard' — the user might not have dashboard
-      // access either, which would infinite-loop back into this guard.
       const fallback = permissionService.getFirstAccessibleRoute();
       router.navigate([fallback ?? '/auth/login']);
       return false;
+    }),
+    // If permissions can't even be loaded (401/expired session/deleted
+    // user), don't leave the app hanging on a blank screen - log out and
+    // send them back to login instead of letting the error propagate silently.
+    catchError(() => {
+      authService.logout?.();
+      router.navigate(['/auth/login']);
+      return of(false);
     })
   );
 };

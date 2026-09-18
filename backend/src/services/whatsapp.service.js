@@ -1,7 +1,25 @@
-const { Client, LocalAuth } = require('whatsapp-web.js');
+const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const QRCode = require('qrcode');
 const fs = require('fs');
+
+// ── Windows fix: LocalAuth.logout() is called internally by whatsapp-web.js
+// whenever the client disconnects - completely separate from our own
+// teardownClient(). On Windows, Chromium sometimes hasn't released the
+// session lockfile yet, causing an EBUSY error. That internal call has no
+// .catch() anywhere reachable from our code, so the rejection is unhandled
+// and crashes the whole Node process. This patch makes logout() swallow
+// cleanup errors instead of throwing - the session files get cleaned up
+// on a best-effort basis, and a failed cleanup here is harmless (worst
+// case, a stale file lingers until the next successful logout).
+const originalLogout = LocalAuth.prototype.logout;
+LocalAuth.prototype.logout = async function (...args) {
+  try {
+    return await originalLogout.apply(this, args);
+  } catch (err) {
+    console.warn('[WhatsApp] LocalAuth cleanup failed (ignored, non-fatal):', err.message);
+  }
+};
 
 const TO = process.env.NOTIFY_WHATSAPP_TO || '94779337369';
 
@@ -60,6 +78,7 @@ function initWhatsApp() {
       args: PUPPETEER_ARGS,
       ...(executablePath ? { executablePath } : {}),
     },
+    webVersionCache: { type: 'none' },
   });
 
   client.on('qr', async (qr) => {
@@ -150,6 +169,31 @@ async function sendWhatsApp(message) {
     teardownClient();
     scheduleReconnect();
     if (pendingMessages.length < MAX_QUEUE_SIZE) pendingMessages.push(message);
+  }
+}
+
+// ── Send a plain text message to an ARBITRARY WhatsApp number ─────────────
+// Distinct from sendWhatsApp(), which always targets the fixed internal
+// NOTIFY_WHATSAPP_TO number - this one is for messaging a customer
+// directly (e.g. an invoice download link), so it takes the destination
+// number as a parameter. No queueing here since these are one-off,
+// time-sensitive sends tied to a specific sale/payment - if the client
+// isn't ready, the caller's own .catch() logs it and the sale/payment
+// itself is unaffected either way.
+async function sendWhatsAppTextTo(toNumber, message) {
+  if (!toNumber) {
+    console.warn('[WhatsApp] No destination number - skipping text send.');
+    return;
+  }
+  if (!client || !qrData.ready) {
+    console.warn(`[WhatsApp] Client not ready - cannot send text to ${toNumber} right now.`);
+    return;
+  }
+  try {
+    await client.sendMessage(`${toNumber}@c.us`, message);
+    console.log('[WhatsApp] Text sent to', toNumber);
+  } catch (err) {
+    console.error(`[WhatsApp] Text send to ${toNumber} failed:`, err.message);
   }
 }
 
@@ -262,6 +306,7 @@ async function notifyLowStock({ itemName, category, currentQty, unit, thresholdQ
     `🔔 Please restock soon.`
   );
 }
+
 // ── WhatsApp notification on payment recorded ───────────────────────────────
 const notifyPaymentRecorded = async (payment, sale, balanceDue) => {
   const message =
@@ -275,14 +320,49 @@ const notifyPaymentRecorded = async (payment, sale, balanceDue) => {
 
   return sendWhatsApp(message);
 };
+
+// ── Send a document (PDF) to an ARBITRARY WhatsApp number ──────────────────
+// Kept for reference / future retry once whatsapp-web.js fixes the @lid
+// MessageMedia bug - currently unused by the sales flow, which sends a
+// download link via sendWhatsAppTextTo() instead.
+async function sendWhatsAppDocument(toNumber, pdfBuffer, filename, caption = '') {
+  if (!toNumber) {
+    console.warn('[WhatsApp] No destination number - skipping document send.');
+    return;
+  }
+  if (!client || !qrData.ready) {
+    console.warn(`[WhatsApp] Client not ready - cannot send document to ${toNumber} right now.`);
+    initWhatsApp();
+    return;
+  }
+
+  const chatId = `${toNumber}@c.us`;
+
+  try {
+    const base64 = pdfBuffer.toString('base64');
+    const media = new MessageMedia('application/pdf', base64, filename);
+
+    await client.sendMessage(chatId, media);
+    if (caption) {
+      await client.sendMessage(chatId, caption);
+    }
+
+    console.log(`[WhatsApp] Document "${filename}" sent to`, toNumber);
+  } catch (err) {
+    console.error(`[WhatsApp] Document send to ${toNumber} failed:`, err.message);
+  }
+}
+
 module.exports = {
   notifyMachineStart,
   notifyMachineStop,
   getWhatsAppQr,
   notifyPackingDone,
   sendWhatsApp,
+  sendWhatsAppTextTo,
   notifyStockEntry,
   notifySiftingComplete,
   notifyLowStock,
-  notifyPaymentRecorded
+  notifyPaymentRecorded,
+  sendWhatsAppDocument
 };

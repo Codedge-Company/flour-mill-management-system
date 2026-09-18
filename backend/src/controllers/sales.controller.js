@@ -1,9 +1,17 @@
 const salesService = require('../services/sales.service');
 const printerService = require('../services/printer.service');
 const invoicePrinterService = require('../services/invoicePrinter.service');
+const InvoiceLink = require('../models/InvoiceLink');
 
 const RECEIPT_PRINTER_NAME = process.env.RECEIPT_PRINTER_NAME || '80 Printer Series';
 const INVOICE_PRINTER_NAME = process.env.INVOICE_PRINTER_NAME || 'A4 Printer';
+
+// ── In-memory store for one-time invoice download links ────────────────────
+// token -> { filePath, filename, expiresAt }. Simple Map is fine here since
+// links are short-lived (24h) and this is a single-instance server; if you
+// ever run multiple instances behind a load balancer, move this to Redis
+// or the DB so all instances can serve the same token.
+const invoiceLinkStore = new Map();
 
 exports.getAllSales = async (req, res, next) => {
     try {
@@ -35,9 +43,14 @@ exports.createSale = async (req, res, next) => {
                 .catch(err => console.error('[Print] Invoice failed:', err.message));
         }
 
-        // ── NEW: WhatsApp notification ──
+        // ── WhatsApp notifications ──
         salesService.notifySaleCreated(sale)
             .catch(err => console.error('[WhatsApp] Sale notify failed:', err.message));
+
+        if (sale.customer_id && typeof sale.customer_id === 'object') {
+            salesService.sendInvoiceToCustomer(sale, sale.customer_id)
+                .catch(err => console.error('[WhatsApp] Invoice send to customer failed:', err.message));
+        }
 
         res.status(201).json({ success: true, data: sale });
     } catch (e) {
@@ -87,6 +100,7 @@ exports.reprintInvoice = async (req, res, next) => {
         res.json({ success: true, data: result });
     } catch (e) { next(e); }
 };
+
 exports.printStoreRoomReceipt = async (req, res, next) => {
     try {
         const sale = await salesService.getById(req.params.id);
@@ -105,4 +119,17 @@ exports.printDeliveryNote = async (req, res, next) => {
         const result = await printerService.printDeliveryNote(sale, vehicleNo, { printerName: RECEIPT_PRINTER_NAME });
         res.json({ success: result.success, data: result });
     } catch (e) { next(e); }
+};
+
+// ── Serve a generated invoice PDF by one-time token (sent via WhatsApp link) ─
+exports.downloadInvoiceByToken = async (req, res) => {
+    const entry = await InvoiceLink.findOne({ token: req.params.token });
+    if (!entry || Date.now() > entry.expires_at.getTime()) {
+        return res.status(404).send('Link expired or not found.');
+    }
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${entry.filename}"`);
+    res.sendFile(entry.file_path, (err) => {
+        if (err) console.error('[Invoice Download] sendFile failed:', err.message);
+    });
 };
