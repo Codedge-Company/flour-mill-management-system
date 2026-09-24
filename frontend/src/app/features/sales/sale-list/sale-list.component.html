@@ -144,7 +144,7 @@
     </div>
 
     <div class="summary-divider"></div>
-
+    @if (isAdmin) {
     <div class="summary-item">
       <span class="summary-label">
         <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" fill="none" viewBox="0 0 24 24"
@@ -156,7 +156,7 @@
       </span>
       <span class="summary-val muted">{{ filteredCost() | lkrCurrency }}</span>
     </div>
-
+    }
     @if (isAdmin) {
     <div class="summary-divider"></div>
 
@@ -220,7 +220,8 @@
             <th>Pay Status</th>
             <th>Credit Progress</th>
             <th class="num">Revenue</th>
-            @if (isAdmin) { <th class="num">Cost</th> <th class="num">Profit</th> }
+            @if (isAdmin) { <th class="num">Cost</th>
+            <th class="num">Profit</th> }
             <th>Status</th>
             <th>Actions</th>
           </tr>
@@ -272,7 +273,8 @@
             <th>Pay Status</th>
             <th>Credit Progress</th>
             <th class="num">Revenue</th>
-            @if (isAdmin) { <th class="num">Cost</th> <th class="num">Profit</th> }
+            @if (isAdmin) { <th class="num">Cost</th>
+            <th class="num">Profit</th> }
             <th>Status</th>
             <th style="width:150px;">Actions</th>
           </tr>
