@@ -220,8 +220,7 @@
             <th>Pay Status</th>
             <th>Credit Progress</th>
             <th class="num">Revenue</th>
-            <th class="num">Cost</th>
-            @if (isAdmin) { <th class="num">Profit</th> }
+            @if (isAdmin) { <th class="num">Cost</th> <th class="num">Profit</th> }
             <th>Status</th>
             <th>Actions</th>
           </tr>
@@ -273,8 +272,7 @@
             <th>Pay Status</th>
             <th>Credit Progress</th>
             <th class="num">Revenue</th>
-            <th class="num">Cost</th>
-              @if (isAdmin) { <th class="num">Profit</th> }
+            @if (isAdmin) { <th class="num">Cost</th> <th class="num">Profit</th> }
             <th>Status</th>
             <th style="width:150px;">Actions</th>
           </tr>
@@ -332,9 +330,9 @@
             <!-- Revenue -->
             <td class="num font-semibold">{{ sale.totalRevenue | lkrCurrency }}</td>
             <!-- Cost -->
-            <td class="num text-secondary">{{ sale.totalCost | lkrCurrency }}</td>
             <!-- Profit (admin only) -->
             @if (isAdmin) {
+            <td class="num text-secondary">{{ sale.totalCost | lkrCurrency }}</td>
             <td class="num">
               <span class="profit-cell" [class.negative]="sale.totalProfit < 0">
                 {{ sale.totalProfit | lkrCurrency }}
@@ -450,7 +448,7 @@
     }
 
     <!-- Pagination – only for ADMIN -->
-     @if (totalPages() > 1) {
+    @if (totalPages() > 1) {
     <div class="pagination">
       <button class="btn btn-ghost btn-sm" [disabled]="currentPage() === 0" (click)="goToPage(0)">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24"
