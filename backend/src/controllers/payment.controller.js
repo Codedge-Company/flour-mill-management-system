@@ -52,3 +52,9 @@ exports.printCustomerDueSlip = async (req, res, next) => {
     res.json({ success: result.success, data: result });
   } catch (e) { next(e); }
 };
+exports.getCustomerOutstanding = async (req, res, next) => {
+  try {
+    const outstanding = await paymentService.getCustomerTotalOutstanding(req.params.customer_id);
+    res.json({ success: true, data: { outstanding } });
+  } catch (e) { next(e); }
+};

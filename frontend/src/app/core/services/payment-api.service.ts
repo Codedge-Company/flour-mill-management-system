@@ -79,5 +79,7 @@ printCustomerDueSlip(customerId: string): Observable<any> {
       totalPaid: raw.totalPaid, balanceDue: raw.balanceDue, isPaid: raw.isPaid,
     };
   }
-
+getCustomerOutstanding(customerId: string): Observable<{ success: boolean; data: { outstanding: number } }> {
+  return this.http.get<any>(`${this.base}/customer/${customerId}/outstanding`);
+}
 }

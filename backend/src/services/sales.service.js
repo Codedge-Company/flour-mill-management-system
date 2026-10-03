@@ -57,7 +57,25 @@ const triggerLowStockNotification = async (pack_type_id, newStockQty) => {
         console.error('[LowStock] WhatsApp notify failed:', err.message);
     }
 };
+// ── Fix: date-only inputs parse as UTC midnight, which displays as 5:30 AM
+// in Colombo time. Combine the user's picked calendar date with the actual
+// current Colombo time-of-day, so receipts show a real, correct time.
+const resolveSaleDatetime = (inputDateStr) => {
+    const now = new Date();
+    if (!inputDateStr) return now;
 
+    const picked = new Date(inputDateStr); // date-only string → parsed as UTC midnight
+    const yyyy = picked.getUTCFullYear();
+    const MM = String(picked.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(picked.getUTCDate()).padStart(2, '0');
+
+    const nowColombo = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Colombo' }));
+    const hh = String(nowColombo.getHours()).padStart(2, '0');
+    const mm = String(nowColombo.getMinutes()).padStart(2, '0');
+    const ss = String(nowColombo.getSeconds()).padStart(2, '0');
+
+    return new Date(`${yyyy}-${MM}-${dd}T${hh}:${mm}:${ss}+05:30`);
+};
 // ── Create ────────────────────────────────────────────────────────────────────
 
 const createSale = async ({ customer_id, payment_method, sale_datetime, items, use_default_price = false }, user) => {
@@ -106,7 +124,7 @@ const createSale = async ({ customer_id, payment_method, sale_datetime, items, u
         created_by_user_id: user._id,
         payment_method,
         payment_status,
-        sale_datetime: sale_datetime ? new Date(sale_datetime) : new Date(),
+        sale_datetime: resolveSaleDatetime(sale_datetime),
         total_revenue,
         total_cost,
         total_profit,

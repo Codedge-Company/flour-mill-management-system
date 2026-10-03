@@ -24,6 +24,12 @@ const WIDTH = 42;
 const COMPANY_NAME = 'Matheesha Flour Mill';
 const COMPANY_ADDRESS = 'North Central Province';
 const COMPANY_EMAIL = 'matheeshaflourmill@gmail.com';
+const COMPANY_PHONE_1 = '+94-779337369';
+const COMPANY_PHONE_2 = '+94-729997369';
+
+// Always format dates/times explicitly in Sri Lanka time — without this,
+// output depends on whatever timezone the machine/server happens to be set to.
+const CO_TZ = { timeZone: 'Asia/Colombo' };
 
 const safeToFixed = (num, d = 2) =>
   (num === undefined || num === null || isNaN(num)) ? '0.00' : Number(num).toFixed(d);
@@ -43,11 +49,17 @@ const leftRight = (left, right, w = WIDTH) => {
 
 const divider = (w = WIDTH, ch = '-') => ch.repeat(w);
 
-const printHeaderLines = () => [
-  center(COMPANY_NAME),
-  center(COMPANY_ADDRESS),
-  center(COMPANY_EMAIL),
-];
+const printHeaderLines = (opts = {}) => {
+  const lines = [
+    center(COMPANY_NAME),
+    center(COMPANY_ADDRESS),
+    center(COMPANY_EMAIL),
+  ];
+  if (opts.includePhones) {
+    lines.push(center(`${COMPANY_PHONE_1} / ${COMPANY_PHONE_2}`));
+  }
+  return lines;
+};
 
 // CODE39 Function B: GS k 69 <len> <data>
 const buildBarcodeCode39 = (data) => {
@@ -70,19 +82,19 @@ const packLabel = (item) => {
   return typeof p === 'object' ? `${p.pack_name} (${p.weight_kg}kg)` : 'Item';
 };
 
-// ── 1. SALE RECEIPT (existing, header updated) ──────────────────────────────
-const formatSaleReceipt = (sale, options = {}) => {
+// ── 1. SALE / PAYMENT RECEIPT — shared text builder, title differs per copy ─
+const buildReceiptText = (sale, title, options = {}) => {
   const date = new Date(sale.sale_datetime || sale.createdAt || Date.now());
   const L = [];
   const nl = (t = '') => L.push(t);
 
-  printHeaderLines().forEach(nl);
+  printHeaderLines(options).forEach(nl);
   nl(divider(WIDTH, '='));
-  nl(center('SALES RECEIPT'));
+  nl(center(title));
   nl(divider(WIDTH, '='));
   nl(leftRight('SALE NO:', sale.sale_no || 'N/A'));
-  nl(leftRight('DATE:', date.toLocaleDateString('en-LK')));
-  nl(leftRight('TIME:', date.toLocaleTimeString('en-LK')));
+  nl(leftRight('DATE:', date.toLocaleDateString('en-LK', CO_TZ)));
+  nl(leftRight('TIME:', date.toLocaleTimeString('en-LK', CO_TZ)));
   nl(leftRight('CUSTOMER:', sale.customer_id?.name || 'N/A'));
   nl(leftRight('CASHIER:', sale.created_by_user_id?.full_name || 'POS User'));
   nl(divider());
@@ -100,6 +112,13 @@ const formatSaleReceipt = (sale, options = {}) => {
     ? 'CREDIT - PAYMENT PENDING'
     : `PAID (${sale.payment_method})`;
   nl(center(payLine));
+
+  if (options.outstandingBalance && options.outstandingBalance > 0.001) {
+    nl(divider());
+    nl(center('*** OUTSTANDING BALANCE ***'));
+    nl(leftRight('TOTAL DUE:', 'LKR ' + safeToFixed(options.outstandingBalance)));
+  }
+
   nl(divider());
   nl(center('Thank You! Visit Again!'));
   nl('');
@@ -108,6 +127,10 @@ const formatSaleReceipt = (sale, options = {}) => {
   return L.join('\r\n');
 };
 
+const formatSaleReceipt = (sale, options = {}) => buildReceiptText(sale, 'SALES RECEIPT', options);
+const formatPaymentReceipt = (sale, options = {}) => buildReceiptText(sale, 'PAYMENT RECEIPT', options);
+
+// Customer copy
 const printSale = async (sale, printerType = 'thermal', options = {}) => {
   logger.info(`printSale: ${sale?.sale_no || 'N/A'}`);
   try {
@@ -134,18 +157,44 @@ const printSale = async (sale, printerType = 'thermal', options = {}) => {
   }
 };
 
-// ── 2. STORE ROOM RECEIPT — items + qty only, no prices ─────────────────────
+// Office / keep copy — same layout, title "PAYMENT RECEIPT"
+const printPaymentReceipt = async (sale, options = {}) => {
+  logger.info(`printPaymentReceipt: ${sale?.sale_no || 'N/A'}`);
+  try {
+    if (!sale) throw new Error('Missing sale data');
+    const printerName = options.printerName || '80 Printer Series';
+    const text = formatPaymentReceipt(sale, options);
+    const shortId = (sale.sale_no || sale._id?.toString() || '').slice(-10).toUpperCase();
+    const barcodeBuffer = shortId ? buildBarcodeCode39(shortId) : Buffer.alloc(0);
+
+    const buffer = Buffer.concat([
+      COMMANDS.INIT, COMMANDS.ALIGN(0),
+      Buffer.from(text, 'binary'), Buffer.from('\r\n', 'binary'),
+      barcodeBuffer, COMMANDS.FEED(4), COMMANDS.CUT,
+    ]);
+
+    const result = await printToWindowsPrinterUSB(buffer, printerName);
+    if (result.success) logger.info(`Payment receipt (office copy) printed: ${sale.sale_no}`);
+    return result;
+  } catch (err) {
+    logger.error(`printPaymentReceipt error: ${err.message}`);
+    return { success: false, error: err.message };
+  }
+};
+
+// ── 2. STORE ROOM RECEIPT — items + qty only, no prices, phones + time ──────
 const formatStoreRoomReceipt = (sale) => {
   const date = new Date(sale.sale_datetime || sale.createdAt || Date.now());
   const L = [];
   const nl = (t = '') => L.push(t);
 
-  printHeaderLines().forEach(nl);
+  printHeaderLines({ includePhones: true }).forEach(nl);
   nl(divider(WIDTH, '='));
   nl(center('STORE ROOM RECEIPT'));
   nl(divider(WIDTH, '='));
   nl(leftRight('SALE NO:', sale.sale_no || 'N/A'));
-  nl(leftRight('DATE:', date.toLocaleDateString('en-LK')));
+  nl(leftRight('DATE:', date.toLocaleDateString('en-LK', CO_TZ)));
+  nl(leftRight('TIME:', date.toLocaleTimeString('en-LK', CO_TZ)));
   nl(leftRight('CUSTOMER:', sale.customer_id?.name || 'N/A'));
   nl(divider());
   nl(center('ITEMS TO RELEASE'));
@@ -192,7 +241,7 @@ const formatDeliveryNote = (sale, vehicleNo) => {
   nl(center('DELIVERY NOTE'));
   nl(divider(WIDTH, '='));
   nl(leftRight('SALE NO:', sale.sale_no || 'N/A'));
-  nl(leftRight('DATE:', date.toLocaleDateString('en-LK')));
+  nl(leftRight('DATE:', date.toLocaleDateString('en-LK', CO_TZ)));
   nl(leftRight('CUSTOMER:', sale.customer_id?.name || 'N/A'));
   nl(leftRight('VEHICLE NO:', vehicleNo || 'N/A'));
   nl(divider());
@@ -239,7 +288,7 @@ const formatDueSlip = ({ sale, customer, totalPaid, balanceDue }) => {
   nl(center('DUE PAYMENT SLIP'));
   nl(divider(WIDTH, '='));
   nl(leftRight('SALE NO:', sale.sale_no || 'N/A'));
-  nl(leftRight('DATE:', new Date(sale.sale_datetime).toLocaleDateString('en-LK')));
+  nl(leftRight('DATE:', new Date(sale.sale_datetime).toLocaleDateString('en-LK', CO_TZ)));
   nl(leftRight('CUSTOMER:', customer?.name || 'N/A'));
   nl(leftRight('CODE:', customer?.customer_code || 'N/A'));
   nl(divider());
@@ -255,6 +304,7 @@ const formatDueSlip = ({ sale, customer, totalPaid, balanceDue }) => {
 
   return L.join('\r\n');
 };
+
 // ── DUE SLIP AS A REAL PDF (for WhatsApp) ────────────────────────────────
 // The existing printDueSlip()/formatDueSlip() above produce raw ESC/POS
 // text for the physical thermal printer - that's not a usable document for
@@ -277,7 +327,7 @@ function buildDueSlipPdf({ sale, customer, totalPaid, balanceDue }) {
 
     doc.fontSize(10);
     doc.text(`Sale No: ${sale.sale_no || 'N/A'}`);
-    doc.text(`Date: ${new Date(sale.sale_datetime).toLocaleDateString('en-LK')}`);
+    doc.text(`Date: ${new Date(sale.sale_datetime).toLocaleDateString('en-LK', CO_TZ)}`);
     doc.text(`Customer: ${customer?.name || 'N/A'} (${customer?.customer_code || ''})`);
     doc.moveDown();
 
@@ -311,6 +361,7 @@ async function generateDueSlipPdfBuffer({ sale, customer, payment, balanceDue })
     : (sale.total_revenue - balanceDue);
   return buildDueSlipPdf({ sale, customer, totalPaid, balanceDue });
 }
+
 const printDueSlip = async (data, options = {}) => {
   logger.info(`printDueSlip: ${data?.sale?.sale_no || 'N/A'}`);
   try {
@@ -441,10 +492,11 @@ const printToWindowsPrinterUSB = async (data, printerName) => {
 
 const testPrinter = async (options = {}) => {
   const printerName = options.printerName || '80 Printer Series';
-  const text = center('PRINTER TEST') + '\r\n' + center(new Date().toLocaleString('en-LK'));
+  const text = center('PRINTER TEST') + '\r\n' + center(new Date().toLocaleString('en-LK', CO_TZ));
   const buffer = Buffer.concat([COMMANDS.INIT, Buffer.from(text, 'binary'), COMMANDS.FEED(4), COMMANDS.CUT]);
   return printToWindowsPrinterUSB(buffer, printerName);
 };
+
 // ── CUSTOMER-LEVEL DUE SLIP (all pending sales) ──────────────────────────────
 const formatCustomerDueSlip = ({ customer, summaries }) => {
   const L = [];
@@ -456,7 +508,7 @@ const formatCustomerDueSlip = ({ customer, summaries }) => {
   nl(divider(WIDTH, '='));
   nl(leftRight('CUSTOMER:', customer?.name || 'N/A'));
   nl(leftRight('CODE:', customer?.customer_code || 'N/A'));
-  nl(leftRight('DATE:', new Date().toLocaleDateString('en-LK')));
+  nl(leftRight('DATE:', new Date().toLocaleDateString('en-LK', CO_TZ)));
   nl(divider());
   nl(center('PENDING SALES'));
   nl(divider());
@@ -466,7 +518,7 @@ const formatCustomerDueSlip = ({ customer, summaries }) => {
   let totalBalance = 0;
 
   summaries.forEach((s) => {
-    nl(leftRight(s.sale.sale_no, new Date(s.sale.sale_datetime).toLocaleDateString('en-LK')));
+    nl(leftRight(s.sale.sale_no, new Date(s.sale.sale_datetime).toLocaleDateString('en-LK', CO_TZ)));
     nl(leftRight('  Invoice:', 'LKR ' + safeToFixed(s.sale.total_revenue)));
     nl(leftRight('  Paid:', 'LKR ' + safeToFixed(s.totalPaid)));
     nl(leftRight('  Balance:', 'LKR ' + safeToFixed(s.balanceDue)));
@@ -506,6 +558,7 @@ const printCustomerDueSlip = async (data, options = {}) => {
     return { success: false, error: err.message };
   }
 };
+
 const INK = '#141414';
 const INK_SOFT = '#3C3C3C';
 const GRAY = '#6E6E6E';
@@ -523,10 +576,11 @@ const formatDateTime = (d) =>
   new Date(d).toLocaleString('en-LK', {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit', hour12: true,
+    timeZone: 'Asia/Colombo',
   });
 
 const formatDateOnly = (d) =>
-  new Date(d).toLocaleDateString('en-LK', { day: '2-digit', month: 'short', year: 'numeric' });
+  new Date(d).toLocaleDateString('en-LK', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Colombo' });
 
 function buildDueSlipPdfFile({ sale, customer, payment, totalPaid, balanceDue, isFullyPaid }) {
   return new Promise((resolve, reject) => {
@@ -655,14 +709,16 @@ function buildDueSlipPdfFile({ sale, customer, payment, totalPaid, balanceDue, i
     stream.on('error', reject);
   });
 }
+
 module.exports = {
   formatSaleReceipt, printSale,
+  formatPaymentReceipt, printPaymentReceipt,
   formatStoreRoomReceipt, printStoreRoomReceipt,
   formatDeliveryNote, printDeliveryNote,
   formatDueSlip, printDueSlip,
-  formatCustomerDueSlip, printCustomerDueSlip,   
+  formatCustomerDueSlip, printCustomerDueSlip,
   testPrinter, printToWindowsPrinterUSB,
   buildBarcodeCode39, COMMANDS, safeToFixed,
-  buildDueSlipPdf, generateDueSlipPdfBuffer, 
+  buildDueSlipPdf, generateDueSlipPdfBuffer,
   buildDueSlipPdfFile,
 };

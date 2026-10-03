@@ -3,7 +3,7 @@ const printerService = require('../services/printer.service');
 const invoicePrinterService = require('../services/invoicePrinter.service');
 const InvoiceLink = require('../models/InvoiceLink');
 const path = require('path');
-
+const paymentService = require('../services/payment.service');
 const RECEIPT_PRINTER_NAME = process.env.RECEIPT_PRINTER_NAME || '80 Printer Series';
 const INVOICE_PRINTER_NAME = process.env.INVOICE_PRINTER_NAME || 'A4 Printer';
 
@@ -16,8 +16,8 @@ const invoiceLinkStore = new Map();
 
 exports.getAllSales = async (req, res, next) => {
     try {
-        const page    = parseInt(req.query.page) || 0;
-        const size    = parseInt(req.query.size) || 20;
+        const page = parseInt(req.query.page) || 0;
+        const size = parseInt(req.query.size) || 20;
         const filters = req.query;
         res.json({ success: true, data: await salesService.getAllPaginated(page, size, filters) });
     } catch (e) { next(e); }
@@ -35,12 +35,30 @@ exports.createSale = async (req, res, next) => {
             use_default_price: req.body.use_default_price ?? false,
         };
         const sale = await salesService.createSale(payload, req.user);
+        let outstandingBalance = 0;
+        try {
+            const custId = sale.customer_id?._id ?? sale.customer_id;
+            outstandingBalance = await paymentService.getCustomerTotalOutstanding(custId);
+        } catch (err) {
+            console.error('[Outstanding] Failed to compute:', err.message);
+        }
+        // ── 3 separate thermal prints, in order: customer copy → store room slip → office/keep copy ──
+        (async () => {
+            try {
+                await printerService.printSale(sale, 'thermal', { printerName: RECEIPT_PRINTER_NAME, outstandingBalance });
+            } catch (err) { console.error('[Print] Customer receipt failed:', err.message); }
 
-        printerService.printSale(sale, 'thermal', { printerName: RECEIPT_PRINTER_NAME })
-            .catch(err => console.error('[Print] Receipt failed:', err.message));
+            try {
+                await printerService.printStoreRoomReceipt(sale, { printerName: RECEIPT_PRINTER_NAME });
+            } catch (err) { console.error('[Print] Store room receipt failed:', err.message); }
+
+            try {
+                await printerService.printPaymentReceipt(sale, { printerName: RECEIPT_PRINTER_NAME, outstandingBalance });
+            } catch (err) { console.error('[Print] Payment receipt (office copy) failed:', err.message); }
+        })();
 
         if (sale.customer_id && typeof sale.customer_id === 'object') {
-            invoicePrinterService.printInvoiceSilently(sale, sale.customer_id, { printerName: INVOICE_PRINTER_NAME })
+            invoicePrinterService.printInvoiceSilently(sale, sale.customer_id, { printerName: INVOICE_PRINTER_NAME, outstandingBalance })
                 .catch(err => console.error('[Print] Invoice failed:', err.message));
         }
 

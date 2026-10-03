@@ -218,4 +218,31 @@ const sendPaymentSlipToCustomer = async (sale, customer, payment, totalPaid, bal
 
   await sendWhatsAppTextTo(phone, message);
 };
-module.exports = { addPayment, getBySale, getByCustomer, getCreditSummaryByCustomer, getById, remove, getTotalPaid, printDueSlip, printCustomerDueSlip, sendPaymentSlipToCustomer };
+// ── Total outstanding across ALL of a customer's CREDIT sales ──────────────
+// Shown on receipts/invoices so staff and the customer both see the full
+// picture, not just this one transaction.
+const getCustomerTotalOutstanding = async (customer_id) => {
+  const sales = await Sale.find({
+    customer_id,
+    payment_method: 'CREDIT',
+    status: { $ne: 'CANCELLED' },
+  }).select('_id total_revenue');
+
+  if (sales.length === 0) return 0;
+
+  const saleIds = sales.map(s => s._id);
+  const paidAgg = await Payment.aggregate([
+    { $match: { sale_id: { $in: saleIds } } },
+    { $group: { _id: '$sale_id', total_paid: { $sum: '$amount' } } },
+  ]);
+  const paidMap = {};
+  for (const p of paidAgg) paidMap[p._id.toString()] = p.total_paid;
+
+  let total = 0;
+  for (const s of sales) {
+    const paid = paidMap[s._id.toString()] ?? 0;
+    total += Math.max(0, s.total_revenue - paid);
+  }
+  return total;
+};
+module.exports = { addPayment, getBySale, getByCustomer, getCreditSummaryByCustomer, getById, remove, getTotalPaid, printDueSlip, printCustomerDueSlip, sendPaymentSlipToCustomer, getCustomerTotalOutstanding  };

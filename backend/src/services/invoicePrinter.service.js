@@ -30,7 +30,7 @@ const HEADER_FILL = '#1A1A1A';
 const HEADER_TEXT = '#FFFFFF';
 const TOTAL_FILL = '#EEEEEE';
 
-function buildInvoicePdf(sale, customer) {
+function buildInvoicePdf(sale, customer, options = {}) {
   return new Promise((resolve, reject) => {
     const tempDir = path.join(__dirname, '../../tmp');
     if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
@@ -166,13 +166,13 @@ function buildInvoicePdf(sale, customer) {
           { label: 'Balance Due', value: `LKR ${fmt(balanceDue)}`, fill: DUE_FILL, color: DUE_COLOR, bold: true },
         ];
 
-    totalsRows.forEach((row) => {
-      doc.rect(totLeft, y, totLblW + totValW, totRowH).fill(row.fill);
-      doc.font(row.bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(9.5).fillColor(row.color);
-      doc.text(row.label, totLeft, y + 5, { width: totLblW, align: 'right' });
-      doc.text(row.value, totLeft + totLblW, y + 5, { width: totValW, align: 'right' });
+    if (options.outstandingBalance && options.outstandingBalance > 0.001) {
+      doc.rect(totLeft, y, totLblW + totValW, totRowH).fill(DUE_FILL);
+      doc.font('Helvetica-Bold').fontSize(9.5).fillColor(DUE_COLOR);
+      doc.text('Total Outstanding', totLeft, y + 5, { width: totLblW, align: 'right' });
+      doc.text(`LKR ${fmt(options.outstandingBalance)}`, totLeft + totLblW, y + 5, { width: totValW, align: 'right' });
       y += totRowH;
-    });
+    }
 
     // ── Notes ────────────────────────────────────────────────────────────────
     y += 20;
@@ -197,7 +197,7 @@ async function printInvoiceSilently(sale, customer, options = {}) {
   if (!fs.existsSync(SUMATRA_PATH)) {
     throw new Error(`SumatraPDF.exe not found at ${SUMATRA_PATH}`);
   }
-  const filePath = await buildInvoicePdf(sale, customer);
+  const filePath = await buildInvoicePdf(sale, customer, options);
   const printerName = options.printerName || INVOICE_PRINTER_NAME;
 
   return new Promise((resolve, reject) => {

@@ -12,7 +12,7 @@ export class InvoicePdfService {
   // ════════════════════════════════════════════════════════════════════════════
   // STANDARD INVOICE  (sale-list download)
   // ════════════════════════════════════════════════════════════════════════════
-  generate(sale: Sale, customer: Customer): void {
+  generate(sale: Sale, customer: Customer, outstandingBalance = 0): void {
     const doc = new jsPDF('p', 'pt', 'a4');
     const pageW = doc.internal.pageSize.getWidth();
     const mL = 40, mR = 40, rEdge = pageW - mR;
@@ -115,21 +115,30 @@ export class InvoicePdfService {
     const totLblW = 110, totValW = 110;
     const totLeft = rEdge - totLblW - totValW;
 
-    autoTable(doc, {
-      body: [
-        [
-          { content: 'Sub Total', styles: { halign: 'right', fontStyle: 'normal', textColor: [80, 80, 80],  fillColor: [255, 255, 255] } },
-          { content: this.fmt(sale.totalRevenue), styles: { halign: 'right', textColor: [40, 40, 40], fillColor: [255, 255, 255] } },
-        ],
-        [
-          { content: 'Total', styles: { halign: 'right', fontStyle: 'bold', textColor: [20, 20, 20], fillColor: [255, 255, 255] } },
-          { content: `LKR${this.fmt(sale.totalRevenue)}`, styles: { halign: 'right', fontStyle: 'bold', textColor: [20, 20, 20], fillColor: [255, 255, 255] } },
-        ],
-        [
-          { content: 'Balance Due', styles: { halign: 'right', fontStyle: 'bold', textColor: [20, 20, 20], fillColor: [238, 238, 238] } },
-          { content: `LKR${this.fmt(sale.totalRevenue)}`, styles: { halign: 'right', fontStyle: 'bold', textColor: [20, 20, 20], fillColor: [238, 238, 238] } },
-        ],
+    const totalsBody: any[] = [
+      [
+        { content: 'Sub Total', styles: { halign: 'right', fontStyle: 'normal', textColor: [80, 80, 80],  fillColor: [255, 255, 255] } },
+        { content: this.fmt(sale.totalRevenue), styles: { halign: 'right', textColor: [40, 40, 40], fillColor: [255, 255, 255] } },
       ],
+      [
+        { content: 'Total', styles: { halign: 'right', fontStyle: 'bold', textColor: [20, 20, 20], fillColor: [255, 255, 255] } },
+        { content: `LKR${this.fmt(sale.totalRevenue)}`, styles: { halign: 'right', fontStyle: 'bold', textColor: [20, 20, 20], fillColor: [255, 255, 255] } },
+      ],
+      [
+        { content: 'Balance Due', styles: { halign: 'right', fontStyle: 'bold', textColor: [20, 20, 20], fillColor: [238, 238, 238] } },
+        { content: `LKR${this.fmt(sale.totalRevenue)}`, styles: { halign: 'right', fontStyle: 'bold', textColor: [20, 20, 20], fillColor: [238, 238, 238] } },
+      ],
+    ];
+
+    if (outstandingBalance > 0.001) {
+      totalsBody.push([
+        { content: 'Total Outstanding', styles: { halign: 'right', fontStyle: 'bold', textColor: [180, 20, 20], fillColor: [254, 242, 242] } },
+        { content: `LKR${this.fmt(outstandingBalance)}`, styles: { halign: 'right', fontStyle: 'bold', textColor: [180, 20, 20], fillColor: [254, 242, 242] } },
+      ]);
+    }
+
+    autoTable(doc, {
+      body: totalsBody,
       startY: afterTable + 2,
       theme: 'plain',
       styles: { fontSize: 9.5, lineWidth: 0, cellPadding: { top: 5, bottom: 5, left: 8, right: 8 } },

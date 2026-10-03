@@ -16,6 +16,7 @@ import { InvoicePdfService } from '../../../core/services/invoice-pdf.service';
 import { Router } from '@angular/router';
 import { SaleDetailDialogComponent } from '../sale-detail/sale-detail-dialog.component';
 import { VehicleNoDialogComponent } from './vehicle-no-dialog/vehicle-no-dialog.component';
+import { PaymentApiService } from '../../../core/services/payment-api.service';
 
 @Component({
   selector: 'app-sale-list',
@@ -72,7 +73,8 @@ export class SaleListComponent implements OnInit {
     private customerService: CustomerService,
     private invoicePdf: InvoicePdfService,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private paymentApi:PaymentApiService 
   ) { }
 
   ngOnInit(): void {
@@ -252,30 +254,30 @@ export class SaleListComponent implements OnInit {
 
   // ── Invoice ───────────────────────────────────────────────────────────────
 
-  downloadInvoice(sale: Sale): void {
-    if (this.downloadingId()) return;
-    this.downloadingId.set(sale.saleId);
-    forkJoin({
-      saleDetail: this.saleService.getById(sale.saleId),
-      customer: this.customerService.getById(sale.customerId)
-    }).subscribe({
-      next: ({ saleDetail, customer }) => {
-        try {
-          this.invoicePdf.generate(saleDetail.data, customer.data);
-          this.downloadingId.set(null);
-          this.showSuccess(`Invoice ${sale.saleNo} downloaded.`);
-        } catch {
-          this.downloadingId.set(null);
-          this.error.set('Failed to generate invoice PDF.');
-        }
-      },
-      error: () => {
+downloadInvoice(sale: Sale): void {
+  if (this.downloadingId()) return;
+  this.downloadingId.set(sale.saleId);
+  forkJoin({
+    saleDetail: this.saleService.getById(sale.saleId),
+    customer: this.customerService.getById(sale.customerId),
+    outstanding: this.paymentApi.getCustomerOutstanding(sale.customerId)
+  }).subscribe({
+    next: ({ saleDetail, customer, outstanding }) => {
+      try {
+        this.invoicePdf.generate(saleDetail.data, customer.data, outstanding?.data?.outstanding ?? 0);
         this.downloadingId.set(null);
-        this.error.set('Failed to load invoice data.');
+        this.showSuccess(`Invoice ${sale.saleNo} downloaded.`);
+      } catch {
+        this.downloadingId.set(null);
+        this.error.set('Failed to generate invoice PDF.');
       }
-    });
-  }
-
+    },
+    error: () => {
+      this.downloadingId.set(null);
+      this.error.set('Failed to load invoice data.');
+    }
+  });
+}
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   private computeSummary(totals?: any): void {
