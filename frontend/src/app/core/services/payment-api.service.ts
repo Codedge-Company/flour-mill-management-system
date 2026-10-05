@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment.prod';
 import { Payment, SaleCreditSummary, AddPaymentRequest } from '../models/payment.model';
@@ -81,5 +81,22 @@ printCustomerDueSlip(customerId: string): Observable<any> {
   }
 getCustomerOutstanding(customerId: string): Observable<{ success: boolean; data: { outstanding: number } }> {
   return this.http.get<any>(`${this.base}/customer/${customerId}/outstanding`);
+}
+getPaymentsInRange(dateFrom?: string, dateTo?: string): Observable<any[]> {
+  let params = new HttpParams();
+  if (dateFrom) params = params.set('dateFrom', dateFrom);
+  if (dateTo)   params = params.set('dateTo', dateTo);
+  return this.http.get<any>(this.base, { params }).pipe(
+    map(res => (res.data ?? []).map((p: any) => ({
+      paymentNo:    p.payment_no,
+      saleNo:       p.sale_id?.sale_no ?? '',
+      customerName: p.customer_id?.name ?? '',
+      customerCode: p.customer_id?.customer_code ?? '',
+      amount:       p.amount ?? 0,
+      paymentDate:  p.payment_date,
+      notes:        p.notes ?? '',
+      recordedBy:   p.recorded_by?.full_name ?? p.recorded_by?.username ?? '',
+    })))
+  );
 }
 }

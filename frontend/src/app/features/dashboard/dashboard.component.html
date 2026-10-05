@@ -73,7 +73,17 @@
         </div>
       </div>
       }
-
+      <!-- Download PDF summary report -->
+      <button type="button" class="report-btn" (click)="downloadReport()" [disabled]="reportLoading()"
+        pTooltip="Download PDF summary for the selected period" tooltipPosition="bottom">
+        @if (reportLoading()) {
+        <span class="report-spinner"></span>
+        <span>Generating…</span>
+        } @else {
+        <i class="pi pi-file-pdf"></i>
+        <span>Download Report</span>
+        }
+      </button>
       <!-- Refresh -->
       <p-button icon="pi pi-refresh" [rounded]="true" [text]="true" severity="secondary" (onClick)="refresh()"
         styleClass="topbar-icon-btn" [loading]="loading()" pTooltip="Refresh data" tooltipPosition="bottom">

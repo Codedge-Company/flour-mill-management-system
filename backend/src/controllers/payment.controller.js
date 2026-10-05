@@ -58,3 +58,9 @@ exports.getCustomerOutstanding = async (req, res, next) => {
     res.json({ success: true, data: { outstanding } });
   } catch (e) { next(e); }
 };
+exports.getAll = async (req, res, next) => {
+  try {
+    const { dateFrom, dateTo } = req.query;
+    res.json({ success: true, data: await paymentService.getAllInRange({ dateFrom, dateTo }) });
+  } catch (e) { next(e); }
+};

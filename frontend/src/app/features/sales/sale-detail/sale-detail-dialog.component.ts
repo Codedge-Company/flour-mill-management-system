@@ -7,6 +7,7 @@ import { PaymentApiService } from '../../../core/services/payment-api.service';
 import { Sale } from '../../../core/models/sale';
 import { Payment } from '../../../core/models/payment.model';
 import { LkrCurrencyPipe } from '../../../shared/pipes/lkr-currency.pipe';
+import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-sale-detail-dialog',
@@ -30,7 +31,8 @@ export class SaleDetailDialogComponent implements OnInit {
 
   constructor(
     private saleService: SaleService,
-    private paymentService: PaymentApiService
+    private paymentService: PaymentApiService,
+    private authService: AuthService,
   ) {}
 
   ngOnInit(): void {
@@ -113,4 +115,8 @@ export class SaleDetailDialogComponent implements OnInit {
     };
     return map[method] ?? 'method-badge';
   }
+    get isAdmin(): boolean {
+    return this.authService.currentUser()?.role === 'ADMIN';
+  }
+
 }

@@ -30,9 +30,22 @@ const COMPANY_PHONE_2 = '+94-729997369';
 // Always format dates/times explicitly in Sri Lanka time — without this,
 // output depends on whatever timezone the machine/server happens to be set to.
 const CO_TZ = { timeZone: 'Asia/Colombo' };
+const DATE_OPTS = { timeZone: 'Asia/Colombo', day: '2-digit', month: '2-digit', year: 'numeric' };
+const TIME_OPTS = { timeZone: 'Asia/Colombo', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
+
+// Date + time right now, in Colombo time (used on slips printed after the sale)
+const printedAt = () => {
+  const d = new Date();
+  return {
+    date: d.toLocaleDateString('en-GB', DATE_OPTS),
+    time: d.toLocaleTimeString('en-US', TIME_OPTS),
+  };
+};
 
 const safeToFixed = (num, d = 2) =>
-  (num === undefined || num === null || isNaN(num)) ? '0.00' : Number(num).toFixed(d);
+  (num === undefined || num === null || isNaN(num))
+    ? '0.00'
+    : Number(num).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
 
 const center = (text, w = WIDTH) => {
   const t = String(text).substring(0, w);
@@ -59,6 +72,28 @@ const printHeaderLines = (opts = {}) => {
     lines.push(center(`${COMPANY_PHONE_1} / ${COMPANY_PHONE_2}`));
   }
   return lines;
+};
+
+// ── DRY RUN: save output to tmp/preview instead of sending to a printer ─────
+let dryRunCounter = 0;
+
+const toPreviewText = (buf) =>
+  buf.toString('latin1')
+    .replace(/\x1Dk\x45[\s\S]([0-9A-Z\-. $\/+%]+)/g, '\n[BARCODE: $1]\n')
+    .replace(/\x1B@/g, '')
+    .replace(/\x1B[da][\s\S]/g, '')
+    .replace(/\x1D[VhwH][\s\S]/g, '')
+    .replace(/\r\n/g, '\n');
+
+const saveDryRunOutput = (data, printerName) => {
+  const dir = path.join(__dirname, '../../tmp/preview');
+  fs.mkdirSync(dir, { recursive: true });
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const base = path.join(dir, `thermal_${stamp}_${String(++dryRunCounter).padStart(3, '0')}`);
+  fs.writeFileSync(`${base}.bin`, data);
+  fs.writeFileSync(`${base}.txt`, toPreviewText(data), 'utf8');
+  logger.info(`[DRY RUN] "${printerName}" output saved: ${base}.txt`);
+  return { success: true, method: 'dry_run', file: `${base}.txt` };
 };
 
 // CODE39 Function B: GS k 69 <len> <data>
@@ -93,8 +128,8 @@ const buildReceiptText = (sale, title, options = {}) => {
   nl(center(title));
   nl(divider(WIDTH, '='));
   nl(leftRight('SALE NO:', sale.sale_no || 'N/A'));
-  nl(leftRight('DATE:', date.toLocaleDateString('en-LK', CO_TZ)));
-  nl(leftRight('TIME:', date.toLocaleTimeString('en-LK', CO_TZ)));
+  nl(leftRight('DATE:', date.toLocaleDateString('en-GB', DATE_OPTS)));
+  nl(leftRight('TIME:', date.toLocaleTimeString('en-US', TIME_OPTS)));
   nl(leftRight('CUSTOMER:', sale.customer_id?.name || 'N/A'));
   nl(leftRight('CASHIER:', sale.created_by_user_id?.full_name || 'POS User'));
   nl(divider());
@@ -193,8 +228,8 @@ const formatStoreRoomReceipt = (sale) => {
   nl(center('STORE ROOM RECEIPT'));
   nl(divider(WIDTH, '='));
   nl(leftRight('SALE NO:', sale.sale_no || 'N/A'));
-  nl(leftRight('DATE:', date.toLocaleDateString('en-LK', CO_TZ)));
-  nl(leftRight('TIME:', date.toLocaleTimeString('en-LK', CO_TZ)));
+  nl(leftRight('DATE:', date.toLocaleDateString('en-GB', DATE_OPTS)));
+  nl(leftRight('TIME:', date.toLocaleTimeString('en-US', TIME_OPTS)));
   nl(leftRight('CUSTOMER:', sale.customer_id?.name || 'N/A'));
   nl(divider());
   nl(center('ITEMS TO RELEASE'));
@@ -230,9 +265,9 @@ const printStoreRoomReceipt = async (sale, options = {}) => {
   }
 };
 
-// ── 3. DELIVERY NOTE — vehicle no + items + qty ──────────────────────────────
+// ── 3. DELIVERY NOTE — vehicle no + items + qty (dispatch date + time) ──────
 const formatDeliveryNote = (sale, vehicleNo) => {
-  const date = new Date(sale.sale_datetime || sale.createdAt || Date.now());
+  const now = printedAt();
   const L = [];
   const nl = (t = '') => L.push(t);
 
@@ -241,7 +276,8 @@ const formatDeliveryNote = (sale, vehicleNo) => {
   nl(center('DELIVERY NOTE'));
   nl(divider(WIDTH, '='));
   nl(leftRight('SALE NO:', sale.sale_no || 'N/A'));
-  nl(leftRight('DATE:', date.toLocaleDateString('en-LK', CO_TZ)));
+  nl(leftRight('DATE:', now.date));
+  nl(leftRight('TIME:', now.time));
   nl(leftRight('CUSTOMER:', sale.customer_id?.name || 'N/A'));
   nl(leftRight('VEHICLE NO:', vehicleNo || 'N/A'));
   nl(divider());
@@ -280,6 +316,7 @@ const printDeliveryNote = async (sale, vehicleNo, options = {}) => {
 
 // ── 4. DUE PAYMENT SLIP (Credit Payments page) ───────────────────────────────
 const formatDueSlip = ({ sale, customer, totalPaid, balanceDue }) => {
+  const now = printedAt();
   const L = [];
   const nl = (t = '') => L.push(t);
 
@@ -288,7 +325,8 @@ const formatDueSlip = ({ sale, customer, totalPaid, balanceDue }) => {
   nl(center('DUE PAYMENT SLIP'));
   nl(divider(WIDTH, '='));
   nl(leftRight('SALE NO:', sale.sale_no || 'N/A'));
-  nl(leftRight('DATE:', new Date(sale.sale_datetime).toLocaleDateString('en-LK', CO_TZ)));
+  nl(leftRight('SALE DATE:', new Date(sale.sale_datetime).toLocaleDateString('en-GB', DATE_OPTS)));
+  nl(leftRight('PRINTED:', `${now.date} ${now.time}`));
   nl(leftRight('CUSTOMER:', customer?.name || 'N/A'));
   nl(leftRight('CODE:', customer?.customer_code || 'N/A'));
   nl(divider());
@@ -327,7 +365,7 @@ function buildDueSlipPdf({ sale, customer, totalPaid, balanceDue }) {
 
     doc.fontSize(10);
     doc.text(`Sale No: ${sale.sale_no || 'N/A'}`);
-    doc.text(`Date: ${new Date(sale.sale_datetime).toLocaleDateString('en-LK', CO_TZ)}`);
+    doc.text(`Date: ${new Date(sale.sale_datetime).toLocaleDateString('en-GB', DATE_OPTS)}`);
     doc.text(`Customer: ${customer?.name || 'N/A'} (${customer?.customer_code || ''})`);
     doc.moveDown();
 
@@ -482,6 +520,7 @@ if ($result -eq 'OK') { Write-Output 'PRINT_OK' } else { Write-Error "PRINT_FAIL
 };
 
 const printToWindowsPrinterUSB = async (data, printerName) => {
+  if (process.env.PRINT_DRY_RUN === 'true') return saveDryRunOutput(data, printerName);
   try {
     return await printRawWithCSharp(data, printerName);
   } catch (err) {
@@ -499,6 +538,7 @@ const testPrinter = async (options = {}) => {
 
 // ── CUSTOMER-LEVEL DUE SLIP (all pending sales) ──────────────────────────────
 const formatCustomerDueSlip = ({ customer, summaries }) => {
+  const now = printedAt();
   const L = [];
   const nl = (t = '') => L.push(t);
 
@@ -508,7 +548,8 @@ const formatCustomerDueSlip = ({ customer, summaries }) => {
   nl(divider(WIDTH, '='));
   nl(leftRight('CUSTOMER:', customer?.name || 'N/A'));
   nl(leftRight('CODE:', customer?.customer_code || 'N/A'));
-  nl(leftRight('DATE:', new Date().toLocaleDateString('en-LK', CO_TZ)));
+  nl(leftRight('DATE:', now.date));
+  nl(leftRight('TIME:', now.time));
   nl(divider());
   nl(center('PENDING SALES'));
   nl(divider());
@@ -518,7 +559,7 @@ const formatCustomerDueSlip = ({ customer, summaries }) => {
   let totalBalance = 0;
 
   summaries.forEach((s) => {
-    nl(leftRight(s.sale.sale_no, new Date(s.sale.sale_datetime).toLocaleDateString('en-LK', CO_TZ)));
+    nl(leftRight(s.sale.sale_no, new Date(s.sale.sale_datetime).toLocaleDateString('en-GB', DATE_OPTS)));
     nl(leftRight('  Invoice:', 'LKR ' + safeToFixed(s.sale.total_revenue)));
     nl(leftRight('  Paid:', 'LKR ' + safeToFixed(s.totalPaid)));
     nl(leftRight('  Balance:', 'LKR ' + safeToFixed(s.balanceDue)));

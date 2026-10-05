@@ -1324,3 +1324,77 @@
     padding: 4px 10px;
   }
 }
+/* ─── REPORT BUTTON ──────────────────────────────────────────────────────── */
+.report-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 34px;
+  min-width: 142px;              /* keeps the width steady while loading */
+  padding: 0 16px;
+  border: 1px solid #1d4ed8;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: .2px;
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 1px 2px rgba(37, 99, 235, .25), inset 0 1px 0 rgba(255, 255, 255, .18);
+  transition: background .15s, box-shadow .15s, transform .15s;
+}
+
+.report-btn .pi {
+  font-size: 14px;
+}
+
+.report-btn:hover:not(:disabled) {
+  background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%);
+  box-shadow: 0 4px 10px rgba(37, 99, 235, .3), inset 0 1px 0 rgba(255, 255, 255, .18);
+  transform: translateY(-1px);
+}
+
+.report-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(37, 99, 235, .25);
+}
+
+.report-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, .35);
+}
+
+.report-btn:disabled {
+  opacity: .8;
+  cursor: progress;
+}
+
+.report-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, .4);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: report-spin .7s linear infinite;
+}
+
+@keyframes report-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Narrow screens: icon-only so the topbar doesn't overflow */
+@media (max-width: 1280px) {
+  .report-btn {
+    min-width: 34px;
+    width: 34px;
+    padding: 0;
+  }
+
+  .report-btn span:not(.report-spinner) {
+    display: none;
+  }
+}

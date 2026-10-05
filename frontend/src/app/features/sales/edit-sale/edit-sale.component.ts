@@ -15,6 +15,7 @@ import { SaleItemRow, PaymentMethod } from '../../../core/models/sale';
 import { LkrCurrencyPipe } from '../../../shared/pipes/lkr-currency.pipe';
 import { PaymentApiService } from '../../../core/services/payment-api.service';
 import { ApiResponse } from '../../../core/models/api-response';
+import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-edit-sale',
@@ -116,7 +117,8 @@ export class EditSaleComponent implements OnInit {
     private inventoryService: InventoryService,
     private paymentService: PaymentApiService,
     private router: Router,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private authService: AuthService,
   ) {
     this.headerForm = this.fb.group({
       customerId: [null, Validators.required],
@@ -436,4 +438,8 @@ export class EditSaleComponent implements OnInit {
     delete errors[index];
     this.stockErrors.set(errors);
   }
+  get isAdmin(): boolean {
+    return this.authService.currentUser()?.role === 'ADMIN';
+  }
+
 }

@@ -10,6 +10,7 @@ router.use(authenticate);
 // Create a partial payment (ADMIN only)
 router.post('/', authorizeRole('ADMIN'), ctrl.addPayment);
 
+router.get('/', ctrl.getAll);
 // Get a single payment
 router.get('/:id', ctrl.getById);
 

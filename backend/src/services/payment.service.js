@@ -245,4 +245,19 @@ const getCustomerTotalOutstanding = async (customer_id) => {
   }
   return total;
 };
-module.exports = { addPayment, getBySale, getByCustomer, getCreditSummaryByCustomer, getById, remove, getTotalPaid, printDueSlip, printCustomerDueSlip, sendPaymentSlipToCustomer, getCustomerTotalOutstanding  };
+// ── All payments in a date range (used by the summary report) ───────────────
+const getAllInRange = async ({ dateFrom, dateTo } = {}) => {
+  const q = {};
+  if (dateFrom || dateTo) {
+    q.payment_date = {};
+    if (dateFrom) q.payment_date.$gte = new Date(`${dateFrom}T00:00:00+05:30`);
+    if (dateTo)   q.payment_date.$lte = new Date(`${dateTo}T23:59:59.999+05:30`);
+  }
+  return Payment.find(q)
+    .populate('sale_id', 'sale_no total_revenue')
+    .populate('customer_id', 'name customer_code')
+    .populate('recorded_by', 'full_name username')
+    .sort({ payment_date: 1 });
+};
+
+module.exports = { addPayment, getBySale, getByCustomer, getCreditSummaryByCustomer, getById, remove, getTotalPaid, printDueSlip, printCustomerDueSlip, sendPaymentSlipToCustomer, getCustomerTotalOutstanding, getAllInRange  };

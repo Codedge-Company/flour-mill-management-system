@@ -194,6 +194,17 @@ function buildInvoicePdf(sale, customer, options = {}) {
 }
 
 async function printInvoiceSilently(sale, customer, options = {}) {
+  if (process.env.PRINT_DRY_RUN === 'true') {
+    const filePath = await buildInvoicePdf(sale, customer, options);
+    const dir = path.join(__dirname, '../../tmp/preview');
+    fs.mkdirSync(dir, { recursive: true });
+    const dest = path.join(dir, `invoice_${sale.sale_no}_${Date.now()}.pdf`);
+    fs.copyFileSync(filePath, dest);
+    try { fs.unlinkSync(filePath); } catch (_) {}
+    logger.info(`[DRY RUN] Invoice saved: ${dest}`);
+    return { success: true, method: 'dry_run', file: dest };
+  }
+
   if (!fs.existsSync(SUMATRA_PATH)) {
     throw new Error(`SumatraPDF.exe not found at ${SUMATRA_PATH}`);
   }

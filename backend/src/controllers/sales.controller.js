@@ -106,7 +106,19 @@ exports.markAsPaid = async (req, res, next) => {
 exports.reprintReceipt = async (req, res, next) => {
     try {
         const sale = await salesService.getById(req.params.id);
-        const result = await printerService.printSale(sale, 'thermal', { printerName: RECEIPT_PRINTER_NAME });
+
+        let outstandingBalance = 0;
+        try {
+            const custId = sale.customer_id?._id ?? sale.customer_id;
+            outstandingBalance = await paymentService.getCustomerTotalOutstanding(custId);
+        } catch (err) {
+            console.error('[Outstanding] Failed to compute:', err.message);
+        }
+
+        const result = await printerService.printSale(sale, 'thermal', {
+            printerName: RECEIPT_PRINTER_NAME,
+            outstandingBalance,
+        });
         res.json({ success: result.success, data: result });
     } catch (e) { next(e); }
 };
@@ -115,7 +127,18 @@ exports.reprintInvoice = async (req, res, next) => {
     try {
         const sale = await salesService.getById(req.params.id);
         const customer = sale.customer_id;
-        const result = await invoicePrinterService.printInvoiceSilently(sale, customer, { printerName: INVOICE_PRINTER_NAME });
+
+        let outstandingBalance = 0;
+        try {
+            outstandingBalance = await paymentService.getCustomerTotalOutstanding(customer?._id ?? customer);
+        } catch (err) {
+            console.error('[Outstanding] Failed to compute:', err.message);
+        }
+
+        const result = await invoicePrinterService.printInvoiceSilently(sale, customer, {
+            printerName: INVOICE_PRINTER_NAME,
+            outstandingBalance,
+        });
         res.json({ success: true, data: result });
     } catch (e) { next(e); }
 };

@@ -31,6 +31,7 @@ import { LowStockAlertPanelComponent }
 import { LkrCurrencyPipe } from '../../shared/pipes/lkr-currency.pipe';
 import { SaleService } from '../../core/services/sale.service';
 import { SaleFilters } from '../../core/models/sale';
+import { SummaryReportService } from '../../core/services/summary-report.service';
 
 // ── TYPE DEFINITION ─────────────────────────────────────────────────────────
 type RangePreset = 'all' | 'today' | 'yesterday' | '7days' | '30days' | 'custom';
@@ -83,7 +84,8 @@ export class DashboardComponent implements OnInit {
     { label: 'Bars', value: 'bars' },
     { label: 'Trend', value: 'trend' },
   ];
-
+  currentRange = signal<DateRange>({ dateFrom: null as any, dateTo: null as any });
+  reportLoading = signal(false);
   // ── Computed ───────────────────────────────────────────────────────────────
   summary = computed(() => this.data()?.summary ?? null);
   dailyMetrics = computed(() => this.data()?.dailyMetrics ?? []);
@@ -260,6 +262,7 @@ export class DashboardComponent implements OnInit {
     private inventoryService: InventoryService,
     private notificationService: NotificationService,
     private saleService: SaleService,
+    private reportService: SummaryReportService,
   ) { }
 
   // ── LIFECYCLE ──────────────────────────────────────────────────────────────
@@ -363,7 +366,7 @@ export class DashboardComponent implements OnInit {
       dateFrom: range.dateFrom || null as any,
       dateTo: range.dateTo || null as any,
     };
-
+    this.currentRange.set(safeRange);
     this.dashboardService.getData(safeRange).subscribe({
       next: (res) => {
         this.data.set(res.data);
@@ -379,7 +382,18 @@ export class DashboardComponent implements OnInit {
 
     this.loadSoldWeights(safeRange);
   }
-
+async downloadReport(): Promise<void> {
+  if (this.reportLoading()) return;
+  this.reportLoading.set(true);
+  try {
+    await this.reportService.generate(this.currentRange());
+  } catch (err) {
+    console.error('Report error:', err);
+    this.error.set('Failed to generate the report. Please try again.');
+  } finally {
+    this.reportLoading.set(false);
+  }
+}
   private loadInventory(): void {
     this.inventoryService.getAll().subscribe({
       next: res => {
