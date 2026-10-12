@@ -39,7 +39,9 @@ const remove = async (id) => {
 };
 
 const getEffectivePrice = async (customerId, packTypeId) => {
-  const rule = await CustomerPriceRule.findOne({ customer_id: customerId, pack_type_id: packTypeId });
+  const rule = await CustomerPriceRule
+    .findOne({ customer_id: customerId, pack_type_id: packTypeId, is_active: true })
+    .sort({ effective_from: -1 });
   if (rule) {
     return { unit_sell_price: rule.unit_sell_price };
   }
