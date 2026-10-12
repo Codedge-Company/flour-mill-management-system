@@ -22,7 +22,6 @@ const WIDTH = 42;
 
 // ── Shared header (used on every printed slip/receipt) ──────────────────────
 const COMPANY_NAME = 'Matheesha Flour Mill';
-const COMPANY_ADDRESS = 'North Central Province';
 const COMPANY_EMAIL = 'matheeshaflourmill@gmail.com';
 const COMPANY_PHONE_1 = '+94-779337369';
 const COMPANY_PHONE_2 = '+94-729997369';
@@ -65,7 +64,6 @@ const divider = (w = WIDTH, ch = '-') => ch.repeat(w);
 const printHeaderLines = (opts = {}) => {
   const lines = [
     center(COMPANY_NAME),
-    center(COMPANY_ADDRESS),
     center(COMPANY_EMAIL),
   ];
   if (opts.includePhones) {
@@ -357,7 +355,6 @@ function buildDueSlipPdf({ sale, customer, totalPaid, balanceDue }) {
     doc.on('error', reject);
 
     doc.fontSize(18).text(COMPANY_NAME.toUpperCase(), { align: 'center' });
-    doc.fontSize(10).text(COMPANY_ADDRESS, { align: 'center' });
     doc.text(COMPANY_EMAIL, { align: 'center' });
     doc.moveDown();
     doc.fontSize(14).text('Due Payment Slip', { align: 'center' });
@@ -645,7 +642,6 @@ function buildDueSlipPdfFile({ sale, customer, payment, totalPaid, balanceDue, i
     doc.text(isFullyPaid ? 'PAYMENT RECEIPT' : 'PAYMENT SLIP', mL, 36, { width: rEdge - mL, align: 'right' });
 
     doc.font('Helvetica').fontSize(9).fillColor(GRAY);
-    doc.text(COMPANY_ADDRESS, mL, 55);
     doc.text(COMPANY_EMAIL, mL, 67);
 
     doc.fillColor(INK_SOFT);

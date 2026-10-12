@@ -1,203 +1,212 @@
-const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
-const qrcode = require('qrcode-terminal');
-const QRCode = require('qrcode');
-const fs = require('fs');
+// whatsapp.service.js — WhatsApp Business Cloud API (Meta). No browser, no QR, no session.
+//
+// Required env:
+//   WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID
+// Optional env:
+//   WHATSAPP_API_VERSION (v25.0), NOTIFY_WHATSAPP_TO (internal alerts number),
+//   WHATSAPP_TEMPLATE_LANG (en), WHATSAPP_TEMPLATE_TEXT (text template name),
+//   WHATSAPP_TEMPLATE_DOCUMENT (document-header template name)
+//
+// How sending works:
+//   • Free-form text / document is tried first. It is free and works whenever the
+//     recipient has messaged the business number in the last 24 hours.
+//   • If WhatsApp answers "outside the 24h window" (error 131047), the same message
+//     is re-sent through the approved template (paid, ~LKR 3.40 for utility).
+//   • Customers normally never message first, so documents to customers go via the template.
 
-// ── Windows fix: LocalAuth.logout() is called internally by whatsapp-web.js
-// whenever the client disconnects - completely separate from our own
-// teardownClient(). On Windows, Chromium sometimes hasn't released the
-// session lockfile yet, causing an EBUSY error. That internal call has no
-// .catch() anywhere reachable from our code, so the rejection is unhandled
-// and crashes the whole Node process. This patch makes logout() swallow
-// cleanup errors instead of throwing - the session files get cleaned up
-// on a best-effort basis, and a failed cleanup here is harmless (worst
-// case, a stale file lingers until the next successful logout).
-const originalLogout = LocalAuth.prototype.logout;
-LocalAuth.prototype.logout = async function (...args) {
-  try {
-    return await originalLogout.apply(this, args);
-  } catch (err) {
-    console.warn('[WhatsApp] LocalAuth cleanup failed (ignored, non-fatal):', err.message);
-  }
-};
+const TOKEN = () => process.env.WHATSAPP_TOKEN;
+const PHONE_ID = () => process.env.WHATSAPP_PHONE_NUMBER_ID;
+const API_VERSION = () => process.env.WHATSAPP_API_VERSION || 'v25.0';
+const TO = () => process.env.NOTIFY_WHATSAPP_TO || '94779337369';
+const TEMPLATE_LANG = () => process.env.WHATSAPP_TEMPLATE_LANG || 'en';
+const TEMPLATE_TEXT = () => process.env.WHATSAPP_TEMPLATE_TEXT || '';
+const TEMPLATE_DOC = () => process.env.WHATSAPP_TEMPLATE_DOCUMENT || '';
 
-const TO = process.env.NOTIFY_WHATSAPP_TO || '94779337369';
+const WINDOW_CLOSED_CODES = new Set([131047, 470]);
+const WINDOW_MEMO_MS = 30 * 60 * 1000;
+const windowClosedUntil = new Map(); // recipient -> timestamp, skips the doomed free-form attempt
 
-let client = null;
-let qrData = { qrImage: null, ready: false };
-let starting = false;
-let reconnectTimer = null;
-
-// ── Queue for messages sent while client isn't ready ────────────────────────
-const pendingMessages = [];
-const MAX_QUEUE_SIZE = 50;
-
-// ── Puppeteer args ──
-const PUPPETEER_ARGS = [
-  '--no-sandbox',
-  '--disable-setuid-sandbox',
-  '--disable-dev-shm-usage',
-  '--disable-accelerated-2d-canvas',
-  '--disable-gpu',
-  '--no-first-run',
-  '--disable-extensions',
-  '--disable-background-networking',
-  '--disable-default-apps',
-  '--mute-audio',
-  '--disable-sync',
-];
-
-function getChromePath() {
-  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-    return process.env.PUPPETEER_EXECUTABLE_PATH;
-  }
-  if (process.platform === 'win32') {
-    const windowsPaths = [
-      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-    ];
-    for (const p of windowsPaths) {
-      if (fs.existsSync(p)) return p;
-    }
-  }
-  return undefined;
+function isConfigured() {
+  return !!(TOKEN() && PHONE_ID());
 }
 
-function initWhatsApp() {
-  if (client || starting) return;
-  starting = true;
+const digits = (n) => String(n || '').replace(/\D/g, '');
 
-  console.log('[WhatsApp] Initialising client...');
+// ── Low-level Graph API call ────────────────────────────────────────────────
+async function graph(pathSuffix, { json, form } = {}, attempt = 0) {
+  if (typeof fetch !== 'function') throw new Error('WhatsApp needs Node 18+ (global fetch)');
+  if (!isConfigured()) throw Object.assign(new Error('WhatsApp is not configured (WHATSAPP_TOKEN / WHATSAPP_PHONE_NUMBER_ID)'), { code: 'NOT_CONFIGURED' });
 
-  const executablePath = getChromePath();
+  const url = `https://graph.facebook.com/${API_VERSION()}/${PHONE_ID()}/${pathSuffix}`;
+  const headers = { Authorization: `Bearer ${TOKEN()}` };
+  let body;
+  if (json) { headers['Content-Type'] = 'application/json'; body = JSON.stringify(json); }
+  else body = form;
 
-  client = new Client({
-    authStrategy: new LocalAuth({ clientId: 'flour-mill' }),
-    puppeteer: {
-      headless: 'new',
-      args: PUPPETEER_ARGS,
-      ...(executablePath ? { executablePath } : {}),
+  let res;
+  try {
+    res = await fetch(url, { method: 'POST', headers, body });
+  } catch (netErr) {
+    if (attempt < 1) return graph(pathSuffix, { json, form }, attempt + 1);
+    throw Object.assign(new Error('WhatsApp network error: ' + netErr.message), { code: 'NETWORK' });
+  }
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    if (res.status >= 500 && attempt < 1) return graph(pathSuffix, { json, form }, attempt + 1);
+    const e = data.error || {};
+    throw Object.assign(new Error(e.error_data?.details || e.message || `WhatsApp HTTP ${res.status}`), {
+      code: e.code, status: res.status,
+    });
+  }
+  return data;
+}
+
+// Template variables: no newlines/tabs, no long runs of spaces, max 1000 chars.
+function flatten(text, max = 1000) {
+  let t = String(text ?? '')
+    .replace(/\*/g, '')
+    .replace(/[ \t]*\r?\n+[ \t]*/g, ' | ')
+    .replace(/ {2,}/g, ' ')
+    .trim();
+  if (t.length > max) t = t.slice(0, max - 1).trimEnd() + '…';
+  return t;
+}
+
+// ── Senders ─────────────────────────────────────────────────────────────────
+const sendTextRaw = (to, body) =>
+  graph('messages', { json: { messaging_product: 'whatsapp', to, type: 'text', text: { preview_url: false, body } } });
+
+// header: { type: 'document' | 'image', media: { id, filename? } }
+const sendTemplateRaw = (to, name, bodyText, header) =>
+  graph('messages', {
+    json: {
+      messaging_product: 'whatsapp', to, type: 'template',
+      template: {
+        name, language: { code: TEMPLATE_LANG() },
+        components: [
+          ...(header ? [{ type: 'header', parameters: [{ type: header.type, [header.type]: header.media }] }] : []),
+          { type: 'body', parameters: [{ type: 'text', text: flatten(bodyText) }] },
+        ],
+      },
     },
-    webVersionCache: { type: 'none' },
   });
 
-  client.on('qr', async (qr) => {
-    console.log('[WhatsApp] QR received');
-    qrcode.generate(qr, { small: true });
-    try {
-      qrData = { qrImage: await QRCode.toDataURL(qr), ready: false };
-    } catch (e) {
-      console.error('[WhatsApp] QR error:', e.message);
-    }
-  });
-
-  client.on('ready', () => {
-    console.log('[WhatsApp] Client ready');
-    qrData = { qrImage: null, ready: true };
-    starting = false;
-    flushQueue();
-  });
-
-  client.on('auth_failure', (msg) => {
-    console.error('[WhatsApp] Auth failure:', msg);
-    teardownClient();
-  });
-
-  client.on('disconnected', (reason) => {
-    console.warn('[WhatsApp] Disconnected:', reason);
-    teardownClient();
-    scheduleReconnect();
-  });
-
-  client.initialize().catch((err) => {
-    console.error('[WhatsApp] Initialize failed:', err.message);
-    teardownClient();
-    scheduleReconnect();
-  });
+async function uploadMedia(buffer, filename, mime = 'application/pdf') {
+  const form = new FormData();
+  form.append('messaging_product', 'whatsapp');
+  form.append('type', mime);
+  form.append('file', new Blob([buffer], { type: mime }), filename);
+  const r = await graph('media', { form });
+  return r.id;
 }
 
-function teardownClient() {
-  if (client) {
-    client.destroy().catch(() => {});
+// Optional banner for the alert template (WHATSAPP_ALERT_IMAGE = path to a PNG/JPG).
+// Only set it if `mill_alert` was created with an Image header. The upload is reused for 25 days.
+let alertImageCache = { id: null, at: 0 };
+async function getAlertImageHeader() {
+  const configured = process.env.WHATSAPP_ALERT_IMAGE;
+  if (!configured) return undefined;
+  // a relative path is resolved from the backend folder, so it works wherever the app is installed
+  const file = require('path').resolve(__dirname, '..', '..', configured);
+  if (alertImageCache.id && Date.now() - alertImageCache.at < 25 * 24 * 3600 * 1000) {
+    return { type: 'image', media: { id: alertImageCache.id } };
   }
-  client = null;
-  starting = false;
-  qrData = { qrImage: null, ready: false };
+  const fs = require('fs');
+  const buf = await fs.promises.readFile(file);
+  const mime = /\.jpe?g$/i.test(file) ? 'image/jpeg' : 'image/png';
+  const id = await uploadMedia(buf, require('path').basename(file), mime);
+  alertImageCache = { id, at: Date.now() };
+  return { type: 'image', media: { id } };
 }
 
-function scheduleReconnect() {
-  if (reconnectTimer) return;
-  reconnectTimer = setTimeout(() => {
-    reconnectTimer = null;
-    console.log('[WhatsApp] Attempting reconnect...');
-    initWhatsApp();
-  }, 10_000);
-}
+const isWindowClosed = (to) => (windowClosedUntil.get(to) || 0) > Date.now();
+const markWindowClosed = (to) => windowClosedUntil.set(to, Date.now() + WINDOW_MEMO_MS);
 
-function getWhatsAppQr() {
-  initWhatsApp();
-  return qrData;
-}
+const ok = (extra = {}) => ({ success: true, ...extra });
+const fail = (err) => ({ success: false, error: err.message, code: err.code });
 
-// ── Queue handling ──────────────────────────────────────────────────────
-function flushQueue() {
-  if (!pendingMessages.length) return;
-  console.log(`[WhatsApp] Flushing ${pendingMessages.length} queued message(s)`);
-  const toSend = pendingMessages.splice(0, pendingMessages.length);
-  toSend.forEach((msg) => sendWhatsApp(msg));
-}
-
-async function sendWhatsApp(message) {
-  if (!client || !qrData.ready) {
-    console.warn('[WhatsApp] Client not ready — queuing message.');
-    if (pendingMessages.length < MAX_QUEUE_SIZE) {
-      pendingMessages.push(message);
-    } else {
-      console.warn('[WhatsApp] Queue full — dropping oldest message.');
-      pendingMessages.shift();
-      pendingMessages.push(message);
-    }
-    initWhatsApp();
-    return;
-  }
-
+// allowTemplate: only messages that must reach the recipient even outside the 24h window
+// (the end-of-day summary) may fall back to the paid template. Everything else is free-form only.
+async function sendSmartText(toNumber, message, allowTemplate = false) {
+  const to = digits(toNumber);
+  if (!to) return fail(new Error('No destination number'));
+  const useTemplate = allowTemplate && !!TEMPLATE_TEXT();
   try {
-    await client.sendMessage(`${TO}@c.us`, message);
-    console.log('[WhatsApp] Sent to', TO);
+    if (!isWindowClosed(to) || !useTemplate) {
+      try {
+        const r = await sendTextRaw(to, message);
+        return ok({ id: r.messages?.[0]?.id, mode: 'text' });
+      } catch (e) {
+        if (!(WINDOW_CLOSED_CODES.has(e.code) && useTemplate)) throw e;
+        markWindowClosed(to);
+      }
+    }
+    const r = await sendTemplateRaw(to, TEMPLATE_TEXT(), message, await getAlertImageHeader());
+    return ok({ id: r.messages?.[0]?.id, mode: 'template' });
   } catch (err) {
-    console.error('[WhatsApp] Send failed:', err.message);
-    teardownClient();
-    scheduleReconnect();
-    if (pendingMessages.length < MAX_QUEUE_SIZE) pendingMessages.push(message);
+    console.error(`[WhatsApp] Text to ${to} failed:`, err.message);
+    return fail(err);
   }
 }
 
-// ── Send a plain text message to an ARBITRARY WhatsApp number ─────────────
-// Distinct from sendWhatsApp(), which always targets the fixed internal
-// NOTIFY_WHATSAPP_TO number - this one is for messaging a customer
-// directly (e.g. an invoice download link), so it takes the destination
-// number as a parameter. No queueing here since these are one-off,
-// time-sensitive sends tied to a specific sale/payment - if the client
-// isn't ready, the caller's own .catch() logs it and the sale/payment
-// itself is unaffected either way.
+// Internal alert to the fixed NOTIFY_WHATSAPP_TO number. Never throws.
+// Free-form only (free inside the 24h window). Pass { template: true } for the one message
+// that must always arrive (end-of-day summary): it then falls back to WHATSAPP_TEMPLATE_TEXT.
+async function sendWhatsApp(message, { template = false } = {}) {
+  const r = await sendSmartText(TO(), message, template);
+  if (r.success) console.log('[WhatsApp] Sent to', TO(), `(${r.mode})`);
+  return r;
+}
+
+// Plain message to any number (customers). Never throws.
 async function sendWhatsAppTextTo(toNumber, message) {
-  if (!toNumber) {
-    console.warn('[WhatsApp] No destination number - skipping text send.');
-    return;
-  }
-  if (!client || !qrData.ready) {
-    console.warn(`[WhatsApp] Client not ready - cannot send text to ${toNumber} right now.`);
-    return;
-  }
+  if (!toNumber) { console.warn('[WhatsApp] No destination number - skipping text send.'); return fail(new Error('No destination number')); }
+  return sendSmartText(toNumber, message);
+}
+
+// Wording around a document. Must match the body of the approved `mill_document` template
+// (the template carries this text itself; here it is added for free-form document messages).
+const withDocumentFrame = (text) =>
+  `🌾 *Matheesha Flour Mill*\n\n${text}\n\n📄 Your document is attached.\n🙏 Thank you for your business!`;
+
+// PDF to any number. Never throws.
+async function sendWhatsAppDocument(toNumber, pdfBuffer, filename, caption = '') {
+  const to = digits(toNumber);
+  if (!to) { console.warn('[WhatsApp] No destination number - skipping document send.'); return fail(new Error('No destination number')); }
   try {
-    await client.sendMessage(`${toNumber}@c.us`, message);
-    console.log('[WhatsApp] Text sent to', toNumber);
+    const mediaId = await uploadMedia(pdfBuffer, filename);
+
+    if (!isWindowClosed(to) || !TEMPLATE_DOC()) {
+      try {
+        const r = await graph('messages', {
+          json: {
+            messaging_product: 'whatsapp', to, type: 'document',
+            document: { id: mediaId, filename, caption: withDocumentFrame(caption || filename).slice(0, 1000) },
+          },
+        });
+        console.log(`[WhatsApp] Document "${filename}" sent to ${to} (document)`);
+        return ok({ id: r.messages?.[0]?.id, mode: 'document' });
+      } catch (e) {
+        if (!(WINDOW_CLOSED_CODES.has(e.code) && TEMPLATE_DOC())) throw e;
+        markWindowClosed(to);
+      }
+    }
+    const r = await sendTemplateRaw(to, TEMPLATE_DOC(), caption || filename, { type: 'document', media: { id: mediaId, filename } });
+    console.log(`[WhatsApp] Document "${filename}" sent to ${to} (template)`);
+    return ok({ id: r.messages?.[0]?.id, mode: 'template' });
   } catch (err) {
-    console.error(`[WhatsApp] Text send to ${toNumber} failed:`, err.message);
+    console.error(`[WhatsApp] Document to ${to} failed:`, err.message);
+    return fail(err);
   }
 }
 
-// ── FORMAT HELPERS ──────────────────────────────────────────
+// Kept so /whatsapp routes that call it still work. There is no QR in Cloud API.
+function getWhatsAppQr() {
+  return { qrImage: null, ready: isConfigured(), cloudApi: true };
+}
+
+// ── Format helpers ──────────────────────────────────────────────────────────
 function formatTime(date) {
   return new Date(date).toLocaleTimeString('en-LK', {
     hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Colombo',
@@ -209,27 +218,30 @@ function formatDate(date) {
   });
 }
 
-// ── NOTIFICATIONS (unchanged) ──────────────────────────────────
+// Machine start/stop set a "notified" flag on success, so these must throw on failure.
+const mustSucceed = (r) => { if (!r.success) throw new Error(r.error || 'WhatsApp send failed'); return r; };
+
+// ── Notifications ───────────────────────────────────────────────────────────
 async function notifyMachineStart({ date, operator, partner, sessionNumber, startTime }) {
   const sessionLabel = sessionNumber === 1 ? '1st' : sessionNumber === 2 ? '2nd' : '3rd';
-  return sendWhatsApp(
+  return mustSucceed(await sendWhatsApp(
     `🟢 *Machine Started* — ${sessionLabel} Session\n` +
     `📅 Date: ${formatDate(date)}\n` +
     `👷 Operator: ${operator}\n` +
     `🤝 Partner: ${partner}\n` +
     `🕐 Start Time: ${formatTime(startTime)}`
-  );
+  ));
 }
 
 async function notifyMachineStop({ date, operator, partner, sessionNumber, stopTime }) {
   const sessionLabel = sessionNumber === 1 ? '1st' : sessionNumber === 2 ? '2nd' : '3rd';
-  return sendWhatsApp(
+  return mustSucceed(await sendWhatsApp(
     `🔴 *Machine Stopped* — ${sessionLabel} Session\n` +
     `📅 Date: ${formatDate(date)}\n` +
     `👷 Operator: ${operator}\n` +
     `🤝 Partner: ${partner}\n` +
     `🕐 Stop Time: ${formatTime(stopTime)}`
-  );
+  ));
 }
 
 async function notifyPackingDone({ packName, weightKg, qty, operatorName, time }) {
@@ -255,26 +267,17 @@ async function notifyStockEntry({ date, operator, partner, rawRiceReceived, inpu
     `📥 Input: ${input ?? 0} kg\n` +
     `📤 Output: ${output ?? 0} kg\n` +
     `🗑️ Rejection: ${rejection ?? 0} kg\n`;
-
-  if (rejectionDate) {
-    msg += `📆 Rejection Date: ${formatDate(rejectionDate)}\n`;
-  }
-
+  if (rejectionDate) msg += `📆 Rejection Date: ${formatDate(rejectionDate)}\n`;
   msg +=
     `━━━━━━━━━━━━━━━━━━━━\n` +
     `⚙️ Efficiency: ${efficiency}%\n` +
     `❌ Rejection Rate: ${rejRate}%`;
-
   return sendWhatsApp(msg);
 }
 
-async function notifySiftingComplete({
-  batchNo, date, operator, parts, input, output, rejection, efficiency, completedAt
-}) {
+async function notifySiftingComplete({ batchNo, date, operator, parts, input, output, rejection, efficiency, completedAt }) {
   const dateStr = new Date(date).toLocaleDateString('en-LK', { timeZone: 'Asia/Colombo' });
-  const completedStr = formatTime(completedAt);
-
-  const message = [
+  return sendWhatsApp([
     `✅ *Sifting Completed*`,
     `📦 Batch: *${batchNo}*`,
     `📅 Date: ${dateStr}`,
@@ -286,14 +289,10 @@ async function notifySiftingComplete({
     `🗑️  Rejection:  ${rejection} kg`,
     `📊 Efficiency: ${efficiency}%`,
     ``,
-    `🕐 Completed at ${completedStr}`,
-  ].join('\n');
-
-  return sendWhatsApp(message);
+    `🕐 Completed at ${formatTime(completedAt)}`,
+  ].join('\n'));
 }
 
-// ── NEW: generic low-stock alert — used by Bag Stock (Inventory) and
-// Spare Parts. Same emoji/format style as the other stock messages. ────────
 async function notifyLowStock({ itemName, category, currentQty, unit, thresholdQty }) {
   return sendWhatsApp(
     `⚠️ *Low Stock Alert*\n` +
@@ -307,51 +306,16 @@ async function notifyLowStock({ itemName, category, currentQty, unit, thresholdQ
   );
 }
 
-// ── WhatsApp notification on payment recorded ───────────────────────────────
-const notifyPaymentRecorded = async (payment, sale, balanceDue) => {
-  const message =
+const notifyPaymentRecorded = async (payment, sale, balanceDue) =>
+  sendWhatsApp(
     `💵 *Payment Received*\n` +
     `📋 Sale No: ${sale.sale_no}\n` +
     `👤 Customer: ${sale.customer_id?.name || 'N/A'}\n` +
     `🧾 Payment No: ${payment.payment_no}\n` +
     `💰 Amount Paid: LKR ${Number(payment.amount).toFixed(2)}\n` +
     `📉 Balance Remaining: LKR ${Number(balanceDue).toFixed(2)}\n` +
-    `🕐 ${new Date(payment.payment_date).toLocaleString('en-LK')}`;
-
-  return sendWhatsApp(message);
-};
-
-// ── Send a document (PDF) to an ARBITRARY WhatsApp number ──────────────────
-// Kept for reference / future retry once whatsapp-web.js fixes the @lid
-// MessageMedia bug - currently unused by the sales flow, which sends a
-// download link via sendWhatsAppTextTo() instead.
-async function sendWhatsAppDocument(toNumber, pdfBuffer, filename, caption = '') {
-  if (!toNumber) {
-    console.warn('[WhatsApp] No destination number - skipping document send.');
-    return;
-  }
-  if (!client || !qrData.ready) {
-    console.warn(`[WhatsApp] Client not ready - cannot send document to ${toNumber} right now.`);
-    initWhatsApp();
-    return;
-  }
-
-  const chatId = `${toNumber}@c.us`;
-
-  try {
-    const base64 = pdfBuffer.toString('base64');
-    const media = new MessageMedia('application/pdf', base64, filename);
-
-    await client.sendMessage(chatId, media);
-    if (caption) {
-      await client.sendMessage(chatId, caption);
-    }
-
-    console.log(`[WhatsApp] Document "${filename}" sent to`, toNumber);
-  } catch (err) {
-    console.error(`[WhatsApp] Document send to ${toNumber} failed:`, err.message);
-  }
-}
+    `🕐 ${new Date(payment.payment_date).toLocaleString('en-LK')}`
+  );
 
 module.exports = {
   notifyMachineStart,
@@ -364,5 +328,6 @@ module.exports = {
   notifySiftingComplete,
   notifyLowStock,
   notifyPaymentRecorded,
-  sendWhatsAppDocument
+  sendWhatsAppDocument,
+  _internal: { flatten },
 };

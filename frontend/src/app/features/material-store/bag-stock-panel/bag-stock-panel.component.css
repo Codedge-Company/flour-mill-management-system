@@ -67,3 +67,45 @@
   .bs-summary { gap: 14px; }
   .bs-manage-link { margin-left: 0; }
 }
+/* APPEND to the end of your existing bag-stock-panel.component.css
+   (I did not have that file, so nothing existing is replaced). */
+
+.bs-empty-row {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #f6f7f9;
+  border: 1px solid #d5dae1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.bs-empty-row.low { background: #fffbeb; border-color: #fde68a; }
+.bs-empty-row.neg { background: #fff1f2; border-color: #fecdd3; }
+
+.bs-empty-lbl { font-size: 12px; font-weight: 700; color: #4b5766;  letter-spacing: 0; }
+.bs-empty-row.low .bs-empty-lbl { color: #b45309; }
+.bs-empty-row.neg .bs-empty-lbl { color: #e11d48; }
+
+.bs-empty-view, .bs-empty-edit { display: flex; align-items: center; gap: 8px; }
+.bs-empty-val { font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.bs-empty-row.neg .bs-empty-val { color: #e11d48; }
+
+.bs-empty-edit input {
+  width: 84px; height: 36px; padding: 0 8px; text-align: center;
+  border: 1.5px solid #d5dae1; border-radius: 6px; font: 700 15px inherit; background: #fff;
+}
+.bs-empty-edit input:focus { outline: none; border-color: #4713ca; }
+
+.bs-mini {
+  height: 32px; padding: 0 12px; border-radius: 6px; border: 1px solid #d5dae1;
+  background: #fff; color: #4713ca; font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.bs-mini:hover:not(:disabled) { background: #eef0f3; }
+.bs-mini:disabled { opacity: .5; cursor: not-allowed; }
+.bs-mini--ok { background: #4713ca; color: #fff; border-color: #4713ca; }
+.bs-mini--ok:hover:not(:disabled) { background: #3a0fa8; }
+
+.bs-empty-err { margin-top: 6px; font-size: 12px; font-weight: 600; color: #e11d48; }

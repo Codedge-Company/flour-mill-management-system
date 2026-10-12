@@ -1,5 +1,5 @@
+const fs = require('fs');
 const mongoose = require('mongoose');
-const crypto = require('crypto');
 const Sale = require('../models/Sale');
 const Inventory = require('../models/Inventory');
 const StockThreshold = require('../models/StockThreshold');
@@ -12,13 +12,10 @@ const costService = require('./cost.service');
 const { calculateProfit } = require('../utils/calculateProfit');
 const { generateSequence } = require('../utils/sequence');
 const Payment = require('../models/Payment');
-const { notifyLowStock, sendWhatsApp, sendWhatsAppTextTo } = require('./whatsapp.service');
+const { notifyLowStock, sendWhatsApp, sendWhatsAppDocument } = require('./whatsapp.service');
 const { formatPhoneForWhatsApp } = require('../utils/phone');
 const invoicePrinterService = require('./invoicePrinter.service');
 const { resolveSaleDatetime, resolveEditedSaleDatetime } = require('../utils/saleDate');
-
-const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || 'https://matheeshaflourmill.lk';
-const INVOICE_LINK_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -447,19 +444,21 @@ const updateSale = async (id, { customer_id, payment_method, sale_datetime, item
         .populate('items.pack_type_id', 'pack_name weight_kg');
 };
 
-// ── Send the invoice as a WhatsApp download LINK to the customer ───────────
-// Builds the PDF, keeps the file on disk (does NOT delete it - unlike the
-// print path, which deletes right after sending to the printer), registers
-// a one-time token for it in the sales controller's link store, and sends
-// the customer a plain text message with the download URL. This sidesteps
-// the whatsapp-web.js @lid/MessageMedia bug entirely, since it's just a
-// text send - the one code path that has worked reliably throughout.
+// ── Send the invoice to the customer's WhatsApp as a PDF document ──────────
+// Builds the invoice PDF, uploads it to the WhatsApp Cloud API and sends it
+// as a document message (or through the approved document template when the
+// customer has not messaged the business in the last 24 hours). The temporary
+// PDF file is deleted afterwards. Never throws for a WhatsApp failure - the
+// sale itself must not fail because a message could not be delivered.
 const sendInvoiceToCustomer = async (sale, customer) => {
   const phone = formatPhoneForWhatsApp(customer?.phone);
   if (!phone) {
-    console.warn(`[WhatsApp] Customer ${customer?.customer_code || customer?._id} has no usable phone - skipping invoice link send.`);
+    console.warn(`[WhatsApp] Customer ${customer?.customer_code || customer?._id} has no usable phone - skipping invoice send.`);
     return;
   }
+
+  // Required lazily: payment.service.js is only needed here
+  const paymentService = require('./payment.service');
 
   let outstandingBalance = 0;
   try {
@@ -467,25 +466,21 @@ const sendInvoiceToCustomer = async (sale, customer) => {
   } catch (err) {
     console.error('[Outstanding] Failed to compute:', err.message);
   }
+
   const filePath = await invoicePrinterService.buildInvoicePdf(sale, customer, { outstandingBalance });
 
-  const InvoiceLink = require('../models/InvoiceLink');
-  const token = crypto.randomBytes(16).toString('hex');
-  await InvoiceLink.create({
-    token,
-    file_path: require('path').basename(filePath),
-    filename: `Invoice-${sale.sale_no}.pdf`,
-    expires_at: new Date(Date.now() + INVOICE_LINK_TTL_MS),
-  });
-
-  const link = `${PUBLIC_BASE_URL}/api/sales/invoices/${token}`;
-
-  await sendWhatsAppTextTo(
-    phone,
-    `🧾 Hi ${customer.name}, your invoice for sale *${sale.sale_no}* is ready.\n` +
-    `📄 View/Download: ${link}\n\n` +
-    `This link is valid for 24 hours.`
-  );
+  try {
+    const pdf = await fs.promises.readFile(filePath);
+    const result = await sendWhatsAppDocument(
+      phone,
+      pdf,
+      `Invoice-${sale.sale_no}.pdf`,
+      `Hi ${customer.name} 👋, your invoice for sale ${sale.sale_no} is ready. 🧾`
+    );
+    if (!result.success) console.error('[WhatsApp] Invoice send failed:', result.error);
+  } finally {
+    fs.promises.unlink(filePath).catch(() => {});
+  }
 };
 
 module.exports = { getAllPaginated, getAll, getById, createSale, cancelSale, remove, updateSale, markAsPaid, notifySaleCreated, sendInvoiceToCustomer };

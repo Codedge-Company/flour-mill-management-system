@@ -1,136 +1,349 @@
-<div class="mo-page">
+<div class="ds-page">
+  <svg class="ds-sprite" width="0" height="0" aria-hidden="true" focusable="false">
+    <symbol id="i-back" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></symbol>
+    <symbol id="i-next" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
+    <symbol id="i-truck" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></symbol>
+    <symbol id="i-grind" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></symbol>
+    <symbol id="i-sift" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></symbol>
+    <symbol id="i-pack" viewBox="0 0 24 24"><path d="M16.5 9.4l-9-5.19"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></symbol>
+    <symbol id="i-bag" viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></symbol>
+    <symbol id="i-count" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><polyline points="9 14 11 16 15 12"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></symbol>
+  </svg>
 
-  <!-- ══ TOPBAR ════════════════════════════════════════════════════════════ -->
-  <header class="mo-topbar">
-    <div class="mo-topbar__brand">
-      <svg class="mo-topbar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-        stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-        <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-        <line x1="12" y1="22.08" x2="12" y2="12" />
-      </svg>
-      <div>
-        <span class="mo-topbar__title">Raw Rice Stock Entry</span>
-        <span class="mo-topbar__sub">Daily Stock Tracking</span>
-      </div>
+  <!-- TOP BAR -->
+  <header class="ds-top">
+    <button type="button" class="ds-iconbtn" (click)="goBack()" aria-label="Back">
+      <svg class="ds-ico" aria-hidden="true"><use href="#i-back"/></svg>
+    </button>
+
+    <div class="ds-top__title">
+      <h1>Daily Production Sheet</h1>
+      <p>{{ dateLabel }}</p>
     </div>
 
-    <div class="mo-topbar__right">
-      <button class="mo-btn mo-btn--ghost" (click)="goBack()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="19" y1="12" x2="5" y2="12" />
-          <polyline points="12 19 5 12 12 5" />
-        </svg>
-        Back to Sessions
+    <div class="ds-date">
+      <button type="button" class="ds-iconbtn ds-iconbtn--sm" (click)="shiftDay(-1)" aria-label="Previous day">
+        <svg class="ds-ico" aria-hidden="true"><use href="#i-back"/></svg>
+      </button>
+      <input #dateInput type="date" class="ds-date__input" [value]="dateStr" [max]="maxDateStr"
+        (change)="onDateInput(dateInput)" aria-label="Sheet date" />
+      <button type="button" class="ds-iconbtn ds-iconbtn--sm" (click)="shiftDay(1)" [disabled]="dateStr >= maxDateStr" aria-label="Next day">
+        <svg class="ds-ico" aria-hidden="true"><use href="#i-next"/></svg>
       </button>
     </div>
   </header>
 
-  <main class="mo-content">
+  <main class="ds-main">
 
-    <!-- ══ CARD — Date Selection ════════════════════════════════════════════ -->
-    <div class="mo-card">
-      <div class="mo-card-body">
-        <div class="mo-field mo-field--narrow">
-          <label class="mo-label">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-              <line x1="16" y1="2" x2="16" y2="6" />
-              <line x1="8" y1="2" x2="8" y2="6" />
-              <line x1="3" y1="10" x2="21" y2="10" />
-            </svg>
-            Date
-            <span class="mo-today-chip" *ngIf="isToday">Today</span>
-          </label>
-          <input type="date" class="mo-input" [(ngModel)]="selectedDateStr" [max]="maxDateStr" (change)="onDateChange()" />
-        </div>
-
-        <div class="mo-spinner-wrap" *ngIf="logLoading">
-          <div class="mo-spinner"></div>
-          <span>Checking existing data…</span>
-        </div>
+    @if (loading) {
+      <div class="ds-skel"></div>
+      <div class="ds-skel ds-skel--tall"></div>
+      <div class="ds-skel"></div>
+    } @else if (loadError) {
+      <div class="ds-alert ds-alert--err">
+        <span>{{ loadError }}</span>
+        <button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" (click)="loadSheet()">Retry</button>
       </div>
-    </div>
+    } @else if (sheet) {
 
-    <!-- ══ CARD — Stock Entry Form (always available) ══════════════════════ -->
-    <div class="mo-card mo-card--stock" *ngIf="!logLoading">
-      <div class="mo-card-header">
-        <svg class="mo-card-header__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-          <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-          <line x1="12" y1="22.08" x2="12" y2="12" />
-        </svg>
-        <div>
-          <span class="mo-card-header__title">Raw Rice Stock Entry</span>
-          <span class="mo-card-header__sub">
-            For {{ formatDateLabel(selectedDate) }}
-            <ng-container *ngIf="log?.hasStockEntry"> — editing existing entry</ng-container>
-          </span>
+      @if (warnings.length) {
+        <div class="ds-alert ds-alert--warn">
+          <strong><svg class="ds-ico" aria-hidden="true"><use href="#i-alert"/></svg>Check these</strong>
+          @for (w of warnings; track w) { <span>{{ w }}</span> }
         </div>
-      </div>
+      }
 
-      <div class="mo-card-body mo-stock-form">
-        <div class="mo-grid-2">
-
-          <div class="mo-field">
-            <label class="mo-label">Raw Rice Received</label>
-            <div class="mo-input-addon">
-              <input type="number" class="mo-input" placeholder="0" min="0" step="0.1" [(ngModel)]="rawRiceReceived" />
-              <span class="mo-addon-label">KG</span>
-            </div>
+      <!-- Raw rice -->
+      <section class="ds-card">
+        <div class="ds-card__head">
+          <span class="ds-step"><svg class="ds-ico" aria-hidden="true"><use href="#i-truck"/></svg></span>
+          <div class="ds-card__titles">
+            <h2>Raw Rice Received</h2>
+            <p>Rice delivered to the mill today</p>
           </div>
-
-          <div class="mo-field">
-            <label class="mo-label">Input</label>
-            <div class="mo-input-addon">
-              <input type="number" class="mo-input" placeholder="0" min="0" step="0.1" [(ngModel)]="stockInput" />
-              <span class="mo-addon-label">KG</span>
-            </div>
+          <span class="ds-pill" [class.ds-pill--ok]="sheet.exists">{{ sheet.exists ? 'Saved' : 'Not saved yet' }}</span>
+        </div>
+        <label class="ds-field">
+          <div class="ds-input ds-input--lg">
+            <input type="number" inputmode="decimal" min="0" step="0.1" placeholder="0" [(ngModel)]="rawRiceReceived" />
+            <span class="ds-unit">kg</span>
           </div>
+        </label>
+      </section>
 
-          <div class="mo-field">
-            <label class="mo-label">Output</label>
-            <div class="mo-input-addon">
-              <input type="number" class="mo-input" placeholder="0" min="0" step="0.1" [(ngModel)]="stockOutput" />
-              <span class="mo-addon-label">KG</span>
-            </div>
+      <!-- Grinding -->
+      <section class="ds-card">
+        <div class="ds-card__head">
+          <span class="ds-step"><svg class="ds-ico" aria-hidden="true"><use href="#i-grind"/></svg></span>
+          <div class="ds-card__titles">
+            <h2>Grinding</h2>
+            <p>Operator, partner and the quantity of each batch</p>
           </div>
-
-          <!-- <div class="mo-field">
-            <label class="mo-label">Rejection</label>
-            <div class="mo-input-addon">
-              <input type="number" class="mo-input" placeholder="0" min="0" step="0.1" [(ngModel)]="rejection" />
-              <span class="mo-addon-label">KG</span>
-            </div>
-          </div> -->
-
-          <!-- <div class="mo-field">
-            <label class="mo-label">Rejection Date</label>
-            <input type="date" class="mo-input" [(ngModel)]="rejectionDateStr" />
-          </div> -->
-
+          @if (grindIn > 0) {
+            <span class="ds-pill ds-pill--ok">{{ n(grindOut) }} / {{ n(grindIn) }} kg</span>
+          }
         </div>
 
-        <!-- <div class="mo-efficiency" *ngIf="efficiency">
-          <div class="mo-efficiency__item">
-            <span class="mo-efficiency__lbl">Efficiency</span>
-            <span class="mo-efficiency__val">{{ efficiency }}</span>
-          </div>
-          <div class="mo-efficiency__item" *ngIf="rejection">
-            <span class="mo-efficiency__lbl">Rejection</span>
-            <span class="mo-efficiency__val mo-efficiency__val--red">{{ rejection }} KG</span>
-          </div>
-        </div> -->
+        @for (b of batches; track b.key) {
+          <div class="ds-batch" [class.ds-batch--bad]="batchError(b)">
+            <div class="ds-batch__head">
+              <span class="ds-chip">{{ b.batchNo }}</span>
+              @if (efficiency(b.input, b.output)) {
+                <span class="ds-eff">Efficiency {{ efficiency(b.input, b.output) }}</span>
+              }
+              @if (batches.length > 1) {
+                <button type="button" class="ds-iconbtn ds-iconbtn--sm ds-iconbtn--danger"
+                  [disabled]="!canRemoveBatch(b)"
+                  [attr.title]="canRemoveBatch(b) ? 'Remove batch' : 'Remove its sifting rows first'"
+                  (click)="removeBatch(b)" aria-label="Remove batch">
+                  <svg class="ds-ico" aria-hidden="true"><use href="#i-trash"/></svg>
+                </button>
+              }
+            </div>
 
-        <div class="mo-stock-footer">
-          <div class="mo-stock-saved" *ngIf="stockSaved">Stock entry saved successfully!</div>
-          <button class="mo-btn mo-btn--primary" (click)="saveStock()" [disabled]="stockSaving">
-            <span class="mo-spinner mo-spinner--sm" *ngIf="stockSaving"></span>
-            {{ stockSaving ? 'Saving…' : 'Save Stock Entry' }}
-          </button>
+            <div class="ds-grid ds-grid--2 ds-grid--ops">
+              <label class="ds-field">
+                <span class="ds-label">Operator</span>
+                <span class="ds-select">
+                  <select [(ngModel)]="b.operatorId">
+                    <option value="">Select operator…</option>
+                    @for (u of users; track u._id) {
+                      <option [value]="u._id" [disabled]="u._id === b.partnerId">{{ u.full_name || u.username }}</option>
+                    }
+                  </select>
+                </span>
+              </label>
+              <label class="ds-field">
+                <span class="ds-label">Partner</span>
+                <span class="ds-select">
+                  <select [(ngModel)]="b.partnerId">
+                    <option value="">Select partner…</option>
+                    @for (u of users; track u._id) {
+                      <option [value]="u._id" [disabled]="u._id === b.operatorId">{{ u.full_name || u.username }}</option>
+                    }
+                  </select>
+                </span>
+              </label>
+            </div>
+
+            <div class="ds-grid ds-grid--2">
+              <label class="ds-field">
+                <span class="ds-label">In</span>
+                <div class="ds-input">
+                  <input type="number" inputmode="decimal" min="0" step="0.1" placeholder="0" [(ngModel)]="b.input" />
+                  <span class="ds-unit">kg</span>
+                </div>
+              </label>
+              <label class="ds-field">
+                <span class="ds-label">Out</span>
+                <div class="ds-input" [class.ds-input--bad]="batchError(b)">
+                  <input type="number" inputmode="decimal" min="0" step="0.1" placeholder="0" [(ngModel)]="b.output" />
+                  <span class="ds-unit">kg</span>
+                </div>
+              </label>
+            </div>
+            @if (batchError(b)) { <p class="ds-err">{{ batchError(b) }}</p> }
+          </div>
+        }
+
+        <button type="button" class="ds-add" (click)="addBatch()">
+          <svg class="ds-ico" aria-hidden="true"><use href="#i-plus"/></svg>
+          Add another batch
+        </button>
+      </section>
+
+      <!-- Sifting -->
+      <section class="ds-card">
+        <div class="ds-card__head">
+          <span class="ds-step"><svg class="ds-ico" aria-hidden="true"><use href="#i-sift"/></svg></span>
+          <div class="ds-card__titles">
+            <h2>Sifting</h2>
+            <p>Pick the grind batch, then enter in, out and rejection</p>
+          </div>
+          @if (siftIn > 0) {
+            <span class="ds-pill ds-pill--ok">{{ n(siftOut) }} kg out, {{ n(siftRej) }} kg rejected</span>
+          }
         </div>
-      </div>
-    </div>
 
+        @if (!siftableBatches.length) {
+          <p class="ds-hint">Enter a grinding quantity above to unlock sifting for that batch.</p>
+        }
+
+        @for (r of sifting; track r.key; let i = $index) {
+          <div class="ds-sift" [class.ds-batch--bad]="rowError(r)">
+            <div class="ds-sift__head">
+              <span class="ds-num">Sift {{ i + 1 }}</span>
+              <span class="ds-select ds-select--grow">
+                <select [(ngModel)]="r.batchNo" aria-label="Grind batch">
+                  @for (b of siftableBatches; track b.key) {
+                    <option [value]="b.batchNo">{{ batchOptionLabel(b) }}</option>
+                  }
+                </select>
+              </span>
+              <button type="button" class="ds-iconbtn ds-iconbtn--sm ds-iconbtn--danger" (click)="removeSift(r)" aria-label="Remove sifting row">
+                <svg class="ds-ico" aria-hidden="true"><use href="#i-trash"/></svg>
+              </button>
+            </div>
+            <div class="ds-grid ds-grid--3">
+              <label class="ds-field">
+                <span class="ds-label">In</span>
+                <div class="ds-input"><input type="number" inputmode="decimal" min="0" step="0.1" placeholder="0" [(ngModel)]="r.input" /><span class="ds-unit">kg</span></div>
+              </label>
+              <label class="ds-field">
+                <span class="ds-label">Out</span>
+                <div class="ds-input"><input type="number" inputmode="decimal" min="0" step="0.1" placeholder="0" [(ngModel)]="r.output" /><span class="ds-unit">kg</span></div>
+              </label>
+              <label class="ds-field">
+                <span class="ds-label">Rejection</span>
+                <div class="ds-input ds-input--rej"><input type="number" inputmode="decimal" min="0" step="0.1" placeholder="0" [(ngModel)]="r.rejection" /><span class="ds-unit">kg</span></div>
+              </label>
+            </div>
+            <input type="text" class="ds-note" maxlength="200" placeholder="Note (optional)" [(ngModel)]="r.note" />
+            @if (rowError(r)) { <p class="ds-err">{{ rowError(r) }}</p> }
+          </div>
+        }
+
+        @for (b of siftableBatches; track b.key) {
+          @if (ceiling(b.batchNo) !== null && siftedInput(b.batchNo) > 0) {
+            <div class="ds-progress">
+              <div class="ds-progress__row">
+                <span>{{ b.batchNo }} sifted</span>
+                <span>{{ n(siftedInput(b.batchNo)) }} / {{ n(ceiling(b.batchNo)) }} kg</span>
+              </div>
+              <div class="ds-bar-track"><div class="ds-bar-fill" [style.width.%]="ceiling(b.batchNo)! > 0 ? (siftedInput(b.batchNo) / ceiling(b.batchNo)!) * 100 : 0"></div></div>
+            </div>
+          }
+        }
+
+        <button type="button" class="ds-add" [disabled]="!siftableBatches.length" (click)="addSift()">
+          <svg class="ds-ico" aria-hidden="true"><use href="#i-plus"/></svg>
+          Add sifting
+        </button>
+      </section>
+
+      <!-- Packing -->
+      <section class="ds-card">
+        <div class="ds-card__head">
+          <span class="ds-step"><svg class="ds-ico" aria-hidden="true"><use href="#i-pack"/></svg></span>
+          <div class="ds-card__titles">
+            <h2>Packing</h2>
+            <p>Bags filled today. Adds to rice stock and uses empty bags.</p>
+          </div>
+          @if (sum(packing) > 0) { <span class="ds-pill ds-pill--ok">{{ n(sum(packing)) }} bags</span> }
+        </div>
+        <div class="ds-tiles">
+          @for (pt of packTypes; track pt.packTypeId) {
+            <label class="ds-tile" [class.ds-tile--on]="packing[pt.packTypeId]">
+              <span class="ds-tile__name">{{ pt.packName }}</span>
+              <span class="ds-tile__sub">{{ pt.weightKg }} kg bag</span>
+              <input type="number" inputmode="numeric" min="0" step="1" placeholder="0" [(ngModel)]="packing[pt.packTypeId]" />
+              <span class="ds-tile__foot">In stock after save: <b>{{ n(projectedRice(pt)) }}</b></span>
+            </label>
+          }
+        </div>
+      </section>
+
+      <!-- Empty bags -->
+      <section class="ds-card">
+        <div class="ds-card__head">
+          <span class="ds-step"><svg class="ds-ico" aria-hidden="true"><use href="#i-bag"/></svg></span>
+          <div class="ds-card__titles">
+            <h2>Empty Bags Received</h2>
+            <p>New empty bags delivered to the store</p>
+          </div>
+          @if (sum(empty) > 0) { <span class="ds-pill ds-pill--ok">{{ n(sum(empty)) }} bags</span> }
+        </div>
+        <div class="ds-tiles">
+          @for (pt of packTypes; track pt.packTypeId) {
+            <label class="ds-tile" [class.ds-tile--on]="empty[pt.packTypeId]">
+              <span class="ds-tile__name">{{ pt.packName }}</span>
+              <span class="ds-tile__sub">{{ pt.weightKg }} kg bag</span>
+              <input type="number" inputmode="numeric" min="0" step="1" placeholder="0" [(ngModel)]="empty[pt.packTypeId]" />
+              <span class="ds-tile__foot" [class.ds-tile__foot--bad]="projectedEmpty(pt) < 0">
+                Empty bags after save: <b>{{ n(projectedEmpty(pt)) }}</b>
+              </span>
+            </label>
+          }
+        </div>
+      </section>
+
+      <!-- End of day -->
+      <section class="ds-card">
+        <div class="ds-card__head">
+          <span class="ds-step"><svg class="ds-ico" aria-hidden="true"><use href="#i-count"/></svg></span>
+          <div class="ds-card__titles">
+            <h2>Stock at the End of the Day</h2>
+            <p>Count the packed bags in the store and enter them</p>
+          </div>
+          @if (countedSizes > 0) {
+            <span class="ds-pill" [class.ds-pill--ok]="diffCount === 0" [class.ds-pill--warn]="diffCount > 0">
+              {{ diffCount === 0 ? 'Matches system' : diffCount + ' difference' + (diffCount > 1 ? 's' : '') }}
+            </span>
+          }
+        </div>
+        <div class="ds-tiles">
+          @for (pt of packTypes; track pt.packTypeId) {
+            <label class="ds-tile" [class.ds-tile--on]="endStock[pt.packTypeId] !== null && endStock[pt.packTypeId] !== undefined">
+              <span class="ds-tile__name">{{ pt.packName }}</span>
+              <span class="ds-tile__sub">System: {{ n(projectedRice(pt)) }}</span>
+              <input type="number" inputmode="numeric" min="0" step="1" placeholder="Count" [(ngModel)]="endStock[pt.packTypeId]" />
+              @if (countDiff(pt) !== null) {
+                <span class="ds-diff" [class.ds-diff--ok]="countDiff(pt) === 0" [class.ds-diff--bad]="countDiff(pt) !== 0">
+                  {{ countDiff(pt) === 0 ? 'Matches' : (countDiff(pt)! > 0 ? '+' : '') + n(countDiff(pt)) + ' vs system' }}
+                </span>
+              } @else {
+                <span class="ds-tile__foot">Not counted</span>
+              }
+            </label>
+          }
+        </div>
+
+        <div class="ds-send">
+          <div class="ds-send__text">
+            @if (sentState === 'never') { <span>The WhatsApp summary is sent automatically when you save with a count entered.</span> }
+            @if (sentState === 'current') { <span class="ds-ok"><svg class="ds-ico" aria-hidden="true"><use href="#i-check"/></svg>WhatsApp sent {{ formatDateTime(sheet.endStockSentAt) }}</span> }
+            @if (sentState === 'stale') { <span class="ds-warn"><svg class="ds-ico" aria-hidden="true"><use href="#i-alert"/></svg>The count changed since the last WhatsApp ({{ formatDateTime(sheet.endStockSentAt) }}). Save to send the update.</span> }
+          </div>
+        </div>
+      </section>
+    }
   </main>
+
+  <!-- SAVE BAR -->
+  @if (sheet && !loading) {
+    <footer class="ds-footer">
+      <div class="ds-footer__inner">
+        <div class="ds-footer__status">
+          @if (saveError) { <span class="ds-err-inline">{{ saveError }}</span> }
+          @else if (hasErrors) { <span class="ds-warn"><svg class="ds-ico" aria-hidden="true"><use href="#i-alert"/></svg>Fix the highlighted fields</span> }
+          @else if (isDirty()) { <span class="ds-dirty"><i class="ds-dot"></i>Unsaved changes</span> }
+          @else { <span class="ds-ok"><svg class="ds-ico" aria-hidden="true"><use href="#i-check"/></svg>{{ sheet.exists ? 'All changes saved' : 'Nothing to save yet' }}</span> }
+        </div>
+        <button type="button" class="ds-btn ds-btn--primary" [disabled]="!canSave || (!isDirty() && !needsSend)" (click)="save()">
+          @if (sending) { <span class="ds-spin"></span> Sending WhatsApp… } @else if (saving) { <span class="ds-spin"></span> Saving… } @else { Save sheet }
+        </button>
+      </div>
+    </footer>
+  }
+
+  @if (toast) { <div class="ds-toast" role="status">{{ toast }}</div> }
+
+  <!-- DISCARD DIALOG -->
+  @if (discardOpen) {
+    <div class="ds-overlay" (click)="cancelDiscard()">
+      <div class="ds-dialog" (click)="$event.stopPropagation()">
+        <h3>Discard unsaved changes?</h3>
+        <p>You changed this sheet but did not save it. Going to another day will lose those changes.</p>
+        <div class="ds-dialog__actions">
+          <button type="button" class="ds-btn ds-btn--ghost" (click)="cancelDiscard()">Keep editing</button>
+          <button type="button" class="ds-btn ds-btn--danger" (click)="confirmDiscard()">Discard</button>
+        </div>
+      </div>
+    </div>
+  }
 </div>

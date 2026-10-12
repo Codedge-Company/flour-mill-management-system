@@ -134,9 +134,12 @@ private mapItem = (raw: any): InventoryItem => ({
   currentCost:   raw.unit_cost           ?? raw.currentCost  ?? 0,
   costUpdatedAt: raw.cost_updated_at     ?? raw.costUpdatedAt ?? new Date().toISOString(),
   threshold:     raw.threshold_qty       ?? raw.threshold    ?? 0,
+  emptyBagQty:       raw.empty_bag_qty       ?? raw.emptyBagQty       ?? 0,
+  emptyBagThreshold: raw.empty_bag_threshold ?? raw.emptyBagThreshold ?? 0,
   isLowStock:    raw.is_low_stock        ?? raw.isLowStock
                  ?? ((raw.stock_qty      ?? raw.stockQty     ?? 0) <=
-                     (raw.threshold_qty  ?? raw.threshold    ?? 0))
+                     (raw.threshold_qty  ?? raw.threshold    ?? 0)),
+  
 });
 
 

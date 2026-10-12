@@ -1,15 +1,12 @@
 // backend/services/payment.service.js
+const fs       = require('fs');
 const Payment  = require('../models/Payment');
 const Sale     = require('../models/Sale');
 const mongoose = require('mongoose');
-const crypto   = require('crypto');
-const InvoiceLink = require('../models/InvoiceLink');
 const { generateSequence } = require('../utils/sequence');
-const { sendWhatsApp, sendWhatsAppTextTo } = require('./whatsapp.service');
+const { sendWhatsApp, sendWhatsAppDocument } = require('./whatsapp.service');
 const { formatPhoneForWhatsApp } = require('../utils/phone');
 
-const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || 'https://matheeshaflourmill.lk';
-const INVOICE_LINK_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 const getTotalPaid = async (sale_id) => {
@@ -179,11 +176,11 @@ const printCustomerDueSlip = async (customer_id) => {
 
   return printerService.printCustomerDueSlip({ customer, summaries: pending });
 };
-// ── Send the due/payment slip PDF straight to the customer's WhatsApp ──────
-// ⚠️ Same placeholder situation as sales.service.js - printDueSlip() below
-// currently sends to a physical printer (per printerService.printDueSlip).
-// This needs a Buffer-returning counterpart. Paste printer.service.js and
-// I'll wire the exact function name.
+
+// ── Send the payment slip PDF to the customer's WhatsApp as a document ─────
+// Builds the slip PDF, sends it through the WhatsApp Cloud API (document
+// message, or the approved document template when the customer has not
+// messaged the business in the last 24 hours) and deletes the temporary file.
 const sendPaymentSlipToCustomer = async (sale, customer, payment, totalPaid, balanceDue) => {
   const phone = formatPhoneForWhatsApp(customer?.phone);
   if (!phone) {
@@ -198,26 +195,19 @@ const sendPaymentSlipToCustomer = async (sale, customer, payment, totalPaid, bal
     sale, customer, payment, totalPaid, balanceDue, isFullyPaid,
   });
 
-  const token = crypto.randomBytes(16).toString('hex');
-  await InvoiceLink.create({
-    token,
-    file_path: require('path').basename(filePath),
-    filename: `Payment-${payment.payment_no}.pdf`,
-    expires_at: new Date(Date.now() + INVOICE_LINK_TTL_MS),
-  });
+  const caption = isFullyPaid
+    ? `Hi ${customer.name} 👋, your order ${sale.sale_no} is now fully paid ✅. We received LKR ${Number(payment.amount).toFixed(2)}.`
+    : `Hi ${customer.name} 👋, we received your payment of LKR ${Number(payment.amount).toFixed(2)} 💵 for sale ${sale.sale_no}. Outstanding balance: LKR ${Number(balanceDue).toFixed(2)}.`;
 
-  const link = `${PUBLIC_BASE_URL}/api/sales/invoices/${token}`;
-
-  const message = isFullyPaid
-    ? `✅ Hi ${customer.name}, your order *${sale.sale_no}* is now *fully paid*. Thank you!\n` +
-      `🧾 Payment of LKR ${Number(payment.amount).toFixed(2)} received.\n` +
-      `📄 Receipt: ${link}\n\nThis link is valid for 24 hours.`
-    : `💵 Hi ${customer.name}, we've received your payment of LKR ${Number(payment.amount).toFixed(2)} for sale *${sale.sale_no}*.\n` +
-      `📉 Outstanding balance: *LKR ${balanceDue.toFixed(2)}*\n` +
-      `📄 Details: ${link}\n\nThis link is valid for 24 hours. Please settle the remaining balance at your earliest convenience.`;
-
-  await sendWhatsAppTextTo(phone, message);
+  try {
+    const pdf = await fs.promises.readFile(filePath);
+    const result = await sendWhatsAppDocument(phone, pdf, `Payment-${payment.payment_no}.pdf`, caption);
+    if (!result.success) console.error('[WhatsApp] Payment slip send failed:', result.error);
+  } finally {
+    fs.promises.unlink(filePath).catch(() => {});
+  }
 };
+
 // ── Total outstanding across ALL of a customer's CREDIT sales ──────────────
 // Shown on receipts/invoices so staff and the customer both see the full
 // picture, not just this one transaction.
@@ -245,6 +235,7 @@ const getCustomerTotalOutstanding = async (customer_id) => {
   }
   return total;
 };
+
 // ── All payments in a date range (used by the summary report) ───────────────
 const getAllInRange = async ({ dateFrom, dateTo } = {}) => {
   const q = {};
@@ -260,4 +251,4 @@ const getAllInRange = async ({ dateFrom, dateTo } = {}) => {
     .sort({ payment_date: 1 });
 };
 
-module.exports = { addPayment, getBySale, getByCustomer, getCreditSummaryByCustomer, getById, remove, getTotalPaid, printDueSlip, printCustomerDueSlip, sendPaymentSlipToCustomer, getCustomerTotalOutstanding, getAllInRange  };
+module.exports = { addPayment, getBySale, getByCustomer, getCreditSummaryByCustomer, getById, remove, getTotalPaid, printDueSlip, printCustomerDueSlip, sendPaymentSlipToCustomer, getCustomerTotalOutstanding, getAllInRange };

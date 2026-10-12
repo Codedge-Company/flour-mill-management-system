@@ -3,18 +3,18 @@ const StockThreshold = require('../models/StockThreshold');
 const CostHistory = require('../models/CostHistory');
 const Notification = require('../models/Notification');
 const PackType = require('../models/PackType');
+const EmptyBagStock = require('../models/EmptyBagStock'); 
 const { notifyLowStock } = require('./whatsapp.service'); // ← NEW
 
 // ── Helper: enrich a single inventory doc with cost + threshold ──
 const enrichOne = async (inv) => {
   const packId = inv.pack_type_id?._id ?? inv.pack_type_id;
 
-  const [latestCost, threshold] = await Promise.all([
-    CostHistory.findOne({ pack_type_id: packId })
-      .sort({ effective_from: -1 })
-      .lean(),
-    StockThreshold.findOne({ pack_type_id: packId }).lean(),
-  ]);
+const [latestCost, threshold, emptyBag] = await Promise.all([
+  CostHistory.findOne({ pack_type_id: packId }).sort({ effective_from: -1 }).lean(),
+  StockThreshold.findOne({ pack_type_id: packId }).lean(),
+  EmptyBagStock.findOne({ pack_type_id: packId }).lean(),
+]);
 
   const pt = (inv.pack_type_id && typeof inv.pack_type_id === 'object')
     ? inv.pack_type_id
@@ -31,6 +31,8 @@ const enrichOne = async (inv) => {
     cost_updated_at: latestCost?.effective_from ?? inv.last_updated_at ?? new Date(),
     threshold_qty: threshold?.threshold_qty ?? 0,
     is_low_stock: (inv.stock_qty ?? 0) <= (threshold?.threshold_qty ?? 0),
+    empty_bag_qty: emptyBag?.stock_qty ?? 0,
+    empty_bag_threshold: emptyBag?.threshold_qty ?? 0,
   };
 };
 

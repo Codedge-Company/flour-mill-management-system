@@ -10,7 +10,11 @@
   <section class="bs-summary">
     <div class="bs-stat">
       <span class="bs-stat-val">{{ totalBags }}</span>
-      <span class="bs-stat-lbl">Total Bags in Stock</span>
+      <span class="bs-stat-lbl">Packed Bags in Stock</span>
+    </div>
+    <div class="bs-stat">
+      <span class="bs-stat-val" [class.warn]="totalEmptyBags < 0">{{ totalEmptyBags }}</span>
+      <span class="bs-stat-lbl">Empty Bags in Stock</span>
     </div>
     <div class="bs-stat">
       <span class="bs-stat-val" [class.warn]="lowStockCount > 0">{{ lowStockCount }}</span>
@@ -42,6 +46,29 @@
                  [class.fill-low]="item.isLowStock" [class.fill-out]="item.stockQty === 0"></div>
           </div>
           <div class="bs-threshold">Threshold: {{ item.threshold }} bags</div>
+
+          <!-- Empty (unfilled) bags -->
+          <div class="bs-empty-row" [class.neg]="item.emptyBagQty < 0" [class.low]="isEmptyLow(item)">
+            <span class="bs-empty-lbl">Empty bags</span>
+
+            @if (editingId() === item.packTypeId) {
+              <div class="bs-empty-edit">
+                <input type="number" min="0" step="1" inputmode="numeric" [value]="editValue ?? ''"
+                       (input)="onEditInput($event)" (keyup.enter)="saveEdit(item)" aria-label="Empty bag count" />
+                <button type="button" class="bs-mini bs-mini--ok" [disabled]="savingId() === item.packTypeId"
+                        (click)="saveEdit(item)">Save</button>
+                <button type="button" class="bs-mini" (click)="cancelEdit()">Cancel</button>
+              </div>
+            } @else {
+              <div class="bs-empty-view">
+                <span class="bs-empty-val">{{ item.emptyBagQty }}</span>
+                <button type="button" class="bs-mini" (click)="startEdit(item)" aria-label="Set empty bag count">Set</button>
+              </div>
+            }
+          </div>
+          @if (editingId() === item.packTypeId && editError()) {
+            <div class="bs-empty-err">{{ editError() }}</div>
+          }
         </div>
       }
     </div>

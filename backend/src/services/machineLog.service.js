@@ -119,14 +119,13 @@ async function updateOperators(logId, operatorId, partnerId) {
   if (log && log.input > 0) {
     const { buildBatchNo } = require('./sievingLog.service');
     const newBatch = buildBatchNo(log);
-    if (log.batchNo !== newBatch) {
+    if (log.batchNo !== newBatch && !/^GR\d{4}(-\d+)?$/.test(log.batchNo || '')) {
       log.batchNo = newBatch;
       await log.save();
 
-      // Also update any SievingLog with the same machineLogId
       const SievingLog = require('../models/SievingLog');
       await SievingLog.updateMany(
-        { machineLogId: log._id },
+        { machineLogId: log._id, batchNo: { $not: /^GR\d{4}(-\d+)?$/ } },
         { batchNo: newBatch }
       );
     }

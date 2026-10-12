@@ -8,6 +8,10 @@ export interface InventoryItem {
   costUpdatedAt: string;
   threshold:     number;
   isLowStock:    boolean;
+  /** empty (unfilled) bags in the store room */
+  emptyBagQty:       number;
+  /** 0 = no low-stock alert for empty bags */
+  emptyBagThreshold: number;
 }
 
 export interface PackType {
@@ -33,7 +37,7 @@ export interface UpdateStockRequest {
 export interface UpdateCostRequest {
   packTypeId: string;
   unitCost:   number;
-  effectiveFrom: string;   
+  effectiveFrom: string;
 }
 
 export interface UpdateThresholdRequest {
