@@ -5,14 +5,19 @@
 // Optional env:
 //   WHATSAPP_API_VERSION (v25.0), NOTIFY_WHATSAPP_TO (internal alerts number),
 //   WHATSAPP_TEMPLATE_LANG (en), WHATSAPP_TEMPLATE_TEXT (text template name),
-//   WHATSAPP_TEMPLATE_DOCUMENT (document-header template name)
+//   WHATSAPP_TEMPLATE_DOCUMENT (document-header template name),
+//   WHATSAPP_ALERT_IMAGE (banner for the alert template),
+//   WHATSAPP_DOCUMENT_MODE ('template' default | 'free')
 //
 // How sending works:
-//   • Free-form text / document is tried first. It is free and works whenever the
-//     recipient has messaged the business number in the last 24 hours.
-//   • If WhatsApp answers "outside the 24h window" (error 131047), the same message
-//     is re-sent through the approved template (paid, ~LKR 3.40 for utility).
-//   • Customers normally never message first, so documents to customers go via the template.
+//   • Documents to customers (invoice / payment slip) go through the approved
+//     `mill_document` template (Utility, ~LKR 3.40). Set WHATSAPP_DOCUMENT_MODE=free
+//     to try a free-form document first instead.
+//   • The end-of-day summary ({ template: true }) goes through the approved
+//     `mill_alert` template (Marketing, ~LKR 22) so it always arrives.
+//   • All other internal alerts are free-form text. They are free, but only arrive
+//     when the recipient messaged the business number in the last 24 hours
+//     (Meta accepts them with HTTP 200 and silently drops them otherwise).
 
 const TOKEN = () => process.env.WHATSAPP_TOKEN;
 const PHONE_ID = () => process.env.WHATSAPP_PHONE_NUMBER_ID;
@@ -127,12 +132,23 @@ const ok = (extra = {}) => ({ success: true, ...extra });
 const fail = (err) => ({ success: false, error: err.message, code: err.code });
 
 // allowTemplate: only messages that must reach the recipient even outside the 24h window
-// (the end-of-day summary) may fall back to the paid template. Everything else is free-form only.
+// (the end-of-day summary) use the paid template. Everything else is free-form only.
 async function sendSmartText(toNumber, message, allowTemplate = false) {
   const to = digits(toNumber);
   if (!to) return fail(new Error('No destination number'));
   const useTemplate = allowTemplate && !!TEMPLATE_TEXT();
   try {
+    // Messages that must always arrive go straight through the approved template.
+    // (Meta accepts a free-form message outside the 24h window with HTTP 200 and drops it
+    // later, so "try free-form, fall back on error" would silently lose it.)
+    if (useTemplate) {
+      try {
+        const r = await sendTemplateRaw(to, TEMPLATE_TEXT(), message, await getAlertImageHeader());
+        return ok({ id: r.messages?.[0]?.id, mode: 'template' });
+      } catch (tplErr) {
+        console.error(`[WhatsApp] Template send to ${to} failed (${tplErr.message}) - trying free-form.`);
+      }
+    }
     if (!isWindowClosed(to) || !useTemplate) {
       try {
         const r = await sendTextRaw(to, message);
@@ -152,7 +168,7 @@ async function sendSmartText(toNumber, message, allowTemplate = false) {
 
 // Internal alert to the fixed NOTIFY_WHATSAPP_TO number. Never throws.
 // Free-form only (free inside the 24h window). Pass { template: true } for the one message
-// that must always arrive (end-of-day summary): it then falls back to WHATSAPP_TEMPLATE_TEXT.
+// that must always arrive (end-of-day summary): it then goes through WHATSAPP_TEMPLATE_TEXT.
 async function sendWhatsApp(message, { template = false } = {}) {
   const r = await sendSmartText(TO(), message, template);
   if (r.success) console.log('[WhatsApp] Sent to', TO(), `(${r.mode})`);
@@ -176,6 +192,20 @@ async function sendWhatsAppDocument(toNumber, pdfBuffer, filename, caption = '')
   if (!to) { console.warn('[WhatsApp] No destination number - skipping document send.'); return fail(new Error('No destination number')); }
   try {
     const mediaId = await uploadMedia(pdfBuffer, filename);
+
+    // Customers rarely have an open 24h window and Meta silently drops free-form messages
+    // outside it, so documents go through the approved template by default.
+    // Set WHATSAPP_DOCUMENT_MODE=free to try a free-form document first instead.
+    const templateFirst = !!TEMPLATE_DOC() && (process.env.WHATSAPP_DOCUMENT_MODE || 'template') !== 'free';
+    if (templateFirst) {
+      try {
+        const r = await sendTemplateRaw(to, TEMPLATE_DOC(), caption || filename, { type: 'document', media: { id: mediaId, filename } });
+        console.log(`[WhatsApp] Document "${filename}" sent to ${to} (template)`);
+        return ok({ id: r.messages?.[0]?.id, mode: 'template' });
+      } catch (tplErr) {
+        console.error(`[WhatsApp] Template document to ${to} failed (${tplErr.message}) - trying free-form.`);
+      }
+    }
 
     if (!isWindowClosed(to) || !TEMPLATE_DOC()) {
       try {

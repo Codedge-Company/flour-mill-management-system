@@ -2,11 +2,8 @@
 
 require('dotenv').config();
 
-// Prevent any unhandled promise rejection from crashing the whole server -
-// log it instead. This is a safety net on top of the LocalAuth.logout()
-// patch in whatsapp.service.js, which fixes the actual root cause (a
-// Windows EBUSY error thrown internally by whatsapp-web.js during
-// disconnect cleanup, with no reachable .catch() in our own code).
+// Prevent any unhandled promise rejection / exception from crashing the whole server -
+// log it instead.
 process.on('unhandledRejection', (reason) => {
   console.error('[UnhandledRejection]', reason);
 });
@@ -21,8 +18,10 @@ const { JWT_SECRET } = require('./src/config/config');
 const app = require('./src/app');
 const connectDB = require('./src/config/db');
 
-// WhatsApp service
+// WhatsApp Cloud API service (no QR / browser session any more)
 const { getWhatsAppQr } = require('./src/services/whatsapp.service');
+// Automatic end-of-day report for the admin (20:00 Colombo time)
+const { startDigestScheduler } = require('./src/services/dailyDigest.service');
 
 const server = http.createServer(app);
 
@@ -79,134 +78,42 @@ io.on('connection', (socket) => {
 
 app.set('io', io);
 
-// ── WhatsApp QR Route ──────────────────────────────────────────────────────
-// Open this in browser:
-// https://your-render-url.onrender.com/whatsapp/qr
+// ── WhatsApp status page ───────────────────────────────────────────────────
+// WhatsApp now runs on the Meta Cloud API, so there is no QR to scan.
+// This route is kept so old links / the "WhatsApp connect" page keep working.
 app.get('/whatsapp/qr', (req, res) => {
   try {
-    const qr = getWhatsAppQr();
+    const { ready } = getWhatsAppQr();
+    const title = ready ? 'WhatsApp is connected' : 'WhatsApp is not configured';
+    const text = ready
+      ? 'Messages are sent through the WhatsApp Business Cloud API. No QR code is needed.'
+      : 'Set WHATSAPP_TOKEN and WHATSAPP_PHONE_NUMBER_ID in the backend .env file.';
+    const colour = ready ? '#1f7a1f' : '#b45309';
 
-    if (qr.ready) {
-      return res.send(`
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8" />
-<meta http-equiv="refresh" content="3" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>WhatsApp Connected</title>
-<style>
-            body {
-              font-family: Arial, sans-serif;
-              text-align: center;
-              padding: 40px;
-              background: #f7f7f7;
-            }
-            .box {
-              max-width: 500px;
-              margin: auto;
-              background: #fff;
-              border-radius: 12px;
-              padding: 30px;
-              box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-            }
-            h2 { color: #1f7a1f; }
-</style>
-</head>
-<body>
-<div class="box">
-<h2>WhatsApp is already connected</h2>
-<p>No QR code needed now.</p>
-</div>
-</body>
-</html>
-      `);
-    }
-
-    if (!qr.qrImage) {
-      return res.send(`
-<!DOCTYPE html>
+    res.send(`<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>WhatsApp QR</title>
+<title>WhatsApp</title>
 <style>
-            body {
-              font-family: Arial, sans-serif;
-              text-align: center;
-              padding: 40px;
-              background: #f7f7f7;
-            }
-            .box {
-              max-width: 500px;
-              margin: auto;
-              background: #fff;
-              border-radius: 12px;
-              padding: 30px;
-              box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-            }
+  body { font-family: Arial, sans-serif; text-align: center; padding: 40px; background: #f7f7f7; }
+  .box { max-width: 500px; margin: auto; background: #fff; border-radius: 12px; padding: 30px;
+         box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+  h2 { color: ${colour}; }
+  p { color: #555; }
 </style>
 </head>
 <body>
 <div class="box">
-<h2>QR not ready yet</h2>
-<p>Please refresh this page after a few seconds.</p>
+<h2>${title}</h2>
+<p>${text}</p>
 </div>
 </body>
-</html>
-      `);
-    }
-
-    return res.send(`
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>WhatsApp QR</title>
-<style>
-          body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding: 40px;
-            background: #f7f7f7;
-          }
-          .box {
-            max-width: 550px;
-            margin: auto;
-            background: #fff;
-            border-radius: 12px;
-            padding: 30px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-          }
-          img {
-            width: 100%;
-            max-width: 320px;
-            height: auto;
-            margin-top: 20px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-          }
-          p {
-            color: #555;
-          }
-</style>
-</head>
-<body>
-<div class="box">
-<h2>Scan this WhatsApp QR</h2>
-<p>Open WhatsApp on your phone</p>
-<p><b>Linked Devices → Link a Device</b></p>
-<img src="${qr.qrImage}" alt="WhatsApp QR Code" />
-<p style="margin-top:20px;">If expired, refresh this page.</p>
-</div>
-</body>
-</html>
-    `);
+</html>`);
   } catch (err) {
-    console.error('[WhatsApp QR Route Error]:', err.message);
-    return res.status(500).send('Failed to load WhatsApp QR');
+    console.error('[WhatsApp status route error]:', err.message);
+    res.status(500).send('Failed to load WhatsApp status');
   }
 });
 
@@ -216,7 +123,7 @@ connectDB()
   .then(() => {
     server.listen(PORT, () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);
-      getWhatsAppQr(); // triggers initWhatsApp()
+      startDigestScheduler(); // daily 20:00 report to the admin
     });
   })
   .catch((err) => {
