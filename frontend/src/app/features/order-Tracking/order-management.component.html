@@ -120,117 +120,230 @@
       </div>
     </section>
 
-    <!-- ═══ ORDERS TABLE (Priority‑Focused) ════════════════════════ -->
+
+    <!-- ═══ DATE-WISE ORDERS ════════════════════════════════════════ -->
     <section class="row-full">
       <div class="panel panel--table">
-        <div class="panel-head">
+
+        <div class="panel-head dw-head">
           <div>
-            <h3 class="panel-title">Orders</h3>
-            <p class="panel-sub">{{ filteredOrders().length }} orders</p>
+            <h3 class="panel-title">Orders by Expected Date</h3>
+            <p class="panel-sub">
+              @if (hasDateFilter()) {
+                {{ selectedDayLabel() }} · {{ grandTotal().orders }} {{ grandTotal().orders === 1 ? 'order' : 'orders' }}
+              } @else {
+                All dates · {{ grandTotal().orders }} orders · {{ grandTotal().dates }} dates ·
+                {{ sortDir() === 'desc' ? 'latest date first' : 'oldest date first' }}
+              }
+            </p>
           </div>
-          <div class="table-controls">
-            <span class="data-pill">{{ filterStatus() === 'all' ? 'All' : filterStatus() }}</span>
-            <span class="priority-hint">
-              <i class="pi pi-info-circle"></i> Sorted by urgency
-            </span>
+
+          <div class="dw-controls">
+            <div class="dw-day-nav">
+              <button class="dw-btn dw-btn--icon" (click)="shiftDay(-1)" pTooltip="Previous day" tooltipPosition="bottom">
+                <i class="pi pi-chevron-left"></i>
+              </button>
+              <label class="dw-date">
+                <span>Day</span>
+                <input type="date" [ngModel]="selectedDate()" (ngModelChange)="selectedDate.set($event || '')" />
+              </label>
+              <button class="dw-btn dw-btn--icon" (click)="shiftDay(1)" pTooltip="Next day" tooltipPosition="bottom">
+                <i class="pi pi-chevron-right"></i>
+              </button>
+            </div>
+            <button class="dw-btn" (click)="goToday()">Today</button>
+            <button class="dw-btn" [class.dw-btn--active]="!hasDateFilter()" (click)="clearDateFilter()">
+              <i class="pi pi-list"></i> All dates
+            </button>
+            @if (!hasDateFilter()) {
+              <button class="dw-btn" (click)="toggleSort()"
+                [pTooltip]="sortDir() === 'desc' ? 'Show oldest date first' : 'Show latest date first'"
+                tooltipPosition="bottom">
+                <i class="pi" [class.pi-sort-amount-down]="sortDir() === 'desc'"
+                  [class.pi-sort-amount-up]="sortDir() === 'asc'"></i>
+                {{ sortDir() === 'desc' ? 'Latest first' : 'Oldest first' }}
+              </button>
+            }
           </div>
         </div>
+
+        <!-- Grand total strip -->
+        @if (dateGroups().length > 0) {
+          <div class="dw-total-strip">
+            <div class="dw-total-item">
+              <span class="dw-total-label">{{ hasDateFilter() ? 'Weight for this day' : 'Total weight' }}</span>
+              <span class="dw-total-value">{{ formatKg(grandTotal().totalKg) }}</span>
+            </div>
+            <div class="dw-total-item">
+              <span class="dw-total-label">{{ hasDateFilter() ? 'Amount for this day' : 'Total amount' }}</span>
+              <span class="dw-total-value">{{ formatCurrency(grandTotal().totalAmount) }}</span>
+            </div>
+            @for (p of packColumns(); track p.id) {
+              <div class="dw-total-item dw-total-item--pack">
+                <span class="dw-total-label">{{ p.name }}</span>
+                <span class="dw-total-value">{{ grandTotal().qtyByPack[p.id] || 0 }} <small>bags</small></span>
+              </div>
+            }
+          </div>
+        }
+
         <div class="table-wrap">
-          @if (loading() && filteredOrders().length === 0) {
+          @if (loading() && orders().length === 0) {
             <div style="padding: 20px; display: flex; flex-direction: column; gap: 10px;">
               @for (i of [1,2,3,4,5]; track i) {
                 <div class="skel-row"></div>
               }
             </div>
-          } @else if (filteredOrders().length === 0) {
-            <div class="empty-chart"><i class="pi pi-inbox"></i><p>No orders to display</p></div>
+          } @else if (dateGroups().length === 0) {
+            <div class="empty-chart dw-empty">
+              <i class="pi pi-inbox"></i>
+              <p>{{ hasDateFilter() ? 'No orders for ' + selectedDayLabel() : 'No orders to display' }}</p>
+            </div>
           } @else {
-            <table class="om-table">
+            <table class="om-table dw-table">
               <thead>
                 <tr>
-                  <th>Order #</th>
-                  <th>Customer</th>
-                  <th>Expected Date</th>
-                  <th>Priority</th>
-                  <th>Total</th>
+                  <th class="dw-col-main">Order / Customer</th>
+                  @for (p of packColumns(); track p.id) {
+                    <th class="num">{{ p.name }}</th>
+                  }
+                  <th class="num">Total kg</th>
+                  <th class="num">Amount</th>
                   <th>Status</th>
                   <th style="text-align:center;">Action</th>
                 </tr>
               </thead>
-              <tbody>
-                @for (order of filteredOrders(); track order._id) {
-                  <tr class="order-row" 
-                      [class.overdue]="getPriority(order) === 'Overdue'"
-                      [class.due-today]="getPriority(order) === 'Due Today'"
-                      [class.due-soon]="getPriority(order) === 'Due Soon'">
-                    <td class="order-no">{{ order.order_no }}</td>
-                    <td>{{ getCustomerName(order) }}</td>
-                    <td>{{ order.expected_date | date:'MMM d, y' }}</td>
-                    <td>
-                      <span class="priority-badge" [class]="getPriority(order).toLowerCase().replace(' ', '-')">
-                        {{ getPriority(order) }}
-                      </span>
-                    </td>
-                    <td class="num">{{ formatCurrency(getOrderTotal(order)) }}</td>
-                    <td>
-                      <span class="status-badge" [class.status-completed]="order.status === 'COMPLETED'">
-                        {{ order.status }}
-                      </span>
-                    </td>
-                    <td style="text-align:center;">
-                      @if (order.status === 'PENDING') {
-                        <button class="btn-done" (click)="markDone(order)" [disabled]="loading()">
-                          <i class="pi pi-check"></i> Done
-                        </button>
-                      } @else {
-                        <span class="done-label"><i class="pi pi-check-circle"></i> Completed</span>
-                      }
-                    </td>
-                  </tr>
-                  <!-- Expanded detail row -->
-                  <tr class="detail-row" *ngIf="expandedOrderId() === order._id">
-                    <td colspan="7">
-                      <div class="detail-content">
-                        <div class="detail-grid">
-                          <div class="detail-item">
-                            <span class="detail-label">Order Date</span>
-                            <span class="detail-value">{{ order.createdAt | date:'MMM d, y h:mm a' }}</span>
+
+              @for (g of dateGroups(); track g.key) {
+                <tbody [class]="'dw-group dw-tone-' + groupTone(g)">
+                  <!-- Date header row = totals for that date -->
+                  <tr class="dw-date-row" (click)="toggleGroup(g.key)">
+                    <td class="dw-col-main">
+                      <div class="dw-date-cell">
+                        <i class="pi dw-chevron"
+                          [class.pi-chevron-down]="!isCollapsed(g.key)"
+                          [class.pi-chevron-right]="isCollapsed(g.key)"></i>
+                        <div>
+                          <div class="dw-date-title">{{ g.date | date:'EEE, MMM d, y' }}</div>
+                          <div class="dw-date-sub">
+                            <span class="dw-when">{{ dateLabel(g) }}</span>
+                            · {{ g.orders.length }} {{ g.orders.length === 1 ? 'order' : 'orders' }}
+                            · {{ g.customerCount }} {{ g.customerCount === 1 ? 'customer' : 'customers' }}
+                            @if (g.pendingCount > 0 && g.pendingCount < g.orders.length) {
+                              · {{ g.pendingCount }} pending
+                            }
                           </div>
-                          <div class="detail-item">
-                            <span class="detail-label">Payment</span>
-                            <span class="detail-value">{{ order.payment_method }}</span>
-                          </div>
-                          <div class="detail-item" *ngIf="order.status === 'COMPLETED'">
-                            <span class="detail-label">Completed</span>
-                            <span class="detail-value">{{ order.completed_at | date:'MMM d, y' }}</span>
-                          </div>
-                          <div class="detail-item">
-                            <span class="detail-label">Items</span>
-                            <span class="detail-value">{{ order.items.length }}</span>
-                          </div>
-                        </div>
-                        <div class="detail-items" *ngIf="order.items.length">
-                          <div class="item-header">
-                            <span>Pack</span>
-                            <span>Qty</span>
-                            <span>Unit Price</span>
-                            <span>Total</span>
-                          </div>
-                          <div class="item-row" *ngFor="let item of order.items">
-                            <span>{{ getPackName(item) }}</span>
-                            <span>{{ item.qty }}</span>
-                            <span>{{ formatCurrency(item.unit_price) }}</span>
-                            <span>{{ formatCurrency(item.line_total) }}</span>
-                          </div>
-                        </div>
-                        <div class="detail-notes" *ngIf="order.notes">
-                          <i class="pi pi-pencil"></i> {{ order.notes }}
                         </div>
                       </div>
                     </td>
+                    @for (p of packColumns(); track p.id) {
+                      <td class="num dw-qty">{{ g.qtyByPack[p.id] || '–' }}</td>
+                    }
+                    <td class="num dw-strong">{{ formatKg(g.totalKg) }}</td>
+                    <td class="num dw-strong">{{ formatCurrency(g.totalAmount) }}</td>
+                    <td colspan="2">
+                      @if (g.pendingCount === 0) {
+                        <span class="dw-pill dw-pill--done"><i class="pi pi-check"></i> All completed</span>
+                      } @else if (g.daysFromToday < 0) {
+                        <span class="dw-pill dw-pill--overdue">Overdue</span>
+                      } @else if (g.daysFromToday === 0) {
+                        <span class="dw-pill dw-pill--today">Due today</span>
+                      } @else if (g.daysFromToday <= 3) {
+                        <span class="dw-pill dw-pill--soon">Due soon</span>
+                      } @else {
+                        <span class="dw-pill">Upcoming</span>
+                      }
+                    </td>
                   </tr>
-                }
-              </tbody>
+
+                  <!-- One row per order (customer-wise) -->
+                  @if (!isCollapsed(g.key)) {
+                    @for (order of g.orders; track order._id) {
+                      <tr class="order-row dw-order-row" (click)="toggleOrderDetail(order._id)">
+                        <td class="dw-col-main">
+                          <div class="dw-cust">
+                            <span class="dw-cust-name">{{ getCustomerName(order) }}</span>
+                            <span class="dw-cust-meta">
+                              {{ order.order_no }}
+                              @if (getCustomerCode(order)) { · {{ getCustomerCode(order) }} }
+                              · {{ order.payment_method }}
+                            </span>
+                          </div>
+                        </td>
+                        @for (p of packColumns(); track p.id) {
+                          <td class="num">{{ orderQty(order, p.id) || '' }}</td>
+                        }
+                        <td class="num">{{ formatKg(orderKg(order)) }}</td>
+                        <td class="num">{{ formatCurrency(order.total_amount) }}</td>
+                        <td>
+                          <span class="status-badge" [class.status-completed]="order.status === 'COMPLETED'">
+                            {{ order.status }}
+                          </span>
+                        </td>
+                        <td style="text-align:center;">
+                          @if (order.status === 'PENDING') {
+                            <button class="btn-done" (click)="markDone(order, $event)" [disabled]="loading()">
+                              <i class="pi pi-check"></i> Done
+                            </button>
+                          } @else {
+                            <span class="done-label"><i class="pi pi-check-circle"></i> Completed</span>
+                          }
+                        </td>
+                      </tr>
+
+                      @if (expandedOrderId() === order._id) {
+                        <tr class="detail-row">
+                          <td [attr.colspan]="packColumns().length + 5">
+                            <div class="detail-content">
+                              <div class="detail-grid">
+                                <div class="detail-item">
+                                  <span class="detail-label">Ordered on</span>
+                                  <span class="detail-value">{{ order.createdAt | date:'MMM d, y h:mm a' }}</span>
+                                </div>
+                                <div class="detail-item">
+                                  <span class="detail-label">Entered by</span>
+                                  <span class="detail-value">{{ order.created_by?.full_name || '—' }}</span>
+                                </div>
+                                <div class="detail-item">
+                                  <span class="detail-label">Payment</span>
+                                  <span class="detail-value">{{ order.payment_method }}</span>
+                                </div>
+                                @if (order.status === 'COMPLETED') {
+                                  <div class="detail-item">
+                                    <span class="detail-label">Completed</span>
+                                    <span class="detail-value">{{ order.completed_at | date:'MMM d, y' }}</span>
+                                  </div>
+                                }
+                              </div>
+                              <div class="detail-items">
+                                <div class="item-header">
+                                  <span>Pack</span>
+                                  <span>Qty</span>
+                                  <span>Unit Price</span>
+                                  <span>Total</span>
+                                </div>
+                                @for (item of order.items; track item._id) {
+                                  <div class="item-row">
+                                    <span>{{ getPackName(item) }}</span>
+                                    <span>{{ item.qty }}</span>
+                                    <span>{{ formatCurrency(item.unit_price) }}</span>
+                                    <span>{{ formatCurrency(item.line_total) }}</span>
+                                  </div>
+                                }
+                              </div>
+                              @if (order.notes) {
+                                <div class="detail-notes">
+                                  <i class="pi pi-pencil"></i> {{ order.notes }}
+                                </div>
+                              }
+                            </div>
+                          </td>
+                        </tr>
+                      }
+                    }
+                  }
+                </tbody>
+              }
             </table>
           }
         </div>
