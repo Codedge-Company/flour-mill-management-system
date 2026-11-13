@@ -1,26 +1,22 @@
 <!-- sidebar.component.html -->
 <aside class="sidebar" [class.collapsed]="collapsed" [class.mobile-open]="mobileOpen">
 
-  <!-- Brand header -->
+  <!-- Brand -->
   <div class="sidebar-brand">
-    <div class="brand-logo">
-      <i class="pi pi-shop" style="font-size: 28px; color: #2563eb;"></i>
-    </div>
+    <img class="brand-logo" src="assets/icons/icon.png" alt="" width="38" height="38" />
     @if (!collapsed) {
     <div class="brand-text">
       <span class="brand-name">Matheesha</span>
       <span class="brand-sub">Flour Mill</span>
     </div>
     }
-    <!-- Mobile close button -->
-    <button class="mobile-close-btn" (click)="closeMenu.emit()">
+    <button class="mobile-close-btn" (click)="closeMenu.emit()" aria-label="Close menu">
       <i class="pi pi-times"></i>
     </button>
   </div>
 
-  <!-- Nav section label -->
   @if (!collapsed) {
-  <div class="nav-section-label">Main Menu</div>
+  <div class="nav-section-label">Menu</div>
   }
 
   <!-- Navigation -->
@@ -41,15 +37,12 @@
     }
   </nav>
 
-  <!-- Spacer -->
   <div class="sidebar-spacer"></div>
 
-  <!-- User footer -->
+  <!-- User -->
   <div class="sidebar-footer">
     <div class="user-row" [class.user-row--collapsed]="collapsed">
-      <div class="user-avatar">
-        {{ avatarLabel() }}
-      </div>
+      <div class="user-avatar">{{ avatarLabel() }}</div>
 
       @if (!collapsed) {
       <div class="user-meta">
@@ -57,7 +50,7 @@
         <span class="user-role">{{ authService.currentUser()?.role }}</span>
       </div>
 
-      <button class="logout-btn" (click)="authService.logout()" title="Logout">
+      <button class="logout-btn" (click)="authService.logout()" title="Sign out" aria-label="Sign out">
         <i class="pi pi-sign-out"></i>
       </button>
       }
