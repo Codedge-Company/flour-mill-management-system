@@ -12,6 +12,7 @@ const authenticate = async (req, res, next) => {
         const decoded = jwt.verify(token, JWT_SECRET);
         const user = await User.findById(decoded.user_id).select('-password_hash');
         if (!user) return res.status(401).json({ success: false, message: 'User not found' });
+        if (user.is_active === false) return res.status(401).json({ success: false, message: 'Account disabled' });
         req.user = user;
         next();
     } catch (err) {

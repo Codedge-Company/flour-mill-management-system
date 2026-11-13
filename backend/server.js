@@ -26,9 +26,9 @@ const { startDigestScheduler } = require('./src/services/dailyDigest.service');
 const server = http.createServer(app);
 
 // ── Allowed Origins ────────────────────────────────────────────────────────
+// ── Allowed Origins ────────────────────────────────────────────────────────
 const allowedOrigins = [
-  'http://localhost:4200',
-  'http://127.0.0.1:4200',
+  /^http:\/\/(localhost|127\.0\.0\.1):\d+$/,   // desktop app on any local port + ng serve
   'https://flour-mill-management-system-nine.vercel.app',
   'https://www.matheeshaflourmill.lk',
   'https://matheeshaflourmill.lk'

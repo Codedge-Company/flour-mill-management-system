@@ -1,165 +1,67 @@
 <!-- login.component.html -->
-<div class="auth-root">
+<div class="lg">
 
-  <!-- ═══════════════════ LEFT VISUAL PANEL ═══════════════════ -->
-  <aside class="auth-visual">
-    <img
-      class="auth-visual__bg"
-      src="assets/images/bg/loginbg.png"
-      alt="Rice mill operations"
-    />
-    <div class="auth-visual__overlay"></div>
+  <!-- Brand panel: left on desktop, header band on phones -->
+  <aside class="lg-brand">
+    <img class="lg-brand__photo" src="assets/images/bg/loginbg.png" alt="" />
+    <div class="lg-brand__shade"></div>
 
-    <!-- Floating stat cards -->
-    <div class="float-card float-card--tl">
-      <span class="float-card__icon"><i class="pi pi-box"></i></span>
-      <div>
-        <p class="float-card__value">12,400 kg</p>
-        <p class="float-card__label">Today's Stock</p>
+    <div class="lg-brand__top">
+      <img class="lg-logo" src="assets/icons/icon.png" alt="" width="46" height="46" />
+      <div class="lg-name">
+        <span>Matheesha</span>
+        <strong>Flour Mill</strong>
       </div>
     </div>
 
-    <div class="float-card float-card--br">
-      <span class="float-card__icon"><i class="pi pi-chart-line"></i></span>
-      <div>
-        <p class="float-card__value">+18.4%</p>
-        <p class="float-card__label">Monthly Sales</p>
-      </div>
+    <div class="lg-brand__bottom">
+      <p class="lg-tag">Sales, stock and production for the whole mill, in one place.</p>
+      <p class="lg-legal">&copy; {{ currentYear }} Matheesha Flour Mill</p>
     </div>
-
-    <!-- Brand block -->
-    <div class="auth-visual__brand">
-      <div class="brand-mark">
-          <img src="assets/icons/flour-mill.png" alt="Flour Mill" class="brand-icon" />
-      </div>
-      <div>
-        <h1 class="brand-name">Matheesha Rice Mill</h1>
-        <p class="brand-sub">Enterprise Resource Planning</p>
-      </div>
-    </div>
-
-    <!-- Copy -->
-    <div class="auth-visual__copy">
-      <h2 class="visual-headline">Your entire mill,<br/>in one dashboard.</h2>
-      <p class="visual-body">
-        Real-time production tracking, inventory control, customer billing,
-        and deep analytics — built for modern rice mill operations.
-      </p>
-      <ul class="feature-pills">
-        <li><i class="pi pi-chart-bar"></i>Real-time Analytics</li>
-        <li><i class="pi pi-box"></i>Inventory Control</li>
-        <li><i class="pi pi-users"></i>Customer Management</li>
-        <li><i class="pi pi-file"></i>Billing &amp; Reports</li>
-      </ul>
-    </div>
-
-    <p class="visual-footer">&copy; {{ currentYear }} Matheesha Rice Mill. All rights reserved.</p>
   </aside>
 
-  <!-- ═══════════════════ RIGHT FORM PANEL ═══════════════════ -->
-  <main class="auth-form-panel">
+  <main class="lg-main">
+    <div class="lg-sheet">
 
-    <!-- Mobile topbar (shown on small screens) -->
-    <div class="mobile-topbar">
-      <div class="brand-mark brand-mark--dark">
-        <i class="pi pi-home"></i>
-      </div>
-      <span class="mobile-topbar__name">Matheesha Rice Mill</span>
-    </div>
+      <h1 class="lg-title">Sign in</h1>
+      <p class="lg-sub">Use the username and password you were given.</p>
 
-    <div class="form-shell">
-
-      <!-- Step indicator -->
-      <div class="step-badge">
-        <span class="step-dot step-dot--active"></span>
-        <span class="step-dot"></span>
-      </div>
-
-      <div class="form-header">
-        <h2 class="form-title">Welcome back 👋</h2>
-        <p class="form-subtitle">Sign in to your ERP account to continue managing operations.</p>
-      </div>
-
-      <!-- Error alert -->
       @if (error()) {
-        <div class="alert-error" role="alert">
-          <i class="pi pi-exclamation-circle"></i>
-          <span>{{ error() }}</span>
-        </div>
+        <div class="lg-error" role="alert">{{ error() }}</div>
       }
 
-      <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate class="auth-form">
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
 
-        <!-- Username -->
-        <div class="field-group" [class.field-group--error]="f['username'].invalid && f['username'].touched">
-          <label class="field-label" for="username">Username</label>
-          <div class="field-input-wrap">
-            <span class="field-prefix"><i class="pi pi-user"></i></span>
-            <input
-              id="username"
-              class="field-input"
-              type="text"
-              formControlName="username"
-              placeholder="e.g. john_mill"
-              autocomplete="username"
-            />
-          </div>
+        <div class="lg-field" [class.lg-field--bad]="f['username'].invalid && f['username'].touched">
+          <label for="username">Username</label>
+          <input id="username" class="lg-input" type="text" formControlName="username"
+                 autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" />
           @if (f['username'].invalid && f['username'].touched) {
-            <p class="field-hint field-hint--err">
-              <i class="pi pi-info-circle"></i>
-              Username is required (min. 3 characters)
-            </p>
+            <span class="lg-hint">Enter your username (at least 3 characters).</span>
           }
         </div>
 
-        <!-- Password -->
-        <div class="field-group" [class.field-group--error]="f['password'].invalid && f['password'].touched">
-          <label class="field-label" for="password">Password</label>
-          <div class="field-input-wrap">
-            <span class="field-prefix"><i class="pi pi-lock"></i></span>
-            <input
-              id="password"
-              class="field-input"
-              [type]="showPass() ? 'text' : 'password'"
-              formControlName="password"
-              placeholder="Enter your password"
-              autocomplete="current-password"
-            />
-            <button
-              type="button"
-              class="toggle-vis"
-              (click)="togglePassword()"
-              [title]="showPass() ? 'Hide password' : 'Show password'">
-              <i class="pi" [class.pi-eye]="!showPass()" [class.pi-eye-slash]="showPass()"></i>
+        <div class="lg-field" [class.lg-field--bad]="f['password'].invalid && f['password'].touched">
+          <label for="password">Password</label>
+          <div class="lg-pass">
+            <input id="password" class="lg-input" [type]="showPass() ? 'text' : 'password'"
+                   formControlName="password" autocomplete="current-password" />
+            <button type="button" class="lg-toggle" (click)="togglePassword()"
+                    [attr.aria-label]="showPass() ? 'Hide password' : 'Show password'">
+              {{ showPass() ? 'Hide' : 'Show' }}
             </button>
           </div>
           @if (f['password'].invalid && f['password'].touched) {
-            <p class="field-hint field-hint--err">
-              <i class="pi pi-info-circle"></i>
-              Password is required (min. 4 characters)
-            </p>
+            <span class="lg-hint">Enter your password (at least 4 characters).</span>
           }
         </div>
 
-        <!-- Submit -->
-        <button type="submit" class="btn-primary" [disabled]="loading()">
-          @if (loading()) {
-            <i class="pi pi-spinner pi-spin"></i>
-            <span>Signing in…</span>
-          } @else {
-            <i class="pi pi-sign-in"></i>
-            <span>Sign In to ERP</span>
-          }
+        <button type="submit" class="lg-btn" [disabled]="loading()">
+          @if (loading()) { <span class="lg-spin"></span> Signing in } @else { Sign in }
         </button>
-
       </form>
 
-      <!-- Footer note -->
-      <div class="secure-note">
-        <i class="pi pi-shield"></i>
-        <span>Secured access — authorised personnel only</span>
-      </div>
-
+      <p class="lg-note">You stay signed in on this device until you sign out.</p>
     </div>
   </main>
 

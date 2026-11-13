@@ -1,7 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { PermissionService } from '../../../core/services/permission.service';
 
@@ -19,14 +19,22 @@ export class LoginComponent {
   showPass = signal(false);
   readonly currentYear = new Date().getFullYear();
 
+  /** the page the user asked for before being sent to login (saved home-screen link, bookmark) */
+  private readonly returnUrl: string;
+
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
     private permissionService: PermissionService,
-    private router: Router
+    private router: Router,
+    route: ActivatedRoute
   ) {
+    const wanted = route.snapshot.queryParamMap.get('returnUrl') ?? '';
+    // only in-app paths, never another site, and never the login page itself
+    this.returnUrl = wanted.startsWith('/') && !wanted.startsWith('//') && !wanted.startsWith('/auth') ? wanted : '';
+
     if (this.authService.isLoggedIn()) {
-      this.router.navigate(['/dashboard']);
+      this.router.navigateByUrl(this.returnUrl || '/dashboard');
     }
 
     this.form = this.fb.group({
@@ -40,7 +48,8 @@ export class LoginComponent {
   togglePassword(): void { this.showPass.update(v => !v); }
 
   onSubmit(): void {
-    if (this.form.invalid || this.loading()) return;
+    if (this.form.invalid) { this.form.markAllAsTouched(); return; }
+    if (this.loading()) return;
 
     this.error.set(null);
     this.loading.set(true);
@@ -49,19 +58,19 @@ export class LoginComponent {
       next: () => {
         if (this.authService.isAdmin()) {
           this.loading.set(false);
-          this.router.navigate(['/dashboard']);
+          this.router.navigateByUrl(this.returnUrl || '/dashboard');
           return;
         }
 
         this.permissionService.ensureLoaded().subscribe({
           next: () => {
             this.loading.set(false);
-            const target = this.permissionService.getFirstAccessibleRoute() ?? '/dashboard';
-            this.router.navigate([target]);
+            const target = this.returnUrl || this.permissionService.getFirstAccessibleRoute() || '/dashboard';
+            this.router.navigateByUrl(target);
           },
           error: () => {
             this.loading.set(false);
-            this.router.navigate(['/dashboard']); // guard redirects further if not allowed
+            this.router.navigateByUrl(this.returnUrl || '/dashboard'); // guard redirects further if not allowed
           }
         });
       },
