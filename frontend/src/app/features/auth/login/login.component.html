@@ -1,68 +1,84 @@
 <!-- login.component.html -->
 <div class="lg">
+  <div class="lg-shell">
 
-  <!-- Brand panel: left on desktop, header band on phones -->
-  <aside class="lg-brand">
-    <img class="lg-brand__photo" src="assets/images/bg/loginbg.png" alt="" />
-    <div class="lg-brand__shade"></div>
-
-    <div class="lg-brand__top">
-      <img class="lg-logo" src="assets/icons/icon.png" alt="" width="46" height="46" />
-      <div class="lg-name">
-        <span>Matheesha</span>
-        <strong>Flour Mill</strong>
+    <!-- Form side -->
+    <main class="lg-main">
+      <div class="lg-logo-row">
+        <img class="lg-logo" src="assets/icons/icon.png" alt="" width="36" height="36" />
+        <span class="lg-logo-name">Matheesha Flour Mill</span>
       </div>
-    </div>
 
-    <div class="lg-brand__bottom">
-      <p class="lg-tag">Sales, stock and production for the whole mill, in one place.</p>
-      <p class="lg-legal">&copy; {{ currentYear }} Matheesha Flour Mill</p>
-    </div>
-  </aside>
+      <div class="lg-form-wrap">
+        <h1 class="lg-title">Welcome Back</h1>
+        <p class="lg-sub">Enter your username and password to access your account.</p>
 
-  <main class="lg-main">
-    <div class="lg-sheet">
+        @if (error()) {
+          <div class="lg-error" role="alert">{{ error() }}</div>
+        }
 
-      <h1 class="lg-title">Sign in</h1>
-      <p class="lg-sub">Use the username and password you were given.</p>
-
-      @if (error()) {
-        <div class="lg-error" role="alert">{{ error() }}</div>
-      }
-
-      <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
-
-        <div class="lg-field" [class.lg-field--bad]="f['username'].invalid && f['username'].touched">
-          <label for="username">Username</label>
-          <input id="username" class="lg-input" type="text" formControlName="username"
-                 autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" />
-          @if (f['username'].invalid && f['username'].touched) {
-            <span class="lg-hint">Enter your username (at least 3 characters).</span>
-          }
-        </div>
-
-        <div class="lg-field" [class.lg-field--bad]="f['password'].invalid && f['password'].touched">
-          <label for="password">Password</label>
-          <div class="lg-pass">
-            <input id="password" class="lg-input" [type]="showPass() ? 'text' : 'password'"
-                   formControlName="password" autocomplete="current-password" />
-            <button type="button" class="lg-toggle" (click)="togglePassword()"
-                    [attr.aria-label]="showPass() ? 'Hide password' : 'Show password'">
-              {{ showPass() ? 'Hide' : 'Show' }}
-            </button>
+        <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+          <div class="lg-field" [class.lg-field--bad]="f['username'].invalid && f['username'].touched">
+            <label for="username">Username</label>
+            <input id="username" class="lg-input" type="text" formControlName="username"
+                   placeholder="Enter your username"
+                   autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" />
+            @if (f['username'].invalid && f['username'].touched) {
+              <span class="lg-hint">Enter your username (at least 3 characters).</span>
+            }
           </div>
-          @if (f['password'].invalid && f['password'].touched) {
-            <span class="lg-hint">Enter your password (at least 4 characters).</span>
-          }
+
+          <div class="lg-field" [class.lg-field--bad]="f['password'].invalid && f['password'].touched">
+            <label for="password">Password</label>
+            <div class="lg-pass">
+              <input id="password" class="lg-input" [type]="showPass() ? 'text' : 'password'"
+                     formControlName="password" placeholder="Enter your password" autocomplete="current-password" />
+              <button type="button" class="lg-toggle" (click)="togglePassword()"
+                      [attr.aria-label]="showPass() ? 'Hide password' : 'Show password'">
+                {{ showPass() ? 'Hide' : 'Show' }}
+              </button>
+            </div>
+            @if (f['password'].invalid && f['password'].touched) {
+              <span class="lg-hint">Enter your password (at least 4 characters).</span>
+            }
+          </div>
+
+          <button type="submit" class="lg-btn" [disabled]="loading()">
+            @if (loading()) { <span class="lg-spin"></span> Signing in } @else { Log In }
+          </button>
+        </form>
+
+        <p class="lg-note">You stay signed in on this device until you sign out.</p>
+      </div>
+
+      <p class="lg-legal">&copy; {{ currentYear }} Matheesha Flour Mill</p>
+    </main>
+
+    <!-- Showcase panel -->
+    <aside class="lg-show">
+      <div class="lg-show__text">
+        <div class="lg-show__brand"><img src="assets/icons/icon.png" alt="" width="34" height="34" /><span>Matheesha Flour Mill</span></div>
+        <h2>Run the whole mill from one screen.</h2>
+        <p>Sign in to manage sales, stock and daily production.</p>
+      </div>
+
+      <div class="lg-mock" aria-hidden="true">
+        <div class="lg-mock__bar"><i></i><i></i><i></i></div>
+        <div class="lg-mock__body">
+          <div class="lg-mock__tiles">
+            <div class="t t--hi"><small>Sales</small><b></b></div>
+            <div class="t"><small>Stock</small><b></b></div>
+            <div class="t"><small>Production</small><b></b></div>
+          </div>
+          <div class="lg-mock__chart">
+            <span style="height:38%"></span><span style="height:55%"></span><span style="height:46%"></span>
+            <span style="height:70%"></span><span style="height:62%"></span><span style="height:84%"></span>
+            <span style="height:74%"></span><span style="height:92%"></span>
+          </div>
+          <div class="lg-mock__rows"><u></u><u></u><u></u></div>
         </div>
+      </div>
+    </aside>
 
-        <button type="submit" class="lg-btn" [disabled]="loading()">
-          @if (loading()) { <span class="lg-spin"></span> Signing in } @else { Sign in }
-        </button>
-      </form>
-
-      <p class="lg-note">You stay signed in on this device until you sign out.</p>
-    </div>
-  </main>
-
+  </div>
 </div>

@@ -3,7 +3,7 @@
   "short_name": "Flour Mill",
   "description": "Sales, stock and production for Matheesha Flour Mill",
   "id": "/",
-  "start_url": "/",
+  "start_url": "/portal/stock-entry",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
