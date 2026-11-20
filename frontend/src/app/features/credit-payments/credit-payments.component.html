@@ -163,6 +163,15 @@
         </div>
 
         <div class="customer-pdf-actions">
+          <button class="btn btn-primary btn-sm" (click)="openCustomerPayment()" [disabled]="totalOutstanding() === 0"
+            title="Record one payment and spread it across this customer's pending sales">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Record Payment
+          </button>
           <button class="btn btn-outline btn-sm" (click)="printCustomerDueSlip()" [disabled]="totalOutstanding() === 0"
             title="Print an overall due slip covering all pending sales for this customer">
             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24"
@@ -290,10 +299,15 @@
           @for (p of summary.payments; track p.paymentId) {
           <div class="payment-row">
             <span class="pay-no">{{ p.paymentNo }}</span>
+            @if (p.receiptNo) {
+            <span class="pay-receipt" title="Part of a combined receipt">{{ p.receiptNo }}</span>
+            }
             <span class="pay-date">{{ formatDate(p.paymentDate) }}</span>
             @if (p.notes) { <span class="pay-notes">{{ p.notes }}</span> }
             <span class="pay-amount">{{ p.amount | lkrCurrency }}</span>
-            <button class="btn btn-ghost btn-sm danger-btn" (click)="confirmDeletePayment(p)" title="Remove payment">
+            <button class="btn btn-ghost btn-sm danger-btn"
+              (click)="p.receiptNo ? confirmDeleteReceipt(p.receiptNo) : confirmDeletePayment(p)"
+              [title]="p.receiptNo ? 'Remove whole receipt ' + p.receiptNo : 'Remove payment'">
               <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24"
                 stroke="currentColor" stroke-width="2">
                 <polyline points="3 6 5 6 21 6" />
@@ -361,4 +375,14 @@
   [message]="'Remove payment ' + deletePaymentTarget()!.paymentNo + ' (' + deletePaymentTarget()!.amount + ')? The sale balance will increase.'"
   confirmLabel="Remove" variant="danger" [loading]="deleteLoading()" (confirmed)="onDeletePayment()"
   (cancelled)="closeDeleteDialog()" />
+}
+@if (showCustomerPayment() && selectedCustomer()) {
+<app-customer-payment-dialog [customerId]="selectedId()!" [customerName]="selectedCustomer()!.name"
+  [summaries]="summaries()" (saved)="onCustomerPaymentSaved($event)"
+  (cancelled)="showCustomerPayment.set(false)" />
+}
+@if (deleteReceiptTarget()) {
+<app-confirm-dialog title="Remove Receipt" [message]="receiptDeleteMessage()"
+  confirmLabel="Remove" variant="danger" [loading]="deleteLoading()"
+  (confirmed)="onDeleteReceipt()" (cancelled)="closeReceiptDialog()" />
 }

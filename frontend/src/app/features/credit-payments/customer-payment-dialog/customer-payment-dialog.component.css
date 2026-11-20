@@ -1,0 +1,23 @@
+.mode-tabs { display: flex; gap: 4px; background: #f3f4f6; padding: 4px; border-radius: 8px; margin-bottom: 14px; }
+.mode-btn { flex: 1; padding: 8px 10px; border: none; background: transparent; border-radius: 5px; font-size: 12.5px; font-weight: 500; color: #6b7280; cursor: pointer; }
+.mode-btn.active { background: #fff; color: #111827; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+
+.pick-list { max-height: 190px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 14px; }
+.pick-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid #f3f4f6; cursor: pointer; font-size: 13px; }
+.pick-row:last-child { border-bottom: none; }
+.pick-row.on { background: #eff6ff; }
+.pick-no { font-family: monospace; font-weight: 600; }
+.pick-date { color: #9ca3af; font-size: 12px; }
+.pick-bal { margin-left: auto; font-weight: 600; color: #dc2626; }
+
+.amt-row { display: flex; gap: 8px; }
+.amt-row .form-control { flex: 1; }
+
+.alloc { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; }
+.alloc-title { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #9ca3af; margin-bottom: 8px; }
+.alloc-row { display: flex; align-items: center; gap: 10px; padding: 5px 0; font-size: 13px; flex-wrap: wrap; }
+.alloc-no { font-family: monospace; font-weight: 600; }
+.alloc-date { color: #9ca3af; font-size: 12px; }
+.alloc-amt { margin-left: auto; font-weight: 700; color: #16a34a; }
+.alloc-tag { font-size: 11px; padding: 2px 8px; border-radius: 99px; background: #fff7ed; color: #9a3412; }
+.alloc-tag.paid { background: #dcfce7; color: #14532d; }

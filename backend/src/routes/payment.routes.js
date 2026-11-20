@@ -28,5 +28,7 @@ router.delete('/:id', authorizeRole('ADMIN'), ctrl.remove);
 router.post('/due-slip/:sale_id', ctrl.printDueSlip);
 router.post('/due-slip/customer/:customer_id', ctrl.printCustomerDueSlip); 
 router.get('/customer/:customer_id/outstanding', ctrl.getCustomerOutstanding);
+router.post('/customer/:customer_id', authorizeRole('ADMIN'), ctrl.addCustomerPayment);
+router.delete('/receipt/:receipt_no', authorizeRole('ADMIN'), ctrl.removeReceipt);
 
 module.exports = router;

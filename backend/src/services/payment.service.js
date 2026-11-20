@@ -154,8 +154,11 @@ const getById = async (id) => {
 };
 
 const remove = async (id) => {
-  const p = await Payment.findByIdAndDelete(id);
+  const p = await Payment.findById(id);
   if (!p) throw Object.assign(new Error('Payment not found'), { statusCode: 404 });
+  if (p.receipt_no)
+    throw Object.assign(new Error(`This payment is part of receipt ${p.receipt_no}. Remove the whole receipt instead.`), { statusCode: 400 });
+  await p.deleteOne();
   await syncSalePaymentStatus(p.sale_id);
 };
 
@@ -250,5 +253,139 @@ const getAllInRange = async ({ dateFrom, dateTo } = {}) => {
     .populate('recorded_by', 'full_name username')
     .sort({ payment_date: 1 });
 };
+// ── Customer-level payment (one amount, auto-allocated across pending sales) ──
+const toCents   = (n) => Math.round(Number(n) * 100);
+const fromCents = (c) => c / 100;
+const badReq    = (msg) => Object.assign(new Error(msg), { statusCode: 400 });
 
-module.exports = { addPayment, getBySale, getByCustomer, getCreditSummaryByCustomer, getById, remove, getTotalPaid, printDueSlip, printCustomerDueSlip, sendPaymentSlipToCustomer, getCustomerTotalOutstanding, getAllInRange };
+const addCustomerPayment = async ({ customer_id, amount, payment_date, notes, sale_ids }, user) => {
+  const amountC = toCents(amount);
+  if (!Number.isFinite(amountC) || amountC <= 0) throw badReq('Enter a valid amount');
+
+  // oldest sale first
+  let pending = (await getCreditSummaryByCustomer(customer_id))
+    .filter(s => !s.isPaid)
+    .sort((a, b) => new Date(a.sale.sale_datetime) - new Date(b.sale.sale_datetime));
+
+  if (Array.isArray(sale_ids) && sale_ids.length) {
+    const wanted = new Set(sale_ids.map(String));
+    pending = pending.filter(s => wanted.has(String(s.sale._id)));
+    if (pending.length !== wanted.size)
+      throw badReq('One or more selected sales are not pending for this customer');
+  }
+  if (pending.length === 0) throw badReq('No pending balances for this customer');
+
+  const maxC = pending.reduce((a, s) => a + toCents(s.balanceDue), 0);
+  if (amountC > maxC)
+    throw badReq(`Amount exceeds the outstanding balance (max LKR ${fromCents(maxC).toFixed(2)})`);
+
+  // allocate oldest-first
+  let left = amountC;
+  const allocations = [];
+  for (const s of pending) {
+    if (left <= 0) break;
+    const takeC = Math.min(left, toCents(s.balanceDue));
+    if (takeC <= 0) continue;
+    allocations.push({ summary: s, takeC });
+    left -= takeC;
+  }
+
+  const receipt_no = await generateSequence('RCP');
+  // today -> the real current time (shows correctly on the slip); a back-dated entry -> midday Colombo time
+  const todayLK = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Colombo' });
+  const when = (!payment_date || payment_date === todayLK) ? new Date() : new Date(`${payment_date}T12:00:00+05:30`);
+  const created = [];
+  try {
+    for (const a of allocations) {
+      const payment_no = await generateSequence('PAY');
+      created.push(await Payment.create({
+        payment_no, receipt_no,
+        sale_id: a.summary.sale._id,
+        customer_id,
+        amount: fromCents(a.takeC),
+        payment_date: when,
+        notes: notes ?? '',
+        recorded_by: user?._id,
+      }));
+    }
+  } catch (err) {
+    // nothing is half-saved: undo whatever was created for this receipt
+    await Payment.deleteMany({ _id: { $in: created.map(p => p._id) } });
+    throw err;
+  }
+
+  const lines = [];
+  for (const a of allocations) {
+    const r = await syncSalePaymentStatus(a.summary.sale._id);
+    lines.push({
+      sale_no:       a.summary.sale.sale_no,
+      sale_date:     a.summary.sale.sale_datetime,
+      invoice_total: a.summary.sale.total_revenue,
+      applied:       fromCents(a.takeC),
+      balance_after: r.balanceDue,
+      is_paid:       r.balanceDue <= 0.001,
+    });
+  }
+
+  const customer = allocations[0].summary.sale.customer_id;
+  const outstandingAfter = await getCustomerTotalOutstanding(customer_id);
+  const receipt = { receipt_no, payment_date: when, amount: fromCents(amountC), notes: notes ?? '' };
+
+  // ── WhatsApp (fire-and-forget): one admin alert + ONE slip to the customer ──
+  notifyReceiptRecorded(customer, receipt, lines, outstandingAfter)
+    .catch(err => console.error('[WhatsApp] Receipt notify failed:', err.message));
+  sendReceiptSlipToCustomer(customer, receipt, lines, outstandingAfter)
+    .catch(err => console.error('[WhatsApp] Receipt slip send failed:', err.message));
+
+  return { receipt_no, amount: receipt.amount, payment_date: when, allocations: lines, outstandingAfter };
+};
+
+const notifyReceiptRecorded = async (customer, receipt, lines, outstandingAfter) => {
+  const rows = lines.map(l =>
+    `• ${l.sale_no}: LKR ${l.applied.toFixed(2)}${l.is_paid ? ' ✅' : ` (balance ${l.balance_after.toFixed(2)})`}`
+  ).join('\n');
+  return sendWhatsApp(
+    `💵 *Payment Received*\n` +
+    `👤 Customer: ${customer?.name || 'N/A'}\n` +
+    `🧾 Receipt: ${receipt.receipt_no}\n` +
+    `💰 Amount: LKR ${receipt.amount.toFixed(2)}\n` +
+    `${rows}\n` +
+    `📉 Total Outstanding: LKR ${Number(outstandingAfter).toFixed(2)}\n` +
+    `🕐 ${new Date(receipt.payment_date).toLocaleString('en-LK')}`
+  );
+};
+
+const sendReceiptSlipToCustomer = async (customer, receipt, lines, outstandingAfter) => {
+  const phone = formatPhoneForWhatsApp(customer?.phone);
+  if (!phone) {
+    console.warn(`[WhatsApp] Customer ${customer?.customer_code || customer?._id} has no usable phone - skipping receipt slip.`);
+    return;
+  }
+  const printerService = require('./printer.service');
+  const filePath = await printerService.buildReceiptPdfFile({ customer, receipt, lines, outstandingAfter });
+
+  const caption = outstandingAfter <= 0.001
+    ? `Hi ${customer.name} 👋, we received your payment of LKR ${receipt.amount.toFixed(2)} 💵. All your orders are now fully paid ✅.`
+    : `Hi ${customer.name} 👋, we received your payment of LKR ${receipt.amount.toFixed(2)} 💵. Total outstanding balance: LKR ${Number(outstandingAfter).toFixed(2)}.`;
+
+  try {
+    const pdf = await fs.promises.readFile(filePath);
+    const result = await sendWhatsAppDocument(phone, pdf, `Receipt-${receipt.receipt_no}.pdf`, caption);
+    if (!result.success) console.error('[WhatsApp] Receipt slip send failed:', result.error);
+  } finally {
+    fs.promises.unlink(filePath).catch(() => {});
+  }
+};
+
+// Delete a whole receipt (all its per-sale payments) in one go.
+const removeReceipt = async (receipt_no) => {
+  const payments = await Payment.find({ receipt_no });
+  if (payments.length === 0)
+    throw Object.assign(new Error('Receipt not found'), { statusCode: 404 });
+  await Payment.deleteMany({ receipt_no });
+  for (const sid of new Set(payments.map(p => String(p.sale_id)))) {
+    await syncSalePaymentStatus(sid);
+  }
+  return { deleted: payments.length };
+};
+module.exports = { addPayment, getBySale, getByCustomer, getCreditSummaryByCustomer, getById, remove, getTotalPaid, printDueSlip, printCustomerDueSlip, sendPaymentSlipToCustomer, getCustomerTotalOutstanding, getAllInRange, addCustomerPayment, removeReceipt };

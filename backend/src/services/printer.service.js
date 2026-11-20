@@ -746,7 +746,110 @@ function buildDueSlipPdfFile({ sale, customer, payment, totalPaid, balanceDue, i
     stream.on('error', reject);
   });
 }
+function buildReceiptPdfFile({ customer, receipt, lines, outstandingAfter }) {
+  return new Promise((resolve, reject) => {
+    const tempDir = path.join(__dirname, '../../tmp');
+    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+    const filePath = path.join(tempDir, `receipt_${receipt.receipt_no}_${Date.now()}.pdf`);
 
+    const doc = new PDFDocument({ size: 'A4', margin: 40 });
+    const stream = fs.createWriteStream(filePath);
+    doc.pipe(stream);
+
+    const mL = 40;
+    const rEdge = doc.page.width - 40;
+    const allPaid = outstandingAfter <= 0.001;
+
+    // ── Header ──
+    doc.font('Helvetica-Bold').fontSize(13.5).fillColor(INK).text(COMPANY_NAME, mL, 40);
+    doc.fontSize(24).text('PAYMENT RECEIPT', mL, 36, { width: rEdge - mL, align: 'right' });
+    doc.font('Helvetica').fontSize(9).fillColor(GRAY).text(COMPANY_EMAIL, mL, 67);
+    doc.fillColor(INK_SOFT).text(`# ${receipt.receipt_no}`, mL, 58, { width: rEdge - mL, align: 'right' });
+    doc.font('Helvetica-Bold').fontSize(9).text(allPaid ? 'Status' : 'Total Outstanding', mL, 74, { width: rEdge - mL, align: 'right' });
+    doc.fontSize(13).fillColor(allPaid ? PAID_COLOR : DUE_COLOR);
+    doc.text(allPaid ? 'ALL PAID' : `LKR ${fmt(outstandingAfter)}`, mL, 88, { width: rEdge - mL, align: 'right' });
+    doc.moveTo(mL, 106).lineTo(rEdge, 106).lineWidth(0.5).strokeColor(LINE).stroke();
+
+    // ── Customer + meta ──
+    const b2Y = 120;
+    doc.font('Helvetica').fontSize(8.5).fillColor(GRAY_LIGHT).text('Customer', mL, b2Y);
+    doc.font('Helvetica-Bold').fontSize(10.5).fillColor(INK).text(customer?.name || 'N/A', mL, b2Y + 13);
+    if (customer?.customer_code) doc.font('Helvetica').fontSize(9).fillColor(INK_SOFT).text(customer.customer_code, mL, b2Y + 27);
+    doc.font('Helvetica').fontSize(9);
+    doc.fillColor(GRAY).text('Receipt No :', mL, b2Y, { width: 300, align: 'right' });
+    doc.fillColor(INK_SOFT).text(receipt.receipt_no, mL, b2Y, { width: rEdge - mL, align: 'right' });
+    doc.fillColor(GRAY).text('Date/Time :', mL, b2Y + 16, { width: 300, align: 'right' });
+    doc.fillColor(INK_SOFT).text(formatDateTime(receipt.payment_date), mL, b2Y + 16, { width: rEdge - mL, align: 'right' });
+
+    // ── Amount box ──
+    let y = b2Y + 52;
+    const boxW = rEdge - mL;
+    doc.rect(mL, y, boxW, 40).fill(PAID_FILL);
+    doc.font('Helvetica').fontSize(9).fillColor(GRAY).text('Amount Received', mL + 16, y + 8);
+    doc.font('Helvetica-Bold').fontSize(16).fillColor(PAID_COLOR).text(`LKR ${fmt(receipt.amount)}`, mL + 16, y + 19);
+    y += 58;
+
+    // ── Allocation table ──
+    const cols = [
+      { key: 'sale_no',       label: 'Sale No',        w: 105, align: 'left'  },
+      { key: 'sale_date',     label: 'Sale Date',      w: 95,  align: 'left'  },
+      { key: 'invoice_total', label: 'Invoice Total',  w: 105, align: 'right' },
+      { key: 'applied',       label: 'Paid Now',       w: 105, align: 'right' },
+      { key: 'balance_after', label: 'Balance Left',   w: 105, align: 'right' },
+    ];
+    const drawRow = (vals, opts = {}) => {
+      let x = mL;
+      if (opts.fill) doc.rect(mL, y, boxW, 20).fill(opts.fill);
+      doc.font(opts.bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(9).fillColor(opts.color || INK_SOFT);
+      cols.forEach((c, i) => {
+        doc.text(vals[i], x + 6, y + 6, { width: c.w - 12, align: c.align });
+        x += c.w;
+      });
+      y += 20;
+    };
+    drawRow(cols.map(c => c.label), { fill: '#F3F3F3', bold: true, color: GRAY });
+    lines.forEach((l) => {
+      if (y > 760) { doc.addPage(); y = 40; }
+      drawRow([
+        l.sale_no,
+        formatDateOnly(l.sale_date),
+        `LKR ${fmt(l.invoice_total)}`,
+        `LKR ${fmt(l.applied)}`,
+        l.is_paid ? 'PAID' : `LKR ${fmt(l.balance_after)}`,
+      ]);
+      doc.moveTo(mL, y).lineTo(rEdge, y).lineWidth(0.4).strokeColor(LINE).stroke();
+    });
+
+    // ── Totals ──
+    y += 14;
+    if (y > 740) { doc.addPage(); y = 40; }
+    const lblW = 150, valW = 110, left = rEdge - lblW - valW;
+    [
+      { label: 'This Payment',      value: `LKR ${fmt(receipt.amount)}`, fill: PAID_FILL, color: PAID_COLOR, bold: false },
+      { label: allPaid ? 'Status' : 'Total Outstanding', value: allPaid ? 'ALL PAID' : `LKR ${fmt(outstandingAfter)}`,
+        fill: allPaid ? PAID_FILL : DUE_FILL, color: allPaid ? PAID_COLOR : DUE_COLOR, bold: true },
+    ].forEach((row) => {
+      doc.rect(left, y, lblW + valW, 20).fill(row.fill);
+      doc.font(row.bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(9.5).fillColor(row.color);
+      doc.text(row.label, left, y + 5, { width: lblW, align: 'right' });
+      doc.text(row.value, left + lblW, y + 5, { width: valW, align: 'right' });
+      y += 20;
+    });
+
+    // ── Notes ──
+    y += 20;
+    doc.moveTo(mL, y).lineTo(rEdge, y).strokeColor(LINE).lineWidth(0.5).stroke();
+    doc.font('Helvetica').fontSize(9).fillColor(INK_SOFT).text(
+      allPaid ? 'Thank you for settling your account in full!'
+              : 'Please settle the remaining balance at your earliest convenience. Thank you!',
+      mL, y + 14
+    );
+
+    doc.end();
+    stream.on('finish', () => resolve(filePath));
+    stream.on('error', reject);
+  });
+}
 module.exports = {
   formatSaleReceipt, printSale,
   formatPaymentReceipt, printPaymentReceipt,
@@ -758,4 +861,5 @@ module.exports = {
   buildBarcodeCode39, COMMANDS, safeToFixed,
   buildDueSlipPdf, generateDueSlipPdfBuffer,
   buildDueSlipPdfFile,
+  buildReceiptPdfFile
 };

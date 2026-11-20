@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment.prod';
-import { Payment, SaleCreditSummary, AddPaymentRequest } from '../models/payment.model';
+import { Payment, SaleCreditSummary, AddPaymentRequest,AddCustomerPaymentRequest, CustomerPaymentResult } from '../models/payment.model';
 import { ApiResponse } from '../models/api-response';
 
 @Injectable({ providedIn: 'root' })
@@ -46,6 +46,7 @@ printCustomerDueSlip(customerId: string): Observable<any> {
       amount: raw.amount, paymentDate: raw.payment_date,
       notes: raw.notes ?? '',
       recordedBy: raw.recorded_by?.full_name ?? raw.recorded_by?.username ?? '',
+      receiptNo: raw.receipt_no ?? '',
       createdAt: raw.created_at,
     };
   }
@@ -74,6 +75,7 @@ printCustomerDueSlip(customerId: string): Observable<any> {
         saleId: s._id, saleNo: s.sale_no, customerId: cust._id ?? '',
         amount: p.amount, paymentDate: p.payment_date,
         notes: p.notes ?? '', recordedBy: p.recorded_by?.full_name ?? '',
+        receiptNo: p.receipt_no ?? '',
         createdAt: p.created_at,
       })),
       totalPaid: raw.totalPaid, balanceDue: raw.balanceDue, isPaid: raw.isPaid,
@@ -99,4 +101,14 @@ getPaymentsInRange(dateFrom?: string, dateTo?: string): Observable<any[]> {
     })))
   );
 }
+  addCustomerPayment(customerId: string, req: AddCustomerPaymentRequest): Observable<CustomerPaymentResult> {
+    return this.http.post<any>(`${this.base}/customer/${customerId}`, {
+      amount: req.amount, payment_date: req.paymentDate,
+      notes: req.notes ?? '', sale_ids: req.saleIds
+    }).pipe(map(res => res.data));
+  }
+
+  deleteReceipt(receiptNo: string): Observable<any> {
+    return this.http.delete<any>(`${this.base}/receipt/${encodeURIComponent(receiptNo)}`);
+  }
 }

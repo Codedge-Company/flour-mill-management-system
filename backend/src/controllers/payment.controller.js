@@ -64,3 +64,16 @@ exports.getAll = async (req, res, next) => {
     res.json({ success: true, data: await paymentService.getAllInRange({ dateFrom, dateTo }) });
   } catch (e) { next(e); }
 };
+exports.addCustomerPayment = async (req, res, next) => {
+  try {
+    const data = await paymentService.addCustomerPayment({ ...req.body, customer_id: req.params.customer_id }, req.user);
+    res.status(201).json({ success: true, data });
+  } catch (e) { next(e); }
+};
+
+exports.removeReceipt = async (req, res, next) => {
+  try {
+    const data = await paymentService.removeReceipt(req.params.receipt_no);
+    res.json({ success: true, data });
+  } catch (e) { next(e); }
+};

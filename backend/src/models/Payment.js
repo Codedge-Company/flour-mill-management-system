@@ -8,6 +8,7 @@ const paymentSchema = new mongoose.Schema({
   amount:       { type: Number, required: true, min: 0.01 },
   payment_date: { type: Date, required: true, default: Date.now },
   notes:        { type: String, default: '' },
+  receipt_no:   { type: String, default: '', index: true },  
   recorded_by:  { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 }, {
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }
