@@ -12,6 +12,7 @@ export interface Payment {
   recordedBy:  string;
   createdAt:   string;
   receiptNo?: string;
+  source?:    'CASH' | 'ADVANCE';   // ADVANCE = paid out of the customer's advance
 }
 
 export interface SaleCreditItem {
@@ -69,4 +70,26 @@ export interface CustomerPaymentAllocation {
 export interface CustomerPaymentResult {
   receipt_no: string; amount: number; payment_date: string;
   allocations: CustomerPaymentAllocation[]; outstandingAfter: number;
+  advance_added?: number; advance_balance?: number;
+}
+
+export interface AdvanceEntry {
+  id:        string;
+  type:      'DEPOSIT' | 'APPLIED';
+  amount:    number;
+  entryDate: string;
+  receiptNo: string;
+  saleNo:    string;
+  notes:     string;
+}
+
+export interface CustomerAdvanceInfo {
+  balance: number;
+  entries: AdvanceEntry[];
+}
+
+export interface ApplyAdvanceResult {
+  receipt_no: string; amount: number; payment_date: string;
+  allocations: CustomerPaymentAllocation[]; outstandingAfter: number;
+  advance_used: number; advance_balance: number;
 }

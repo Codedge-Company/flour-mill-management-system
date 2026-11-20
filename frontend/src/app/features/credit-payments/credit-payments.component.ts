@@ -5,7 +5,7 @@ import { RouterLink } from '@angular/router';
 import { PaymentApiService } from '../../core/services/payment-api.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { Customer } from '../../core/models/customer';
-import { SaleCreditSummary, Payment, CustomerPaymentResult } from '../../core/models/payment.model';
+import { SaleCreditSummary, Payment, CustomerPaymentResult, AdvanceEntry } from '../../core/models/payment.model';
 import { LkrCurrencyPipe } from '../../shared/pipes/lkr-currency.pipe';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { AddPaymentDialogComponent } from './add-payment-dialog/add-payment-dialog.component';
@@ -48,6 +48,12 @@ export class CreditPaymentsComponent implements OnInit {
   showCustomerPayment = signal(false);
   deleteReceiptTarget = signal<string | null>(null);
 
+  // advance (money the customer paid ahead)
+  advance          = signal(0);
+  advanceEntries   = signal<AdvanceEntry[]>([]);
+  applyAdvanceOpen = signal(false);
+  applyLoading     = signal(false);
+
   // ── Customer search ────────────────────────────────────────────────────────
   searchQuery = signal('');
 
@@ -75,6 +81,11 @@ export class CreditPaymentsComponent implements OnInit {
     return this.summaries();
   });
 
+  // advance that can be used right now on the pending sales
+  advanceUsable = computed(() =>
+    Math.round(Math.min(this.advance(), this.totalOutstanding()) * 100) / 100
+  );
+
   // pending count for tab badge
   pendingCount = computed(() => this.summaries().filter(s => !s.isPaid).length);
 
@@ -96,6 +107,8 @@ export class CreditPaymentsComponent implements OnInit {
 
   selectCustomer(id: string): void {
     this.selectedId.set(id);
+    this.advance.set(0);
+    this.advanceEntries.set([]);
     this.loadSummary(id);
   }
 
@@ -105,6 +118,15 @@ export class CreditPaymentsComponent implements OnInit {
     this.paymentSvc.getCreditSummary(customerId).subscribe({
       next:  res => { this.summaries.set(res.data); this.loading.set(false); },
       error: ()  => { this.error.set('Failed to load credit summary.'); this.loading.set(false); }
+    });
+    this.loadAdvance(customerId);
+  }
+
+  loadAdvance(customerId: string): void {
+    this.customerSvc.getAdvance(customerId).subscribe(info => {
+      if (this.selectedId() !== customerId) return;
+      this.advance.set(info.balance);
+      this.advanceEntries.set(info.entries);
     });
   }
 
@@ -123,9 +145,34 @@ export class CreditPaymentsComponent implements OnInit {
 
   onCustomerPaymentSaved(res: CustomerPaymentResult): void {
     this.showCustomerPayment.set(false);
-    this.showSuccess(`Payment ${res.receipt_no} recorded (LKR ${res.amount.toFixed(2)}).`);
+    const adv = res.advance_added ? ` LKR ${res.advance_added.toFixed(2)} kept as advance.` : '';
+    this.showSuccess(`Payment ${res.receipt_no} recorded (LKR ${res.amount.toFixed(2)}).${adv}`);
     const id = this.selectedId();
     if (id) this.loadSummary(id);
+  }
+
+  // ── Use the customer's advance on the pending sales (oldest first) ─────────
+  applyAdvanceMessage(): string {
+    return `Use LKR ${this.advanceUsable().toFixed(2)} of this customer's advance (balance LKR ${this.advance().toFixed(2)}) to pay the pending sales, oldest first?`;
+  }
+
+  onApplyAdvance(): void {
+    const id = this.selectedId();
+    if (!id) return;
+    this.applyLoading.set(true);
+    this.paymentSvc.applyAdvance(id).subscribe({
+      next: res => {
+        this.applyLoading.set(false);
+        this.applyAdvanceOpen.set(false);
+        this.showSuccess(`LKR ${res.advance_used.toFixed(2)} of advance used (${res.receipt_no}).`);
+        this.loadSummary(id);
+      },
+      error: err => {
+        this.applyLoading.set(false);
+        this.applyAdvanceOpen.set(false);
+        this.error.set(err?.error?.message ?? 'Failed to use advance.');
+      }
+    });
   }
 
   // ── Delete a single payment (payments made without a receipt) ──────────────
@@ -166,7 +213,13 @@ export class CreditPaymentsComponent implements OnInit {
     const items = this.receiptPayments(no);
     const total = items.reduce((a, p) => a + p.amount, 0);
     const parts = items.map(p => `${p.saleNo}: ${p.amount.toFixed(2)}`).join(', ');
-    return `Remove receipt ${no} (LKR ${total.toFixed(2)})? This removes: ${parts}. The balances of these sales will increase.`;
+    const deposit = this.advanceEntries().find(e => e.type === 'DEPOSIT' && e.receiptNo === no);
+    let msg = items.length
+      ? `Remove receipt ${no} (LKR ${total.toFixed(2)})? This removes: ${parts}. The balances of these sales will increase.`
+      : `Remove receipt ${no}?`;
+    if (deposit) msg += ` The advance of LKR ${deposit.amount.toFixed(2)} kept from this receipt will also be removed.`;
+    if (items.some(p => p.source === 'ADVANCE')) msg += ' The advance that was used goes back to the customer.';
+    return msg;
   }
 
   onDeleteReceipt(): void {

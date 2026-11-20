@@ -415,7 +415,7 @@
 
 .credit-stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 12px;
   flex: 1;
   min-width: 0;
@@ -800,13 +800,12 @@
   .c-name { font-size: 12px; max-width: 90px; }
   .c-chevron { display: none; }
 
-  .credit-stats { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .credit-stats { grid-template-columns: repeat(2, 1fr); gap: 10px; }
 }
 
 /* ── Mobile ≤ 640px ─────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
   .credit-stats { grid-template-columns: 1fr 1fr; }
-  .credit-stats .stat-card:nth-child(3) { grid-column: 1 / -1; }
 
   .credit-stats-row { flex-direction: column; }
 
@@ -838,7 +837,6 @@
 /* ── Small phones ≤ 400px ───────────────────────────────────────────────── */
 @media (max-width: 400px) {
   .credit-stats { grid-template-columns: 1fr; }
-  .credit-stats .stat-card:nth-child(3) { grid-column: 1; }
 
   .fin-row { grid-template-columns: 1fr; }
   .fin-row .fin-box:last-child { grid-column: 1; border-top: 1px solid var(--cp-gray-200); }
@@ -846,3 +844,27 @@
   .filter-tabs { flex-wrap: wrap; }
 }
 .pay-receipt { font-family: monospace; font-size: 11px; font-weight: 600; color: #7c3aed; background: #f5f3ff; padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
+
+/* ── Advance ──────────────────────────────────────────────────────────── */
+.stat-card.stat-info  { border-color: #bfdbfe; background: var(--cp-blue-light); }
+.stat-info .stat-label { color: #1e40af; }
+.stat-info .stat-val   { color: var(--cp-blue); }
+.btn-advance { color: #1d4ed8; border-color: #bfdbfe; background: #eff6ff; }
+.btn-advance:hover:not(:disabled) { background: #dbeafe; border-color: #93c5fd; }
+
+.pay-adv {
+  font-size: 11px; font-weight: 600; color: #1d4ed8; background: #eff6ff;
+  border: 1px solid #bfdbfe; padding: 1px 7px; border-radius: 4px; white-space: nowrap;
+}
+
+.advance-card { padding: 12px 18px; margin-bottom: 16px; background: var(--cp-white); border: 1px solid #bfdbfe; border-radius: var(--cp-radius); }
+.advance-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.advance-card-head .history-title { margin: 0; }
+.advance-balance { font-size: 13px; font-weight: 700; color: var(--cp-blue); }
+.advance-rows { max-height: 220px; overflow-y: auto; }
+.adv-type {
+  font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; white-space: nowrap;
+  color: #14532d; background: var(--cp-green-light);
+}
+.adv-type.used { color: #1e40af; background: #dbeafe; }
+.pay-amount.used { color: var(--cp-blue); }

@@ -18,3 +18,10 @@ export interface CreateCustomerRequest {
 }
 
 export interface UpdateCustomerRequest extends CreateCustomerRequest {}
+
+// Outstanding credit and advance (money paid ahead) of one customer
+export interface CustomerBalance {
+  customerId:  string;
+  outstanding: number;
+  advance:     number;
+}

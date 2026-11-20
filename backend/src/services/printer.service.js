@@ -746,6 +746,9 @@ function buildDueSlipPdfFile({ sale, customer, payment, totalPaid, balanceDue, i
     stream.on('error', reject);
   });
 }
+const ADV_COLOR = '#1D4ED8';
+const ADV_FILL = '#EFF6FF';
+
 function buildReceiptPdfFile({ customer, receipt, lines, outstandingAfter }) {
   return new Promise((resolve, reject) => {
     const tempDir = path.join(__dirname, '../../tmp');
@@ -759,6 +762,9 @@ function buildReceiptPdfFile({ customer, receipt, lines, outstandingAfter }) {
     const mL = 40;
     const rEdge = doc.page.width - 40;
     const allPaid = outstandingAfter <= 0.001;
+    const fromAdvance = receipt.source === 'ADVANCE';
+    const advAdded = Number(receipt.advance_added || 0);
+    const advBal = Number(receipt.advance_balance || 0);
 
     // ── Header ──
     doc.font('Helvetica-Bold').fontSize(13.5).fillColor(INK).text(COMPANY_NAME, mL, 40);
@@ -784,12 +790,12 @@ function buildReceiptPdfFile({ customer, receipt, lines, outstandingAfter }) {
     // ── Amount box ──
     let y = b2Y + 52;
     const boxW = rEdge - mL;
-    doc.rect(mL, y, boxW, 40).fill(PAID_FILL);
-    doc.font('Helvetica').fontSize(9).fillColor(GRAY).text('Amount Received', mL + 16, y + 8);
-    doc.font('Helvetica-Bold').fontSize(16).fillColor(PAID_COLOR).text(`LKR ${fmt(receipt.amount)}`, mL + 16, y + 19);
+    doc.rect(mL, y, boxW, 40).fill(fromAdvance ? ADV_FILL : PAID_FILL);
+    doc.font('Helvetica').fontSize(9).fillColor(GRAY).text(fromAdvance ? 'Paid from Advance' : 'Amount Received', mL + 16, y + 8);
+    doc.font('Helvetica-Bold').fontSize(16).fillColor(fromAdvance ? ADV_COLOR : PAID_COLOR).text(`LKR ${fmt(receipt.amount)}`, mL + 16, y + 19);
     y += 58;
 
-    // ── Allocation table ──
+    // ── Allocation table (not shown when the whole amount was kept as advance) ──
     const cols = [
       { key: 'sale_no',       label: 'Sale No',        w: 105, align: 'left'  },
       { key: 'sale_date',     label: 'Sale Date',      w: 95,  align: 'left'  },
@@ -807,28 +813,36 @@ function buildReceiptPdfFile({ customer, receipt, lines, outstandingAfter }) {
       });
       y += 20;
     };
-    drawRow(cols.map(c => c.label), { fill: '#F3F3F3', bold: true, color: GRAY });
-    lines.forEach((l) => {
-      if (y > 760) { doc.addPage(); y = 40; }
-      drawRow([
-        l.sale_no,
-        formatDateOnly(l.sale_date),
-        `LKR ${fmt(l.invoice_total)}`,
-        `LKR ${fmt(l.applied)}`,
-        l.is_paid ? 'PAID' : `LKR ${fmt(l.balance_after)}`,
-      ]);
-      doc.moveTo(mL, y).lineTo(rEdge, y).lineWidth(0.4).strokeColor(LINE).stroke();
-    });
+    if (lines.length) {
+      drawRow(cols.map(c => c.label), { fill: '#F3F3F3', bold: true, color: GRAY });
+      lines.forEach((l) => {
+        if (y > 760) { doc.addPage(); y = 40; }
+        drawRow([
+          l.sale_no,
+          formatDateOnly(l.sale_date),
+          `LKR ${fmt(l.invoice_total)}`,
+          `LKR ${fmt(l.applied)}`,
+          l.is_paid ? 'PAID' : `LKR ${fmt(l.balance_after)}`,
+        ]);
+        doc.moveTo(mL, y).lineTo(rEdge, y).lineWidth(0.4).strokeColor(LINE).stroke();
+      });
+    }
 
     // ── Totals ──
     y += 14;
-    if (y > 740) { doc.addPage(); y = 40; }
+    if (y > 700) { doc.addPage(); y = 40; }
     const lblW = 150, valW = 110, left = rEdge - lblW - valW;
-    [
-      { label: 'This Payment',      value: `LKR ${fmt(receipt.amount)}`, fill: PAID_FILL, color: PAID_COLOR, bold: false },
-      { label: allPaid ? 'Status' : 'Total Outstanding', value: allPaid ? 'ALL PAID' : `LKR ${fmt(outstandingAfter)}`,
-        fill: allPaid ? PAID_FILL : DUE_FILL, color: allPaid ? PAID_COLOR : DUE_COLOR, bold: true },
-    ].forEach((row) => {
+    const totals = [
+      { label: fromAdvance ? 'Paid from Advance' : 'This Payment', value: `LKR ${fmt(receipt.amount)}`,
+        fill: fromAdvance ? ADV_FILL : PAID_FILL, color: fromAdvance ? ADV_COLOR : PAID_COLOR, bold: false },
+    ];
+    if (advAdded > 0.001) totals.push({ label: 'Kept as Advance', value: `LKR ${fmt(advAdded)}`, fill: ADV_FILL, color: ADV_COLOR, bold: false });
+    if (advBal > 0.001)   totals.push({ label: 'Advance Balance', value: `LKR ${fmt(advBal)}`, fill: ADV_FILL, color: ADV_COLOR, bold: true });
+    totals.push({
+      label: allPaid ? 'Status' : 'Total Outstanding', value: allPaid ? 'ALL PAID' : `LKR ${fmt(outstandingAfter)}`,
+      fill: allPaid ? PAID_FILL : DUE_FILL, color: allPaid ? PAID_COLOR : DUE_COLOR, bold: true,
+    });
+    totals.forEach((row) => {
       doc.rect(left, y, lblW + valW, 20).fill(row.fill);
       doc.font(row.bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(9.5).fillColor(row.color);
       doc.text(row.label, left, y + 5, { width: lblW, align: 'right' });
@@ -840,8 +854,9 @@ function buildReceiptPdfFile({ customer, receipt, lines, outstandingAfter }) {
     y += 20;
     doc.moveTo(mL, y).lineTo(rEdge, y).strokeColor(LINE).lineWidth(0.5).stroke();
     doc.font('Helvetica').fontSize(9).fillColor(INK_SOFT).text(
-      allPaid ? 'Thank you for settling your account in full!'
-              : 'Please settle the remaining balance at your earliest convenience. Thank you!',
+      advBal > 0.001 && allPaid ? 'Thank you! Your advance balance will be used on your next orders.'
+        : allPaid ? 'Thank you for settling your account in full!'
+        : 'Please settle the remaining balance at your earliest convenience. Thank you!',
       mL, y + 14
     );
 
@@ -850,6 +865,7 @@ function buildReceiptPdfFile({ customer, receipt, lines, outstandingAfter }) {
     stream.on('error', reject);
   });
 }
+
 module.exports = {
   formatSaleReceipt, printSale,
   formatPaymentReceipt, printPaymentReceipt,

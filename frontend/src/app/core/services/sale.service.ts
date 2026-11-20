@@ -96,6 +96,7 @@ export class SaleService {
       payment_method: request.paymentMethod,
       sale_datetime: request.saleDate ? new Date(request.saleDate).toISOString() : undefined,
       use_default_price: request.useDefaultPrice ?? false,   // ← NEW
+      advance_amount: request.advanceAmount && request.advanceAmount > 0 ? request.advanceAmount : 0,
       items: request.items.map(item => ({
         pack_type_id: item.packTypeId,
         qty: item.qty,

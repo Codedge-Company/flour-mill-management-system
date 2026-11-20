@@ -8,6 +8,10 @@ router.get('/:id/effective-price/:packTypeId', customerController.getEffectivePr
 
 router.use(authenticate);
 
+// keep these two ABOVE '/:id' so "balances" is not read as an id
+router.get('/balances', customerController.getBalances);
+router.get('/:id/advance', customerController.getAdvance);
+
 router.get('/:id', customerController.getCustomerById);
 router.post('/', customerController.createCustomer);
 router.put('/:id', customerController.updateCustomer);

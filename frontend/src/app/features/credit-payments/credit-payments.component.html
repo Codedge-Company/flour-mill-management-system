@@ -160,11 +160,15 @@
             <span class="stat-label">Total Paid</span>
             <span class="stat-val">{{ (totalCredit() - totalOutstanding()) | lkrCurrency }}</span>
           </div>
+          <div class="stat-card stat-info">
+            <span class="stat-label">Advance</span>
+            <span class="stat-val">{{ advance() | lkrCurrency }}</span>
+          </div>
         </div>
 
         <div class="customer-pdf-actions">
-          <button class="btn btn-primary btn-sm" (click)="openCustomerPayment()" [disabled]="totalOutstanding() === 0"
-            title="Record one payment and spread it across this customer's pending sales">
+          <button class="btn btn-primary btn-sm" (click)="openCustomerPayment()"
+            title="Record one payment: it is spread over the pending sales and anything extra is kept as advance">
             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24"
               stroke="currentColor" stroke-width="2">
               <line x1="12" y1="5" x2="12" y2="19" />
@@ -172,6 +176,12 @@
             </svg>
             Record Payment
           </button>
+          @if (advance() > 0 && totalOutstanding() > 0) {
+          <button class="btn btn-outline btn-sm btn-advance" (click)="applyAdvanceOpen.set(true)"
+            title="Pay the pending sales out of this customer's advance">
+            Use Advance ({{ advanceUsable() | lkrCurrency }})
+          </button>
+          }
           <button class="btn btn-outline btn-sm" (click)="printCustomerDueSlip()" [disabled]="totalOutstanding() === 0"
             title="Print an overall due slip covering all pending sales for this customer">
             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24"
@@ -204,6 +214,41 @@
           </button>
         </div>
       </div>
+
+      <!-- ── Advance account ─────────────────────────────── -->
+      @if (advanceEntries().length > 0) {
+      <div class="advance-card card">
+        <div class="advance-card-head">
+          <h5 class="history-title">Advance account</h5>
+          <span class="advance-balance">Balance {{ advance() | lkrCurrency }}</span>
+        </div>
+        <div class="advance-rows">
+          @for (e of advanceEntries(); track e.id) {
+          <div class="payment-row">
+            <span class="adv-type" [class.used]="e.type === 'APPLIED'">{{ e.type === 'DEPOSIT' ? 'Received' : 'Used' }}</span>
+            @if (e.receiptNo) {
+            <span class="pay-receipt">{{ e.receiptNo }}</span>
+            }
+            <span class="pay-date">{{ formatDate(e.entryDate) }}</span>
+            @if (e.saleNo) {
+            <span class="pay-date">{{ e.saleNo }}</span>
+            }
+            <span class="pay-amount" [class.used]="e.type === 'APPLIED'">{{ e.type === 'DEPOSIT' ? '+' : '−' }}{{ e.amount | lkrCurrency }}</span>
+            @if (e.type === 'DEPOSIT' && e.receiptNo) {
+            <button class="btn btn-ghost btn-sm danger-btn" (click)="confirmDeleteReceipt(e.receiptNo)"
+              [title]="'Remove receipt ' + e.receiptNo">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+              </svg>
+            </button>
+            }
+          </div>
+          }
+        </div>
+      </div>
+      }
 
       <!-- ── Filter tabs ─────────────────────────────────── -->
       <div class="filter-tabs">
@@ -299,6 +344,9 @@
           @for (p of summary.payments; track p.paymentId) {
           <div class="payment-row">
             <span class="pay-no">{{ p.paymentNo }}</span>
+            @if (p.source === 'ADVANCE') {
+            <span class="pay-adv" title="Paid from the customer's advance">Advance</span>
+            }
             @if (p.receiptNo) {
             <span class="pay-receipt" title="Part of a combined receipt">{{ p.receiptNo }}</span>
             }
@@ -385,4 +433,9 @@
 <app-confirm-dialog title="Remove Receipt" [message]="receiptDeleteMessage()"
   confirmLabel="Remove" variant="danger" [loading]="deleteLoading()"
   (confirmed)="onDeleteReceipt()" (cancelled)="closeReceiptDialog()" />
+}
+@if (applyAdvanceOpen()) {
+<app-confirm-dialog title="Use Advance" [message]="applyAdvanceMessage()"
+  confirmLabel="Use advance" [loading]="applyLoading()"
+  (confirmed)="onApplyAdvance()" (cancelled)="applyAdvanceOpen.set(false)" />
 }

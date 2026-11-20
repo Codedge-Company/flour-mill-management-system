@@ -41,6 +41,7 @@ export interface CreateSaleRequest {
   saleDate?:     string;
   items:         CreateSaleItemRequest[];
   useDefaultPrice?: boolean;  
+  advanceAmount?:  number;    // part of the customer's advance to use on this (CREDIT) sale
 }
 
 export interface CreateSaleItemRequest {

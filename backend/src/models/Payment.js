@@ -8,7 +8,10 @@ const paymentSchema = new mongoose.Schema({
   amount:       { type: Number, required: true, min: 0.01 },
   payment_date: { type: Date, required: true, default: Date.now },
   notes:        { type: String, default: '' },
-  receipt_no:   { type: String, default: '', index: true },  
+  receipt_no:   { type: String, default: '', index: true },
+  // CASH = money received now, ADVANCE = paid out of the customer's advance balance
+  // (old payments without this field are CASH)
+  source:       { type: String, enum: ['CASH', 'ADVANCE'], default: 'CASH' },
   recorded_by:  { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 }, {
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }

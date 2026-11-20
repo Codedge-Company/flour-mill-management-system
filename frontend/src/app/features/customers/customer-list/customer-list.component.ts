@@ -4,10 +4,11 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CustomerService } from '../../../core/services/customer.service';
-import { Customer } from '../../../core/models/customer';
+import { Customer, CustomerBalance } from '../../../core/models/customer';
 import { PageHeaderComponent } from '../../../shared/components/page-header/page-header.component';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
+import { LkrCurrencyPipe } from '../../../shared/pipes/lkr-currency.pipe';
 
 @Component({
   selector: 'app-customer-list',
@@ -18,7 +19,8 @@ import { TimeAgoPipe } from '../../../shared/pipes/time-ago.pipe';
     FormsModule,
     PageHeaderComponent,
     ConfirmDialogComponent,
-    TimeAgoPipe
+    TimeAgoPipe,
+    LkrCurrencyPipe
   ],
   templateUrl: './customer-list.component.html',
   styleUrl: './customer-list.component.css'
@@ -31,12 +33,29 @@ export class CustomerListComponent implements OnInit {
   deleteTarget   = signal<Customer | null>(null);
   deleteLoading  = signal(false);
   successMessage = signal<string | null>(null);
+  balances       = signal<Record<string, CustomerBalance>>({});
 
   private searchTimer: any;
 
   constructor(private customerService: CustomerService) {}
 
-  ngOnInit(): void { this.load(); }
+  ngOnInit(): void {
+    this.load();
+    this.loadBalances();
+  }
+
+  // outstanding credit + advance of every customer
+  loadBalances(): void {
+    this.customerService.getBalances().subscribe(list => {
+      const map: Record<string, CustomerBalance> = {};
+      for (const b of list) map[b.customerId] = b;
+      this.balances.set(map);
+    });
+  }
+
+  balanceOf(customerId: string): CustomerBalance {
+    return this.balances()[customerId] ?? { customerId, outstanding: 0, advance: 0 };
+  }
 
   load(search?: string): void {
     this.loading.set(true);
@@ -46,7 +65,6 @@ export class CustomerListComponent implements OnInit {
       
       next: res => {
         this.customers.set(res.data);
-        console.log('Loaded customers:', res.data);
         this.loading.set(false);
       },
       error: () => {

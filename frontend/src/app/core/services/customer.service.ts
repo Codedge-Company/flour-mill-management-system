@@ -5,9 +5,11 @@ import { Observable, catchError, map, of } from 'rxjs'; // Added map import
 import { environment } from '../../../environments/environment.prod';
 import {
   Customer,
+  CustomerBalance,
   CreateCustomerRequest,
   UpdateCustomerRequest
 } from '../models/customer';
+import { CustomerAdvanceInfo } from '../models/payment.model';
 import {
   CustomerPriceRule,
   UpsertPriceRuleRequest
@@ -115,6 +117,40 @@ export class CustomerService {
   deletePriceRule(customerId: string, ruleId: string): Observable<ApiResponse<void>> {
     return this.http.delete<ApiResponse<void>>(`${this.priceRuleApi}/${ruleId}`);
   }
+  // Outstanding credit + advance of every customer (customer list page)
+  getBalances(): Observable<CustomerBalance[]> {
+    return this.http.get<any>(`${this.apiUrl}/balances`).pipe(
+      map(res => (res.data ?? []).map((b: any): CustomerBalance => ({
+        customerId: b.customer_id,
+        outstanding: b.outstanding ?? 0,
+        advance: b.advance ?? 0,
+      }))),
+      catchError(() => of([] as CustomerBalance[]))
+    );
+  }
+
+  // One customer's advance: current balance + history (new-sale page, credit payments page)
+  getAdvance(customerId: string): Observable<CustomerAdvanceInfo> {
+    return this.http.get<any>(`${this.apiUrl}/${customerId}/advance`).pipe(
+      map(res => {
+        const d = res.data ?? {};
+        return {
+          balance: d.balance ?? 0,
+          entries: (d.entries ?? []).map((e: any) => ({
+            id: e._id,
+            type: e.type,
+            amount: e.amount,
+            entryDate: e.entry_date,
+            receiptNo: e.receipt_no ?? '',
+            saleNo: e.sale_id?.sale_no ?? '',
+            notes: e.notes ?? '',
+          })),
+        } as CustomerAdvanceInfo;
+      }),
+      catchError(() => of({ balance: 0, entries: [] } as CustomerAdvanceInfo))
+    );
+  }
+
   // Used in new-sale: get effective price for a customer + pack combo
   getEffectivePrice(customerId: string, packTypeId: string): Observable<{ unitSellPrice: number }> {
     return this.http.get<any>(`${this.apiUrl}/${customerId}/effective-price/${packTypeId}`).pipe(

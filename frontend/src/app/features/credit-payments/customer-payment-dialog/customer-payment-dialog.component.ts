@@ -1,17 +1,12 @@
-import { Component, Input, Output, EventEmitter, OnInit, signal, computed } from '@angular/core';
+import { Component, EventEmitter, Input, Output, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { SaleCreditSummary, CustomerPaymentResult } from '../../../core/models/payment.model';
 import { PaymentApiService } from '../../../core/services/payment-api.service';
+import { SaleCreditSummary, CustomerPaymentResult } from '../../../core/models/payment.model';
 import { LkrCurrencyPipe } from '../../../shared/pipes/lkr-currency.pipe';
 
-interface AllocationRow {
-  summary: SaleCreditSummary;
-  applied: number;
-  balanceAfter: number;
-}
-
-const toC = (n: number) => Math.round((Number(n) || 0) * 100);
+interface PendingSale { saleId: string; saleNo: string; date: string; balance: number; }
+interface PreviewRow  { saleNo: string; date: string; balance: number; applied: number; after: number; }
 
 @Component({
   selector: 'app-customer-payment-dialog',
@@ -20,109 +15,109 @@ const toC = (n: number) => Math.round((Number(n) || 0) * 100);
   templateUrl: './customer-payment-dialog.component.html',
   styleUrl: './customer-payment-dialog.component.css'
 })
-export class CustomerPaymentDialogComponent implements OnInit {
-  @Input() customerId!: string;
+export class CustomerPaymentDialogComponent {
+  @Input({ required: true }) customerId!: string;
   @Input() customerName = '';
-  @Input() summaries: SaleCreditSummary[] = [];
+  @Input() set summaries(list: SaleCreditSummary[]) {
+    const pending = (list ?? [])
+      .filter(s => !s.isPaid && s.balanceDue > 0)
+      .map(s => ({
+        saleId: s.sale.saleId, saleNo: s.sale.saleNo,
+        date: s.sale.saleDatetime, balance: s.balanceDue
+      }))
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    this.pending.set(pending);
+  }
   @Output() saved     = new EventEmitter<CustomerPaymentResult>();
   @Output() cancelled = new EventEmitter<void>();
 
-  readonly todayStr = new Date().toISOString().split('T')[0];
+  pending  = signal<PendingSale[]>([]);
+  amount   = signal<number | null>(null);
+  payDate  = signal(this.colomboToday());
+  notes    = signal('');
+  mode     = signal<'AUTO' | 'SELECT'>('AUTO');
+  selected = signal<Set<string>>(new Set());
+  saving   = signal(false);
+  error    = signal<string | null>(null);
 
-  pending     = signal<SaleCreditSummary[]>([]);   // pending sales, oldest first
-  mode        = signal<'auto' | 'select'>('auto');
-  selected    = signal<Set<string>>(new Set());
-  amount      = signal<number | null>(null);
-  paymentDate = signal(this.todayStr);
-  notes       = signal('');
-  loading     = signal(false);
-  error       = signal<string | null>(null);
-
-  candidates = computed(() =>
-    this.mode() === 'auto'
+  // sales that take part in the allocation (all pending, or only the ticked ones)
+  targets = computed(() =>
+    this.mode() === 'AUTO'
       ? this.pending()
-      : this.pending().filter(s => this.selected().has(s.sale.saleId))
+      : this.pending().filter(p => this.selected().has(p.saleId))
   );
+  targetTotal = computed(() => this.cents(this.targets().reduce((a, p) => a + this.toC(p.balance), 0)));
+  totalOutstanding = computed(() => this.cents(this.pending().reduce((a, p) => a + this.toC(p.balance), 0)));
 
-  maxAmount = computed(() =>
-    this.candidates().reduce((a, s) => a + toC(s.balanceDue), 0) / 100
-  );
-
-  // oldest-first split of the typed amount (same rule the server uses)
-  allocation = computed<AllocationRow[]>(() => {
-    let left = toC(this.amount() ?? 0);
-    const rows: AllocationRow[] = [];
-    for (const s of this.candidates()) {
-      if (left <= 0) break;
-      const dueC = toC(s.balanceDue);
-      const take = Math.min(left, dueC);
-      if (take <= 0) continue;
-      rows.push({ summary: s, applied: take / 100, balanceAfter: (dueC - take) / 100 });
-      left -= take;
-    }
-    return rows;
+  preview = computed<PreviewRow[]>(() => {
+    let left = this.toC(this.amount() ?? 0);
+    return this.targets().map(p => {
+      const bal = this.toC(p.balance);
+      const used = Math.min(left, bal);
+      left -= used;
+      return { saleNo: p.saleNo, date: p.date, balance: p.balance, applied: used / 100, after: (bal - used) / 100 };
+    });
+  });
+  appliedTotal = computed(() => this.cents(this.preview().reduce((a, r) => a + this.toC(r.applied), 0)));
+  advanceKept  = computed(() => {
+    const amt = this.toC(this.amount() ?? 0);
+    return Math.max(0, amt - this.toC(this.appliedTotal())) / 100;
   });
 
-  amountError = computed(() => {
-    const a = this.amount();
-    if (a === null || a === undefined || !(a > 0)) return null;
-    if (toC(a) > toC(this.maxAmount())) return `Amount is more than the outstanding balance (max ${this.maxAmount().toFixed(2)})`;
-    return null;
+  canSave = computed(() => {
+    const a = this.amount() ?? 0;
+    if (!(a > 0) || this.saving() || !this.payDate()) return false;
+    if (this.mode() === 'SELECT' && this.selected().size === 0) return false;
+    return true;
   });
 
-  canSubmit = computed(() => {
-    const a = this.amount();
-    return !!a && a > 0 && !this.amountError() && this.candidates().length > 0 && !!this.paymentDate() && !this.loading();
-  });
+  private toC(n: number): number { return Math.round(n * 100); }
+  private cents(c: number): number { return c / 100; }
 
-  constructor(private paymentSvc: PaymentApiService) {}
-
-  ngOnInit(): void {
-    const sorted = this.summaries
-      .filter(s => !s.isPaid)
-      .sort((a, b) => new Date(a.sale.saleDatetime).getTime() - new Date(b.sale.saleDatetime).getTime());
-    this.pending.set(sorted);
-    this.amount.set(this.maxAmount());
+  private colomboToday(): string {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Colombo' }).format(new Date());
   }
 
-  setMode(m: 'auto' | 'select'): void {
+  constructor(private api: PaymentApiService) {}
+
+  onAmount(v: number | string | null): void {
+    this.amount.set(v === null || v === '' ? null : +v);
+  }
+
+  payFull(): void {
+    this.amount.set(this.mode() === 'AUTO' ? this.totalOutstanding() : this.targetTotal());
+  }
+
+  setMode(m: 'AUTO' | 'SELECT'): void {
     this.mode.set(m);
-    if (m === 'select') this.selected.set(new Set());
-    this.amount.set(this.maxAmount() > 0 ? this.maxAmount() : null);
+    this.selected.set(new Set());
   }
 
   toggle(id: string): void {
-    const next = new Set(this.selected());
-    next.has(id) ? next.delete(id) : next.add(id);
-    this.selected.set(next);
-    this.amount.set(this.maxAmount() > 0 ? this.maxAmount() : null);
+    const s = new Set(this.selected());
+    s.has(id) ? s.delete(id) : s.add(id);
+    this.selected.set(s);
   }
 
-  payFull(): void { this.amount.set(this.maxAmount()); }
+  isSelected(id: string): boolean { return this.selected().has(id); }
 
-  remainingAfter(): number {
-    return Math.max(0, this.maxAmount() - (this.amount() ?? 0));
-  }
-
-  onSubmit(): void {
-    if (!this.canSubmit()) return;
+  save(): void {
+    if (!this.canSave()) return;
+    this.saving.set(true);
     this.error.set(null);
-    this.loading.set(true);
-    this.paymentSvc.addCustomerPayment(this.customerId, {
-      amount:      this.amount()!,
-      paymentDate: this.paymentDate(),
-      notes:       this.notes(),
-      saleIds:     this.mode() === 'select' ? [...this.selected()] : undefined,
+    this.api.addCustomerPayment(this.customerId, {
+      amount: this.amount()!,
+      paymentDate: this.payDate(),
+      notes: this.notes().trim(),
+      saleIds: this.mode() === 'SELECT' ? [...this.selected()] : undefined
     }).subscribe({
-      next: res => { this.loading.set(false); this.saved.emit(res); },
+      next: res => { this.saving.set(false); this.saved.emit(res); },
       error: err => {
-        this.loading.set(false);
+        this.saving.set(false);
         this.error.set(err?.error?.message ?? 'Failed to record payment.');
       }
     });
   }
 
-  formatDate(d: string): string {
-    return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-  }
+  close(): void { if (!this.saving()) this.cancelled.emit(); }
 }

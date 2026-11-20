@@ -67,7 +67,7 @@
                                 <button type="button" class="payment-tab"
                                     [class.active]="headerForm.value.paymentMethod === pm.value"
                                     [class.credit-tab]="pm.value === 'CREDIT'"
-                                    (click)="headerForm.patchValue({ paymentMethod: pm.value })">
+                                    (click)="selectPayment(pm.value)">
                                     {{ pm.label }}
                                     @if (pm.hint) {
                                     <span class="payment-tab-hint">{{ pm.hint }}</span>
@@ -77,7 +77,7 @@
                             </div>
 
                             <!-- ── Credit notice ──────────────────────────────────────────────── -->
-                            @if (headerForm.value.paymentMethod === 'CREDIT') {
+                            @if (headerForm.value.paymentMethod === 'CREDIT' && !(useAdvance() && totalRevenue() > 0 && creditRemaining() <= 0.001)) {
                             <div class="credit-notice">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
                                     viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -93,6 +93,41 @@
                         </div>
                     </div>
                 </form>
+
+                <!-- ── Customer advance ─────────────────────────────────────────── -->
+                @if (advanceBalance() > 0) {
+                <div class="advance-panel" [class.on]="useAdvance()">
+                    <div class="advance-head">
+                        <div class="advance-info">
+                            <span class="advance-title">Advance available</span>
+                            <span class="advance-amount">{{ advanceBalance() | lkrCurrency }}</span>
+                        </div>
+                        <label class="advance-toggle">
+                            <input type="checkbox" [ngModel]="useAdvance()" (ngModelChange)="onToggleAdvance($event)" />
+                            <span>Use advance for this sale</span>
+                        </label>
+                    </div>
+                    @if (useAdvance()) {
+                    <div class="advance-body">
+                        <label class="advance-field">
+                            <span>Amount to use (LKR)</span>
+                            <input type="number" class="form-control form-control-sm" min="0" step="0.01"
+                                [max]="maxAdvance()" [ngModel]="effectiveAdvance()"
+                                (ngModelChange)="onAdvanceInput($event)" />
+                        </label>
+                        <button type="button" class="btn btn-outline btn-sm" (click)="advanceInput.set(null)">Use maximum</button>
+                        @if (totalRevenue() === 0) {
+                        <span class="advance-note">Add items to see the amount.</span>
+                        } @else if (creditRemaining() > 0.001) {
+                        <span class="advance-note">LKR {{ creditRemaining() | number:'1.2-2' }} will stay as credit (pending).</span>
+                        } @else {
+                        <span class="advance-note ok">This sale will be fully paid from the advance.</span>
+                        }
+                    </div>
+                    }
+                </div>
+                }
+                <!-- ── /Customer advance ────────────────────────────────────────── -->
             </div>
 
             <!-- Items -->
@@ -276,6 +311,21 @@
                         </span>
                     </div>
                     }
+                    @if (effectiveAdvance() > 0) {
+                    <div class="summary-divider"></div>
+                    <div class="summary-row">
+                        <span>Paid from advance</span>
+                        <span class="adv">{{ effectiveAdvance() | lkrCurrency }}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>Left to pay (credit)</span>
+                        <span [class.success]="creditRemaining() <= 0.001">{{ creditRemaining() | lkrCurrency }}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="text-muted text-sm">Advance left after</span>
+                        <span class="text-sm">{{ advanceLeft() | lkrCurrency }}</span>
+                    </div>
+                    }
                 </div>
 
                 <!-- Customer info -->
@@ -284,6 +334,9 @@
                     <span>Customer: {{ selectedCustomer()?.name }} ({{ selectedCustomer()?.customerCode }})</span>
                     @if (selectedCustomer()?.creditLimit) {
                     <span>Credit: {{ selectedCustomer()?.creditLimit | lkrCurrency }}</span>
+                    }
+                    @if (advanceBalance() > 0) {
+                    <span class="adv-line">Advance: {{ advanceBalance() | lkrCurrency }}</span>
                     }
                 </div>
                 }

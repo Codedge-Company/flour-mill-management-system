@@ -89,6 +89,22 @@ export class NewSaleComponent implements OnInit {
   selectedCustomer = computed(() =>
     this.getCustomer(this.headerForm.get('customerId')?.value)
   );
+  // ── Customer advance (money the customer paid ahead) ──
+  advanceBalance = signal(0);
+  useAdvance     = signal(false);
+  advanceInput   = signal<number | null>(null);   // null = use as much as possible
+
+  private round2 = (n: number) => Math.round(n * 100) / 100;
+  maxAdvance = computed(() => this.round2(Math.min(this.advanceBalance(), this.totalRevenue())));
+  effectiveAdvance = computed(() => {
+    if (!this.useAdvance()) return 0;
+    const max = this.maxAdvance();
+    const v = this.advanceInput();
+    return this.round2(v === null ? max : Math.max(0, Math.min(v, max)));
+  });
+  creditRemaining = computed(() => this.round2(Math.max(0, this.totalRevenue() - this.effectiveAdvance())));
+  advanceLeft     = computed(() => this.round2(Math.max(0, this.advanceBalance() - this.effectiveAdvance())));
+
   customerSearchText = signal<string>('');
   customerDropdownOpen = signal<boolean>(false);
   filteredCustomers = computed(() => {
@@ -197,7 +213,34 @@ export class NewSaleComponent implements OnInit {
     console.log('form', this.headerForm.value); // Debug
   }
 
+  // ── Advance helpers ─────────────────────────────────────────────
+  selectPayment(method: PaymentMethod): void {
+    this.headerForm.patchValue({ paymentMethod: method });
+    if (method !== 'CREDIT') this.useAdvance.set(false);   // advance only goes on credit sales
+  }
+
+  onToggleAdvance(on: boolean): void {
+    this.useAdvance.set(on);
+    this.advanceInput.set(null);
+    if (on) this.headerForm.patchValue({ paymentMethod: 'CREDIT' });
+  }
+
+  onAdvanceInput(value: number | string | null): void {
+    this.advanceInput.set(value === null || value === '' ? null : +value);
+  }
+
+  private loadAdvance(customerId: string | null): void {
+    this.advanceBalance.set(0);
+    this.useAdvance.set(false);
+    this.advanceInput.set(null);
+    if (!customerId) return;
+    this.customerService.getAdvance(customerId).subscribe(info => {
+      if (this.headerForm.value.customerId === customerId) this.advanceBalance.set(info.balance);
+    });
+  }
+
   onCustomerChange(customerId: string | null): void {
+    this.loadAdvance(customerId);
     if (!customerId) return;
     // Reload prices for all already-selected packs
     this.rows().forEach((row, index) => {
@@ -278,6 +321,7 @@ export class NewSaleComponent implements OnInit {
       customerId: this.headerForm.value.customerId,
       paymentMethod: this.headerForm.value.paymentMethod,
       saleDate: this.headerForm.value.saleDate,
+      advanceAmount: this.effectiveAdvance() > 0 ? this.effectiveAdvance() : undefined,
       items: validRows.map(r => ({
         packTypeId: r.packTypeId!,
         qty: r.qty,
@@ -308,6 +352,7 @@ export class NewSaleComponent implements OnInit {
     // Clear selection if user edits the text
     if (this.headerForm.value.customerId) {
       this.headerForm.patchValue({ customerId: null });
+      this.loadAdvance(null);
     }
   }
 

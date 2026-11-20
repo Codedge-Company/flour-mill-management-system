@@ -188,6 +188,17 @@
             </div>
           </div>
 
+          <div class="balance-strip">
+            <div class="bal-box" [class.bal-due]="balanceOf(c.customerId).outstanding > 0">
+              <span class="bal-label">Outstanding</span>
+              <span class="bal-val">{{ balanceOf(c.customerId).outstanding | lkrCurrency }}</span>
+            </div>
+            <div class="bal-box" [class.bal-adv]="balanceOf(c.customerId).advance > 0">
+              <span class="bal-label">Advance</span>
+              <span class="bal-val">{{ balanceOf(c.customerId).advance | lkrCurrency }}</span>
+            </div>
+          </div>
+
           <div class="card-actions">
             <a [routerLink]="['/customers', c.customerId, 'prices']"
                class="btn btn-secondary btn-sm">

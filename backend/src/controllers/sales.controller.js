@@ -4,6 +4,7 @@ const invoicePrinterService = require('../services/invoicePrinter.service');
 const InvoiceLink = require('../models/InvoiceLink');
 const path = require('path');
 const paymentService = require('../services/payment.service');
+const advanceService = require('../services/advance.service');
 const RECEIPT_PRINTER_NAME = process.env.RECEIPT_PRINTER_NAME || '80 Printer Series';
 const INVOICE_PRINTER_NAME = process.env.INVOICE_PRINTER_NAME || 'A4 Printer';
 
@@ -31,21 +32,23 @@ exports.getSaleById = async (req, res, next) => {
 exports.createSale = async (req, res, next) => {
     try {
         const payload = {
-            ...req.body,
+            ...req.body,                       // advance_amount (optional) travels in the body
             use_default_price: req.body.use_default_price ?? false,
         };
         const sale = await salesService.createSale(payload, req.user);
         let outstandingBalance = 0;
+        let advanceBalance = 0;
         try {
             const custId = sale.customer_id?._id ?? sale.customer_id;
             outstandingBalance = await paymentService.getCustomerTotalOutstanding(custId);
+            advanceBalance = await advanceService.getBalance(custId);
         } catch (err) {
             console.error('[Outstanding] Failed to compute:', err.message);
         }
         // ── 3 separate thermal prints, in order: customer copy → store room slip → office/keep copy ──
         (async () => {
             try {
-                await printerService.printSale(sale, 'thermal', { printerName: RECEIPT_PRINTER_NAME, outstandingBalance });
+                await printerService.printSale(sale, 'thermal', { printerName: RECEIPT_PRINTER_NAME, outstandingBalance, advanceBalance });
             } catch (err) { console.error('[Print] Customer receipt failed:', err.message); }
 
             try {
@@ -53,7 +56,7 @@ exports.createSale = async (req, res, next) => {
             } catch (err) { console.error('[Print] Store room receipt failed:', err.message); }
 
             try {
-                await printerService.printPaymentReceipt(sale, { printerName: RECEIPT_PRINTER_NAME, outstandingBalance });
+                await printerService.printPaymentReceipt(sale, { printerName: RECEIPT_PRINTER_NAME, outstandingBalance, advanceBalance });
             } catch (err) { console.error('[Print] Payment receipt (office copy) failed:', err.message); }
         })();
 
@@ -108,9 +111,11 @@ exports.reprintReceipt = async (req, res, next) => {
         const sale = await salesService.getById(req.params.id);
 
         let outstandingBalance = 0;
+        let advanceBalance = 0;
         try {
             const custId = sale.customer_id?._id ?? sale.customer_id;
             outstandingBalance = await paymentService.getCustomerTotalOutstanding(custId);
+            advanceBalance = await advanceService.getBalance(custId);
         } catch (err) {
             console.error('[Outstanding] Failed to compute:', err.message);
         }
@@ -118,6 +123,7 @@ exports.reprintReceipt = async (req, res, next) => {
         const result = await printerService.printSale(sale, 'thermal', {
             printerName: RECEIPT_PRINTER_NAME,
             outstandingBalance,
+            advanceBalance,
         });
         res.json({ success: result.success, data: result });
     } catch (e) { next(e); }
